@@ -1,6 +1,6 @@
 # Deploying UPT to Railway
 
-The production configuration defines one `web` service in Amsterdam. Its `upt-data` volume holds SQLite and the imported timetable PDFs at `/data/upt.db`. The Docker image includes Node 24, both Python environments and FFmpeg. Campuspath starts on demand inside the web container.
+The production configuration defines one `web` service in Amsterdam. Its `upt-data` volume holds SQLite and the imported timetable PDFs at `/data/upt.db`. The Docker image includes Node 24, both Python environments and FFmpeg. Campuspath starts on demand inside the web container. [Open Poli](https://web-production-10d2d8df.up.railway.app) · [Check production health](https://web-production-10d2d8df.up.railway.app/api/health)
 
 ## Prepare the project
 
