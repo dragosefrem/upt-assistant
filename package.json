@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "node scripts/check-verification-deployment.mjs",
     "lint": "eslint",
     "scrape": "tsx scripts/scrape.ts",
     "test": "vitest run",

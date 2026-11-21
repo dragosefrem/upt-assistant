@@ -94,6 +94,10 @@ async function submit(path, html, fields) {
   return fetch(base + path, { method: "POST", headers: { ...language, Origin: base }, body, redirect: "manual" });
 }
 try {
+  if (process.env.RAILWAY_SERVICE_ID) {
+    assert.equal(process.env.TIMETABLE_PYTHON, "/opt/timetables/bin/python", "Expected the production Docker runtime");
+    assert.equal(process.versions.node.split(".")[0], "24");
+  }
   await start();
   assert.equal(db.prepare("SELECT email_verified_at FROM users WHERE id='legacy'").get().email_verified_at, null);
   const registerForm = await (await fetch(base + "/register", { headers: language })).text();
