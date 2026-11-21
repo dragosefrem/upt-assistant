@@ -1,5 +1,6 @@
 import "server-only";
 import { guide } from "@/i18n/messages/guide";
+import { isLocale } from "@/i18n/config";
 import { attendanceRecords, markAttendance, summarizeAttendance } from "../attendance";
 import { searchGlossary } from "../glossary";
 import { makeupSessions, practicalsInWeek } from "../labs";
@@ -23,15 +24,16 @@ export const STUDY_TOOLS: AssistantTool[] = [
     input_schema: {
       type: "object",
       properties: {
-        date: { type: "string", description: "Any day of the week in question, YYYY-MM-DD. Default today; add 7 days for \"next week\"." },
+        date: { type: "string", format: "date", description: "Any day of the week in question, YYYY-MM-DD. Default today; add 7 days for \"next week\"." },
         course: { type: "string", description: "Only this course (name or acronym)." },
         kinds: { type: "array", items: { type: "string", enum: ["lab", "seminar", "project"] }, description: "Which activity types. Default all three; pass [\"lab\"] when asked about labs only." },
+        language: { type: "string", enum: ["ro", "en"], description: "Language of the student's question, for holiday names." },
       },
     },
-    run(input, { user }) {
+    run(input, { user, locale }) {
       const date = isDate(input.date) ? input.date : nowLocal().date;
       const kinds = Array.isArray(input.kinds) ? input.kinds.flatMap((k) => (k === "lab" || k === "seminar" || k === "project" ? [k as Kind] : [])) : [];
-      const week = practicalsInWeek(user, date, kinds.length ? kinds : undefined);
+      const week = practicalsInWeek(user, date, kinds.length ? kinds : undefined, isLocale(input.language) ? input.language : locale);
       const course = str(input.course);
       const wanted = (title: string, abbr: string | null) => !course || [fold(title), fold(abbr ?? "")].some((n) => n && (n.includes(fold(course)) || fold(course).includes(n)));
       const running = week.running.filter((e) => wanted(e.title, e.abbr));
@@ -40,6 +42,7 @@ export const STUDY_TOOLS: AssistantTool[] = [
         week: `${week.monday} to ${week.sunday}`,
         teaching_week: week.week,
         parity: week.parity,
+        holidays: week.holidays,
         no_teaching: week.pause ? { reason: week.pause, teaching_resumes: week.resumes } : undefined,
         takes_place: running.map(brief),
         not_this_week: skipped.map((e) => ({
@@ -61,14 +64,15 @@ export const STUDY_TOOLS: AssistantTool[] = [
   {
     name: "find_makeup_lab",
     description:
-      "When other groups have the same lab (or seminar, project) as the student, so they can make up one they missed or will miss. Returns upcoming sessions with date, time, room, which groups attend, and whether each fits the student's own timetable. Use it for \"I missed Tuesday's lab, which other groups have it this week?\". Always tell the student to ask the teacher before joining another group.",
+      "Find upcoming make-up sessions of the same lab, seminar or project. If the student names the missed day, pass missed_on (including relative weekdays like last Tuesday) to check whether their own activity was scheduled. If it was not, report its previous and next dates. Otherwise offer sessions that fit and advise asking the teacher first.",
     input_schema: {
       type: "object",
       properties: {
         course: { type: "string", description: "Course name or acronym, e.g. \"PC\" or \"Fizică\"." },
         kind: { type: "string", enum: ["lab", "seminar", "project"], description: "Default: the course's lab." },
-        from: { type: "string", description: "First day to look at, YYYY-MM-DD. Default today." },
-        to: { type: "string", description: "Last day, YYYY-MM-DD. Default: the end of next week. At most 28 days after `from`." },
+        missed_on: { type: "string", format: "date", description: "Date of the student's own missed activity, resolved from their message, YYYY-MM-DD. Independent of the range for replacements." },
+        from: { type: "string", format: "date", description: "First day to look at, YYYY-MM-DD. Default today." },
+        to: { type: "string", format: "date", description: "Last day, YYYY-MM-DD. Default: the end of next week. At most 28 days after `from`." },
       },
       required: ["course"],
     },
@@ -81,8 +85,13 @@ export const STUDY_TOOLS: AssistantTool[] = [
       let to = isDate(input.to) && input.to >= from ? input.to : addDays(from, 14 - weekday(from));
       if (to > addDays(from, 28)) to = addDays(from, 28);
       const kind = kindOf(input.kind);
-      const found = makeupSessions(user, { course, kind, from, to });
+      const found = makeupSessions(user, { course, kind, from, to, missedOn: str(input.missed_on) });
       if (!found.ok) {
+        if (found.reason === "not-scheduled") return {
+          scheduled_on_missed_date: false, activity: found.course, kind: found.kind, missed_on: found.missedOn,
+          previous_on: found.previous, next_on: found.next,
+          note: "This activity was not on the student's calendar that day. Tell them they did not miss it and give the previous and next scheduled dates when available.",
+        };
         if (found.reason === "ambiguous") return { error: "Several activities match; ask which one.", candidates: found.candidates.map((c) => `${c.title} (${c.kind})`) };
         if (found.reason === "not-found") return { error: `No ${kind ?? "lab, seminar or project"} matching "${course}" in the student's timetable. Use list_my_courses to see the names.` };
         return { error: found.reason === "no-group" ? "The student has not chosen a group yet." : "No semester configured." };
@@ -90,6 +99,7 @@ export const STUDY_TOOLS: AssistantTool[] = [
       const { result } = found;
       return {
         activity: `${result.course} (${result.kind})`,
+        ...(input.missed_on ? { scheduled_on_missed_date: true, missed_on: input.missed_on } : {}),
         searched: `${from} to ${to}`,
         own_sessions: result.own.map((o) => `${dated(o.date)} ${span(o.startMin, o.endMin)}${o.room ? `, ${o.room}` : ""}`),
         other_groups: result.sessions.map((s) => ({
@@ -123,7 +133,8 @@ export const STUDY_TOOLS: AssistantTool[] = [
         earliest: { type: "string", description: "Earliest start of a block, HH:MM. Default 10:00." },
         latest: { type: "string", description: "Time by which blocks must end, HH:MM. Default 20:00." },
         keep_sunday_free: { type: "boolean", description: "Default true." },
-        start_from: { type: "string", description: "Do not plan before this date, YYYY-MM-DD." },
+        rest_weekdays: { type: "array", items: { type: "integer", minimum: 1, maximum: 7 }, description: "All weekdays to keep free, 1 Monday through 7 Sunday. Default [7]. For no Saturdays keep the usual Sunday rest too unless asked otherwise: [6,7]. Overrides keep_sunday_free." },
+        start_from: { type: "string", format: "date", description: "Do not plan before this date, YYYY-MM-DD." },
         extra_exams: {
           type: "array",
           description: "Exams the student told you about that are not in find_exams yet.",
@@ -137,6 +148,13 @@ export const STUDY_TOOLS: AssistantTool[] = [
       },
     },
     run(input, ctx) {
+      const rest = input.rest_weekdays;
+      if (rest !== undefined && (!Array.isArray(rest) || !rest.every((n) => Number.isInteger(n) && n >= 1 && n <= 7))) {
+        return { error: "Rest weekdays must be numbers from 1 (Monday) to 7 (Sunday)." };
+      }
+      if (Array.isArray(input.extra_exams) && input.extra_exams.some((x) => !isDate(x?.date))) {
+        return { error: "Each exam needs a real calendar date (YYYY-MM-DD). Ask the student to correct it." };
+      }
       const extra = Array.isArray(input.extra_exams)
         ? input.extra_exams.flatMap((x) => {
             const r = (x ?? {}) as Record<string, unknown>;
@@ -151,6 +169,7 @@ export const STUDY_TOOLS: AssistantTool[] = [
         dayStart: parseClock(input.earliest),
         dayEnd: parseClock(input.latest),
         restOnSunday: input.keep_sunday_free !== false,
+        restWeekdays: rest,
         startFrom: isDate(input.start_from) ? input.start_from : undefined,
         extraExams: extra,
       });
@@ -206,7 +225,7 @@ export const STUDY_TOOLS: AssistantTool[] = [
     input_schema: {
       type: "object",
       properties: {
-        date: { type: "string", description: "The day it took place, YYYY-MM-DD." },
+        date: { type: "string", format: "date", description: "The day it took place, YYYY-MM-DD." },
         course: { type: "string", description: "Course or event title, or its acronym." },
         kind: { type: "string", enum: ["course", "seminar", "lab", "project", "other", "exam", "personal"] },
         start: { type: "string", description: "Its start time HH:MM, to tell two apart." },

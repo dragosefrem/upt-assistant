@@ -1,15 +1,16 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getDb } from "@/db";
-import { contacts, courses, entries, entryGroups, exams, examSpecializations, faculties, groups, personalEvents, savedContacts, semesters, specializations, users } from "@/db/schema";
+import { contacts, courses, entries, entryGroups, exams, examSpecializations, faculties, groups, occurrenceOverrides, personalEvents, savedContacts, semesters, specializations, users } from "@/db/schema";
 import { guide } from "@/i18n/messages/guide";
 import { askLocal } from "@/lib/assistant/local";
 import { runTool, type ToolContext } from "@/lib/assistant/tools";
 import type { User } from "@/lib/auth";
 import { searchGlossary } from "@/lib/glossary";
+import { exportItems, toICS } from "@/lib/export";
 import { makeupSessions, nextOccurrence, practicalsInWeek, weekInfo } from "@/lib/labs";
 import { availabilityAt, listPeople, matchPeople } from "@/lib/people";
-import { currentSemester } from "@/lib/schedule";
+import { currentSemester, eventsBetween, groupBusy } from "@/lib/schedule";
 import { semesterOverview } from "@/lib/semester-overview";
 import { buildStudyPlan, clearStudyPlan, proposeStudyPlan, saveStudyPlan, studyBlocks, type PlanExam } from "@/lib/study-plan";
 
@@ -20,6 +21,13 @@ const hm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${Stri
 describe("buildStudyPlan", () => {
   const exam = (key: string, date: string, startMin = 9 * 60): PlanExam => ({ key, course: key.toUpperCase(), date, startMin, endMin: startMin + 120 });
   const base = { today: "2027-01-18", nowMinutes: 8 * 60 };
+
+  it("keeps a later sitting free while planning for the next course", () => {
+    const first = { ...exam("am", "2027-01-27"), alsoOn: ["2027-02-10"] };
+    const plan = buildStudyPlan([first, exam("fiz", "2027-02-11")], [], base);
+    expect(plan.sessions).toHaveLength(12);
+    expect(plan.sessions.some((block) => block.date === "2027-02-10")).toBe(false);
+  });
 
   it("works backwards from the exam: the days right before it, never the exam day", () => {
     // Wednesday 27 January; six blocks at two a day take the three days before it, skipping Sunday.
@@ -241,7 +249,7 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     expect(all.you).toEqual({ free: true });
     expect(all.free.map((p: Any) => p.name)).toEqual(["Radu"]);
     expect(all.busy).toHaveLength(1);
-    expect(all.busy[0]).toMatchObject({ name: "Mihai Ionescu", busy_with: ["something in their calendar 16:00–17:00"] });
+    expect(all.busy[0]).toMatchObject({ name: "Mihai Ionescu", busy_with: ["busy 16:00–17:00"] });
     expect(all.everyone_free).toBe(false);
     expect(all.caveat).toMatch(/published timetable/);
 
@@ -250,8 +258,9 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     expect(named.not_a_contact).toEqual(["Bogdan"]);
     expect(named.everyone_free).toBe(false);
 
-    // Monday 08:00: Ana herself has the lecture.
-    expect(call("who_is_free", { date: "2026-11-30", start: "08:00", people: ["Radu"] }).you.free).toBe(false);
+    // On teaching Mondays Ana has the lecture; Saint Andrew’s Day is free.
+    expect(call("who_is_free", { date: "2026-11-23", start: "08:00", people: ["Radu"] }).you.free).toBe(false);
+    expect(call("who_is_free", { date: "2026-11-30", start: "08:00", people: ["Radu"] }).everyone_free).toBe(true);
     expect(call("who_is_free", { date: "2026-11-27", start: "12:00", people: ["Bogdan"] }).error).toMatch(/Bogdan/);
   });
 
@@ -364,5 +373,93 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     // A time when Mihai is busy is refused with a pointer to find another.
     const clash = call("create_group_event", { title: "Proiect", date: "2026-11-26", start: "16:00", people: ["Mihai"] });
     expect(clash.not_created_yet.busy_then).toEqual(["Mihai Ionescu"]);
+  });
+
+  it("skips only timetable classes on the November and December holidays, including in the .ics", () => {
+    const start = "2026-11-30";
+    const end = "2026-12-01";
+    const db = getDb();
+    db.insert(personalEvents).values({ userId: ana.id, title: "Family lunch", date: start, startMin: 720, endMin: 810 }).run();
+    const exam = db.insert(exams).values({
+      key: "holiday-exam", facultyId: ana.facultyId!, courseName: "Scheduled assessment", date: end,
+      startMin: 540, endMin: 600, year: 1, rawText: "",
+    }).returning().get();
+    db.insert(examSpecializations).values({ examId: exam.id, specializationId: ana.specializationId! }).run();
+    expect(eventsBetween(ana, start, end).map((e) => [e.type, e.title])).toEqual([["personal", "Family lunch"], ["exam", "Scheduled assessment"]]);
+    expect(groupBusy(ana.groupId!, start, end)).toEqual([]);
+    const holidays = [{ date: start, name: "Sfântul Andrei" }, { date: end, name: "Ziua Națională a României" }];
+    expect(call("get_schedule", { from: start, to: end, language: "ro" }).holidays).toEqual(holidays);
+    expect(call("labs_this_week", { date: start, language: "ro" }).holidays).toEqual(holidays);
+    const week = practicalsInWeek(ana, start, undefined, "ro");
+    expect(week.holidays).toEqual(holidays);
+    expect(week.week).toBe(10);
+    expect(week.running.map((e) => e.date)).toEqual(["2026-12-02", "2026-12-03"]);
+    expect(week.skipped.find((e) => e.kind === "seminar")?.next).toBe("2026-12-08");
+    const semester = currentSemester()!;
+    expect(nextOccurrence({ day: 1, weeks: "all" }, semester, start)).toBe("2026-12-07");
+    expect(nextOccurrence({ day: 2, weeks: end }, semester, start)).toBeNull();
+    const makeups = makeupSessions(ana, { course: "PC", from: start, to: "2026-12-06" });
+    expect(makeups.ok && makeups.result.sessions.map((e) => e.date)).toEqual(["2026-12-02"]);
+    const file = toICS(exportItems(ana)).replace(/\r\n /g, "");
+    expect(file).toMatch(/EXDATE;TZID=Europe\/Bucharest:[^\r\n]*20261130T080000/);
+    expect(file).toMatch(/EXDATE;TZID=Europe\/Bucharest:[^\r\n]*20261201T120000/);
+    expect(file).toContain("DTSTART;TZID=Europe/Bucharest:20261130T120000");
+    expect(file).toContain("DTSTART;TZID=Europe/Bucharest:20261201T090000");
+    expect(askLocal("Ce ore am pe 2026-12-01?", ctx)).toContain("Ziua Națională a României");
+  });
+
+  it("honours stored one-off moves whose original or destination date is a holiday", () => {
+    const db = getDb();
+    const seminar = eventsBetween(ana, "2026-11-24", "2026-11-24").find((e) => e.kind === "seminar")!;
+    const entryId = seminar.entryId!;
+    const change = { userId: ana.id, entryId, startMin: seminar.startMin, endMin: seminar.endMin };
+    const moves = db.insert(occurrenceOverrides).values([
+      { ...change, date: "2026-12-01", newDate: "2027-03-02" },
+      { ...change, date: "2026-12-08", newDate: "2026-11-30" },
+    ]).returning().all();
+    try {
+      expect(eventsBetween(ana, "2026-11-30", "2026-11-30").some((e) => e.entryId === entryId)).toBe(false);
+      expect(eventsBetween(ana, "2027-03-02", "2027-03-02").find((e) => e.entryId === entryId)?.originalDate).toBe("2026-12-01");
+      const exported = exportItems(ana).filter((e) => e.uid.startsWith(`entry-${entryId}-`));
+      expect(exported.map((e) => e.date)).toEqual(["2027-03-02"]);
+      expect(call("find_makeup_lab", { course: "AM", kind: "seminar", missed_on: "2027-03-01" })).toMatchObject({
+        scheduled_on_missed_date: false, next_on: "2027-03-02",
+      });
+      expect(call("move_class_once", { course: "AM", kind: "seminar", date: "2026-11-24", to_date: "2026-12-01", confirmed: true }).error).toMatch(/public holiday/);
+    } finally {
+      for (const move of moves) db.delete(occurrenceOverrides).where(eq(occurrenceOverrides.id, move.id)).run();
+    }
+  });
+
+  it("verifies a missed Tuesday against the chosen student's calendar, including individual moves", () => {
+    const his: ToolContext = { user: mihai, location: null, changed: false };
+    const run = (name: string, args: Any) => runTool(name, args, his) as Any;
+    expect(run("move_class", { course: "FIZ", kind: "lab", to_weekday: 2 }).moved).toBeDefined();
+    const missed = (date: string) => run("find_makeup_lab", { course: "FIZ", missed_on: date });
+    expect(missed("2026-11-17")).toMatchObject({
+      scheduled_on_missed_date: false, previous_on: "2026-11-10", next_on: "2026-11-24",
+    });
+    expect(missed("2026-11-17").other_groups).toBeUndefined();
+    expect(missed("2026-11-24").scheduled_on_missed_date).toBe(true);
+    expect(run("move_class_once", { course: "FIZ", date: "2026-11-24", to_date: "2026-11-25", confirmed: true }).moved).toBeDefined();
+    expect(missed("2026-11-24")).toMatchObject({ scheduled_on_missed_date: false, previous_on: "2026-11-10", next_on: "2026-11-25" });
+    expect(missed("2026-11-25").scheduled_on_missed_date).toBe(true);
+    expect(missed("2026-11-31").error).toMatch(/real calendar date/);
+    expect(run("restore_class", {}).needs_confirmation).toBeDefined();
+    expect(missed("2026-11-25").scheduled_on_missed_date).toBe(true);
+    expect(run("restore_class", { confirmed: true }).restored).toBe(2);
+  });
+
+  it("keeps changed study hours, morning starts and Saturday rest days in the saved plan", () => {
+    const args = { hours_per_exam: 6, earliest: "08:00", blocks_per_day: 1, rest_weekdays: [6, 7] };
+    const proposal = call("plan_exam_study", args);
+    expect(proposal.proposal.every((p: Any) => p.hours === 6)).toBe(true);
+    const blocks = proposal.proposal.flatMap((p: Any) => p.study_blocks);
+    expect(blocks.join(" ")).not.toMatch(/Saturday|Sunday/);
+    expect(blocks.every((s: string) => s.includes("08:00–10:00"))).toBe(true);
+    expect(studyBlocks(ana.id)).toHaveLength(0);
+    expect(call("plan_exam_study", { ...args, confirmed: true }).saved_blocks).toBe(blocks.length);
+    expect(studyBlocks(ana.id).every((s) => s.startMin === 480)).toBe(true);
+    expect(call("clear_study_plan").removed_blocks).toBe(blocks.length);
   });
 });

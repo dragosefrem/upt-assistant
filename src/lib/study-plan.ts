@@ -84,7 +84,7 @@ export function buildStudyPlan(exams: PlanExam[], busy: Busy[], options: StudyPl
   } = options;
   const firstDay = options.startFrom && options.startFrom > today ? options.startFrom : today;
   const upcoming = exams.filter((x) => x.date > firstDay).sort((a, b) => b.date.localeCompare(a.date) || b.startMin - a.startMin);
-  const examDays = new Set(exams.map((x) => x.date));
+  const examDays = new Set(exams.flatMap((x) => [x.date, ...(x.alsoOn ?? [])]));
   const rest = new Set(restWeekdays);
 
   const taken = new Map<string, Busy[]>();
@@ -141,6 +141,8 @@ export interface StudyRequest {
   dayEnd?: number;
   /** Keep Sunday free. Default true. */
   restOnSunday?: boolean;
+  /** Explicit rest days override the Sunday preference. */
+  restWeekdays?: number[];
   startFrom?: string;
   /** Exams the faculty has not published yet, as the student gave them. */
   extraExams?: Array<{ course: string; date: string; startMin?: number }>;
@@ -207,7 +209,7 @@ export function proposeStudyPlan(user: User, request: StudyRequest = {}): Studen
     maxPerDay: Math.min(Math.max(Math.round(request.maxPerDay ?? 2), 1), 4),
     dayStart: request.dayStart,
     dayEnd: request.dayEnd,
-    restWeekdays: request.restOnSunday === false ? [] : [7],
+    restWeekdays: request.restWeekdays ?? (request.restOnSunday === false ? [] : [7]),
     startFrom: request.startFrom,
   });
   return { exams, sessionMinutes, ...plan };

@@ -217,8 +217,10 @@ export const APP_TOOLS: AssistantTool[] = [
       let event: ReturnType<typeof brief> | undefined;
       if (!to || /^(next|urm[aă]tor)/i.test(to)) {
         const now = nowLocal();
-        const next = eventsBetween(ctx.user, now.date, addDays(now.date, 14)).find((e) => e.room && (e.date > now.date || e.endMin > now.minutes));
-        if (!next?.room) return { error: "The student has no upcoming class with a room." };
+        const next = eventsBetween(ctx.user, now.date, addDays(now.date, 14)).find((e) =>
+          (e.type === "class" || e.type === "exam") && (e.date > now.date || e.startMin >= now.minutes));
+        if (!next) return { error: "No upcoming class or exam in the next two weeks." };
+        if (!next.room) return { error: "The room has not been published for the next class or exam.", for_class: brief(next) };
         to = next.room;
         building = next.place?.name;
         event = brief(next);
@@ -256,8 +258,8 @@ export const APP_TOOLS: AssistantTool[] = [
     run(_input, { user }) {
       const list = studentBuildings(user);
       return {
-        buildings: list.map((b) => ({ name: b.name, address: b.address, position_is_approximate: b.approximate, rooms: b.rooms, courses: b.courses, classes_per_week: b.count })),
-        note: list.length ? "The Guide and Campus pages show these with a map and a walkthrough to each room." : "No timetable yet: the student has to choose a group first.",
+        buildings: list.map((b) => ({ name: b.name, address: b.address, position_is_approximate: b.approximate, rooms: b.rooms, courses: b.courses, timetable_entries: b.count })),
+        note: list.length ? "Counts are activities in the semester timetable. Their weeks can vary. The Guide and Campus pages have a map and room walkthroughs." : "No timetable yet: the student has to choose a group first.",
       };
     },
   },
