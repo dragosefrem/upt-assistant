@@ -36,8 +36,8 @@ COPY drizzle ./drizzle
 COPY scripts ./scripts
 COPY src ./src
 COPY services/campuspath ./services/campuspath
-RUN mkdir -p /data .next/cache services/campuspath/.cache \
-    && chown node:node /data .next/cache services/campuspath/.cache
+RUN mkdir -p /data .next/cache .next/server/route-cache services/campuspath/.cache \
+    && chown -R node:node /data .next/cache .next/server/route-cache services/campuspath/.cache
 
 ENTRYPOINT ["/bin/sh", "/app/scripts/start-container.sh"]
 CMD ["node", "node_modules/next/dist/bin/next", "start", "--hostname", "0.0.0.0"]
