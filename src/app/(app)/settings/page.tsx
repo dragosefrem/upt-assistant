@@ -5,13 +5,16 @@ import { ExportPanel } from "@/components/ExportPanel";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { ProfilePicker } from "@/components/ProfilePicker";
 import { getDb } from "@/db";
-import { sources, timetablePdfs } from "@/db/schema";
-import { getT } from "@/i18n/server";
+import { courses, entries, sources, timetablePdfs, userOverrides } from "@/db/schema";
+import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf, pickerData } from "@/lib/catalog";
 import { googleConfigured } from "@/lib/google";
+import { kindLabel } from "@/lib/kinds";
 import { mailConfigured } from "@/lib/mail";
 import { courseChoices, currentSemester } from "@/lib/schedule";
+import { dayName, formatMinutes } from "@/lib/time";
+import { restoreHiddenClass } from "./actions";
 
 export async function generateMetadata() {
   const t = await getT();
@@ -22,9 +25,18 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const user = await requireOnboardedUser();
   const t = await getT();
   const s = t.settings;
+  const locale = await getLocale();
   const params = await searchParams;
   const semester = currentSemester();
   const choices = semester ? courseChoices(user, semester) : [];
+  const hidden = semester ? getDb()
+    .select({ id: entries.id, name: courses.name, kind: entries.kind, day: entries.day, time: entries.startMin,
+      movedDay: userOverrides.day, movedTime: userOverrides.startMin })
+    .from(userOverrides)
+    .innerJoin(entries, eq(entries.id, userOverrides.entryId))
+    .innerJoin(courses, eq(courses.id, entries.courseId))
+    .where(and(eq(userOverrides.userId, user.id), eq(userOverrides.hidden, true), eq(entries.semesterId, semester.id)))
+    .orderBy(entries.day, entries.startMin).all() : [];
   const faculty = facultyOf(user.facultyId);
   const documents = user.facultyId && semester
     ? getDb().select({ id: sources.id, label: sources.label, url: sources.url, status: sources.status,
@@ -61,6 +73,25 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         <h2 className="mb-4 text-base font-semibold">{s.courses.title}</h2>
         <CourseChoicesForm choices={choices} returnTo="/settings#courses" submitLabel={s.courses.save} />
       </section>
+
+      {hidden.length > 0 && (
+        <section id="hidden-classes" className="card scroll-mt-20 p-6">
+          <h2 className="text-base font-semibold">{s.courses.hidden}</h2>
+          <ul className="mt-2 divide-y divide-slate-100">
+            {hidden.map((entry) => (
+              <li key={entry.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <div>
+                  <p className="font-medium">{entry.name}</p>
+                  <p className="text-slate-600">{kindLabel(entry.kind, locale)} · {dayName(entry.movedDay ?? entry.day, locale)} · {formatMinutes(entry.movedTime ?? entry.time)}</p>
+                </div>
+                <form action={restoreHiddenClass.bind(null, entry.id)}>
+                  <button className="btn-secondary">{s.courses.restore}<span className="sr-only"> · {entry.name}</span></button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section id="export" className="card scroll-mt-20 p-6">
         <h2 className="mb-4 text-base font-semibold">{s.export.title}</h2>

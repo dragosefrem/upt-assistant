@@ -15,6 +15,8 @@ const en = {
   },
   courses: {
     title: "Courses and lab slots",
+    hidden: "Classes you’ve hidden",
+    restore: "Show in calendar",
     save: "Save choices",
   },
   documents: {
@@ -35,6 +37,11 @@ const en = {
   /** ProfilePicker: faculty → cycle → year → specialization → group. */
   profile: {
     faculty: "Faculty",
+    chooseFaculty: "Choose your faculty to continue.",
+    chooseYear: "Choose your year to continue.",
+    noCycle: "No programmes are listed for this study cycle. Choose a different cycle or faculty.",
+    chooseProgramme: "Choose your programme to continue.",
+    chooseGroup: "Choose your group to continue.",
     noFaculties: "No faculties have been imported yet. An administrator needs to run the UPT scrape first.",
     cycleAndYear: "Study cycle and year",
     bachelor: "Bachelor (licență)",
@@ -56,6 +63,7 @@ const en = {
   /** CourseChoicesForm. */
   choices: {
     slotNotChosen: "Slot not chosen yet",
+    slotFor: (course: string) => `Lab or seminar slot for ${course}`,
     yourCourses: "Your courses this semester",
     yourCoursesHint:
       "These are all the courses in your group’s timetable. Untick the optional ones you did not choose — only ticked courses appear in your calendar.",
@@ -167,6 +175,8 @@ const ro: typeof en = {
   courses: {
     title: "Discipline și ore de laborator",
     save: "Salvează alegerile",
+    hidden: "Orele pe care le-ai ascuns",
+    restore: "Afișează în calendar",
   },
   documents: {
     title: (faculty: string) => `Orare publicate — ${faculty}`,
@@ -185,6 +195,11 @@ const ro: typeof en = {
 
   profile: {
     faculty: "Facultatea",
+    chooseFaculty: "Alege facultatea ca să continui.",
+    chooseYear: "Alege anul de studiu ca să continui.",
+    noCycle: "Nu sunt programe pentru acest ciclu de studii. Alege alt ciclu sau altă facultate.",
+    chooseProgramme: "Alege specializarea ca să continui.",
+    chooseGroup: "Alege grupa ca să continui.",
     noFaculties: "Nu a fost importată încă nicio facultate. Un administrator trebuie să ruleze mai întâi importul de pe upt.ro.",
     cycleAndYear: "Ciclul de studii și anul",
     bachelor: "Licență",
@@ -205,6 +220,7 @@ const ro: typeof en = {
 
   choices: {
     slotNotChosen: "Interval neales încă",
+    slotFor: (course: string) => `Interval de laborator sau seminar pentru ${course}`,
     yourCourses: "Disciplinele tale din semestrul acesta",
     yourCoursesHint:
       "Acestea sunt toate disciplinele din orarul grupei tale. Debifează opționalele pe care nu le-ai ales — în calendar apar doar disciplinele bifate.",
@@ -242,7 +258,7 @@ const ro: typeof en = {
       copy: "Copiază linkul de abonare",
       copied: "Link copiat",
       renew: "Generează un link nou",
-      renewHint: "Linkul vechi nu mai funcționează din acel moment. Abonează-te din nou cu linkul nou.",
+      renewHint: "Linkul vechi expiră imediat. Pentru abonare, folosește-l pe cel nou.",
       renewed: "Poți copia acum noul link de abonare.",
     },
     google: {

@@ -1,5 +1,6 @@
 /** Texts for the public welcome page. */
 const en = {
+  notFound: { title: "Page not found", line: "Poli couldn’t find this page. Let’s get you back on track." },
   title: "Your timetable, decoded",
   nav: { signIn: "Sign in", start: "Get started", openApp: "Open my calendar" },
   hero: {
@@ -55,6 +56,7 @@ const en = {
 };
 
 const ro: typeof en = {
+  notFound: { title: "Pagina nu a fost găsită", line: "Poli n-a găsit pagina asta. Hai să pornim din nou!" },
   title: "Orarul tău, descifrat",
   nav: { signIn: "Autentificare", start: "Începe", openApp: "Deschide calendarul meu" },
   hero: {

@@ -37,8 +37,7 @@ const en = {
     intro: "Tick things off as you go. It is saved on this device.",
     done: (n: number, total: number) => `${n} of ${total} done`,
     allDone: "All done — you are set for the semester. 🎉",
-    askPoli: "Ask Poli",
-    markDone: (title: string) => `Mark “${title}” as done`,
+    askPoli: (question: string) => `Ask Poli “${question}”`,
   },
   steps: [
     {
@@ -211,8 +210,7 @@ const ro: typeof en = {
     intro: "Bifează pe măsură ce rezolvi. Se salvează pe acest dispozitiv.",
     done: (n: number, total: number) => `${n} din ${total} rezolvate`,
     allDone: "Gata tot — ești pregătit pentru semestru. 🎉",
-    askPoli: "Întreabă-l pe Poli",
-    markDone: (title: string) => `Bifează „${title}”`,
+    askPoli: (question: string) => `Întreabă-l pe Poli „${question}”`,
   },
   steps: [
     {

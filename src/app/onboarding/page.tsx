@@ -36,6 +36,7 @@ export default async function OnboardingPage() {
           data={data}
           initial={{ facultyId: user.facultyId, specializationId: user.specializationId, year: user.year, groupId: user.groupId }}
           action={saveProfileAction}
+          draftKey={user.onboardedAt ? undefined : `upt-onboarding-${user.id}`}
           submitLabel={t.submit}
         />
       </div>

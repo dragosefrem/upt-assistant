@@ -49,7 +49,7 @@ const en = {
       {
         emoji: "🤖",
         title: () => "Meet Poli",
-        body: "Tap the robot in the corner and ask in Romanian or English: “Do I have lab this week?”, “When is Ana free tomorrow?”, “Move my gym to Friday”. Poli looks things up in your real timetable and can change your calendar for you.",
+        body: "Tap Poli in the top bar. Ask “Do I have lab this week?” or “When is Ana free tomorrow?” in English or Romanian. Poli checks your timetable and can also move an event for you.",
       },
       {
         emoji: "🧭",
@@ -115,7 +115,7 @@ const ro: typeof en = {
       {
         emoji: "🤖",
         title: () => "Fă cunoștință cu Poli",
-        body: "Apasă pe roboțelul din colț și întreabă în română sau în engleză: „Am laborator săptămâna asta?”, „Când e liberă Ana mâine?”, „Mută-mi sala pe vineri”. Poli caută în orarul tău real și îți poate modifica el calendarul.",
+        body: "Apasă pe Poli în bara de sus. Întreabă-l „Am laborator săptămâna asta?” sau „Când e liberă Ana mâine?”, în română ori în engleză. Poli verifică orarul tău și îți poate muta și un eveniment.",
       },
       {
         emoji: "🧭",

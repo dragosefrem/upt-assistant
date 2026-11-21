@@ -43,7 +43,7 @@ export function GuideChecklist() {
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={count} aria-label={t.firstWeek.done(count, total)}>
           <div className="h-full rounded-full bg-brand-600 transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${(count / total) * 100}%` }} />
         </div>
-        <p className="shrink-0 text-xs font-medium text-slate-600">{count === total ? t.firstWeek.allDone : t.firstWeek.done(count, total)}</p>
+        <p role="status" className="shrink-0 text-xs font-medium text-slate-600">{count === total ? t.firstWeek.allDone : t.firstWeek.done(count, total)}</p>
       </div>
       <ol className="space-y-2">
         {t.steps.map((step, i) => {
@@ -54,7 +54,7 @@ export function GuideChecklist() {
                 type="button"
                 role="checkbox"
                 aria-checked={checked}
-                aria-label={t.firstWeek.markDone(step.title)}
+                aria-label={step.title}
                 onClick={() => toggle(step.id)}
                 className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 ${checked ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 text-slate-400 hover:border-brand-500"}`}
               >
@@ -69,7 +69,7 @@ export function GuideChecklist() {
                   )}
                   {step.ask && (
                     <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => askAssistant(step.ask!)}>
-                      💬 {t.firstWeek.askPoli}: “{step.ask}”
+                      💬 {t.firstWeek.askPoli(step.ask)}
                     </button>
                   )}
                 </p>

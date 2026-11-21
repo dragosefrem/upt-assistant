@@ -19,7 +19,7 @@ export function CourseChoicesForm({ choices, returnTo, submitLabel }: { choices:
 
   const slotSelect = (c: CourseChoice) =>
     c.slots.length > 0 && (
-      <select name={`slot-${c.courseId}`} defaultValue={c.chosenSlotId ?? ""} className="field mt-2 sm:mt-0 sm:w-72">
+      <select name={`slot-${c.courseId}`} aria-label={m.slotFor(c.name)} defaultValue={c.chosenSlotId ?? ""} className="field mt-2 sm:mt-0 sm:w-72">
         <option value="">{m.slotNotChosen}</option>
         {c.slots.map((s) => (
           <option key={s.entryId} value={s.entryId}>

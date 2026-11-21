@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import type { ProfileState } from "@/app/onboarding/actions";
 import { useT } from "@/i18n/client";
 import type { PickerData } from "@/lib/catalog";
@@ -19,22 +19,41 @@ export function ProfilePicker({
   initial,
   action,
   submitLabel,
+  draftKey,
 }: {
   data: PickerData;
   initial: Initial;
   action: (prev: ProfileState, form: FormData) => Promise<ProfileState>;
   /** Defaults to "Save" in the interface language. */
   submitLabel?: string;
+  /** Remember an unfinished onboarding form across reloads in this tab. */
+  draftKey?: string;
 }) {
   const t = useT();
   const p = t.settings.profile;
   const initialSpec = data.specializations.find((s) => s.id === initial.specializationId);
-  const [facultyId, setFacultyId] = useState<number | null>(initial.facultyId);
-  const [degree, setDegree] = useState<"bachelor" | "master">(initialSpec?.degree ?? "bachelor");
-  const [year, setYear] = useState<number | null>(initial.year);
-  const [specId, setSpecId] = useState<number | null>(initial.specializationId);
-  const [groupId, setGroupId] = useState<number | null>(initial.groupId);
+  const [selection, setSelection] = useState({ ...initial, degree: initialSpec?.degree ?? "bachelor" });
+  const { facultyId, degree, year, specializationId: specId, groupId } = selection;
   const [state, formAction, pending] = useActionState(action, {});
+
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const draft = JSON.parse(sessionStorage.getItem(draftKey) ?? "null");
+      if (draft && data.faculties.some((f) => f.id === draft.facultyId) && ["bachelor", "master"].includes(draft.degree)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- tab storage is only available after hydration
+        setSelection(draft);
+      }
+    } catch { /* Storage is optional. */ }
+  }, [draftKey, data.faculties]);
+
+  const choose = (changes: Partial<typeof selection>) => {
+    const next = { ...selection, ...changes };
+    setSelection(next);
+    if (draftKey) {
+      try { sessionStorage.setItem(draftKey, JSON.stringify(next)); } catch { /* Storage is optional. */ }
+    }
+  };
 
   const faculty = data.faculties.find((f) => f.id === facultyId);
   const specs = useMemo(
@@ -48,6 +67,8 @@ export function ProfilePicker({
   const validSpec = [...scheduled, ...other].some((s) => s.id === specId);
   const groups = data.groups.filter((g) => g.specializationId === specId && g.year === year);
   const seriesList = [...new Set(groups.map((g) => g.series))];
+  const missing = !faculty ? p.chooseFaculty : !specs.length ? p.noCycle : !year ? p.chooseYear : !validSpec ? p.chooseProgramme
+    : groups.length && !groups.some((g) => g.id === groupId) ? p.chooseGroup : "";
 
   const step = (n: number, title: string, done: boolean) => (
     <div className="mb-2 flex items-center gap-2">
@@ -59,8 +80,8 @@ export function ProfilePicker({
     `rounded-lg border px-3 py-2 text-left text-sm transition ${active ? "border-brand-500 bg-brand-50 text-brand-900 ring-1 ring-brand-500" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"}`;
 
   const specButton = (s: PickerData["specializations"][number]) => (
-    <button type="button" key={s.id} className={chip(s.id === specId)}
-      onClick={() => { setSpecId(s.id); setGroupId(null); }}>
+    <button type="button" key={s.id} className={chip(s.id === specId)} aria-pressed={s.id === specId}
+      onClick={() => { if (s.id !== specId) choose({ specializationId: s.id, groupId: null }); }}>
       <span className="font-medium">{s.name}</span>
       <span className="ml-2 text-xs text-slate-500">
         {[s.code, (s.language && p.teachingLanguage[s.language]) ?? s.language].filter(Boolean).join(" · ")}
@@ -86,11 +107,9 @@ export function ProfilePicker({
               type="button"
               key={f.id}
               className={chip(f.id === facultyId)}
+              aria-pressed={f.id === facultyId}
               onClick={() => {
-                setFacultyId(f.id);
-                setYear(null);
-                setSpecId(null);
-                setGroupId(null);
+                if (f.id !== facultyId) choose({ facultyId: f.id, year: null, specializationId: null, groupId: null });
               }}
             >
               {f.shortName && <span className="mr-2 font-semibold">{f.shortName}</span>}
@@ -112,11 +131,9 @@ export function ProfilePicker({
                 type="button"
                 key={d}
                 className={chip(degree === d)}
+                aria-pressed={degree === d}
                 onClick={() => {
-                  setDegree(d);
-                  setSpecId(null);
-                  setGroupId(null);
-                  setYear(null);
+                  if (d !== degree) choose({ degree: d, year: null, specializationId: null, groupId: null });
                 }}
               >
                 {d === "bachelor" ? p.bachelor : p.master}
@@ -128,10 +145,9 @@ export function ProfilePicker({
                 type="button"
                 key={y}
                 className={chip(year === y)}
+                aria-pressed={year === y}
                 onClick={() => {
-                  setYear(y);
-                  setSpecId(null);
-                  setGroupId(null);
+                  if (y !== year) choose({ year: y, specializationId: null, groupId: null });
                 }}
               >
                 {p.year(y)}
@@ -163,13 +179,13 @@ export function ProfilePicker({
           {groups.length ? (
             <div className="space-y-3">
               {seriesList.map((series) => (
-                <div key={series}>
+                <div key={series} role="group" aria-label={series || p.group}>
                   {series && <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-500">{series}</p>}
                   <div className="flex flex-wrap gap-2">
                     {groups
                       .filter((g) => g.series === series)
                       .map((g) => (
-                        <button type="button" key={g.id} className={chip(g.id === groupId)} onClick={() => setGroupId(g.id)}>
+                        <button type="button" key={g.id} className={chip(g.id === groupId)} aria-pressed={g.id === groupId} onClick={() => choose({ groupId: g.id })}>
                           {g.name || p.wholeYear}
                         </button>
                       ))}
@@ -195,9 +211,12 @@ export function ProfilePicker({
       )}
 
       {state.error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
-      <button className="btn-primary" disabled={pending || !validSpec || !year || (groups.length > 0 && !groups.some((g) => g.id === groupId))}>
-        {pending ? t.common.status.saving : (submitLabel ?? t.common.actions.save)}
-      </button>
+      <div>
+        <p role="status" id="profile-next-step" className="mb-2 text-sm text-slate-600">{missing}</p>
+        <button className="btn-primary" disabled={pending || !!missing} aria-describedby={missing ? "profile-next-step" : undefined}>
+          {pending ? t.common.status.saving : (submitLabel ?? t.common.actions.save)}
+        </button>
+      </div>
     </form>
   );
 }

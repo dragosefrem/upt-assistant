@@ -52,14 +52,14 @@ export default async function WelcomePage() {
   const primaryLabel = user ? l.nav.openApp : l.hero.cta;
 
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex flex-1 flex-col overflow-x-clip">
       <header className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-4">
-        <Link href="/" className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
+        <div className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
           <Mascot size={36} chat={false} />
-          <span>
+          <Link href="/">
             UPT <span className="text-brand-600">Orar</span>
-          </span>
-        </Link>
+          </Link>
+        </div>
         <div className="ml-auto flex items-center gap-2">
           <LanguageSwitch />
           {user ? (
@@ -185,6 +185,9 @@ export default async function WelcomePage() {
                   <li key={w} className="rounded-full bg-white/15 px-3 py-1 text-sm font-medium ring-1 ring-white/25">{w}</li>
                 ))}
               </ul>
+              <Link href={user ? "/guide" : "/register"} className="btn-secondary mt-5">
+                {user ? t.onboarding.tour.openGuide : t.auth.login.create}
+              </Link>
             </div>
           </div>
         </section>

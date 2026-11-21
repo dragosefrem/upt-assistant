@@ -15,6 +15,13 @@ export interface ProfileState {
   error?: string;
 }
 
+function courseReturnPath(value: FormDataEntryValue | null) {
+  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//") || /[\\\p{Cc}]/u.test(value)) return "/settings";
+  const path = new URL(value, "https://upt.invalid");
+  // Removing dot segments can produce a leading double slash even for a local input.
+  return path.pathname.startsWith("//") ? "/settings" : path.pathname + path.search + path.hash;
+}
+
 /** Saves faculty, specialization, year and group, then moves on to course choices. */
 export async function saveProfileAction(_prev: ProfileState, form: FormData): Promise<ProfileState> {
   const user = await requireUser();
@@ -74,7 +81,7 @@ export async function saveCoursesAction(form: FormData) {
   const first = !user.onboardedAt;
   if (first) db.update(users).set({ onboardedAt: new Date().toISOString() }).where(and(eq(users.id, user.id))).run();
   revalidatePath("/", "layout");
-  redirect(first ? "/" : String(form.get("returnTo") ?? "/settings"));
+  redirect(first ? "/" : courseReturnPath(form.get("returnTo")));
 }
 
 /** The welcome tour was finished or skipped: do not show it again. */
