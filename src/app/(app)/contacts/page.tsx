@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContactDirectory, ContactIdentity } from "@/components/ContactDirectory";
 import { InvitationForm } from "@/components/InvitationForm";
 import { InvitationRefresh } from "@/components/InvitationRefresh";
 import { eventLabel, responseLabel } from "@/components/GroupEventSummary";
@@ -7,11 +8,12 @@ import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
-import { contactList, lookupContact } from "@/lib/contacts";
+import { contactDirectory } from "@/lib/contact-directory";
+import { contactList } from "@/lib/contacts";
 import { myGroupEvents } from "@/lib/group-events";
 import { listSavedContacts } from "@/lib/saved-contacts";
 import { capitalize, formatDate, formatMinutes, nowLocal } from "@/lib/time";
-import { contactAction, inviteAction, rsvpAction } from "./actions";
+import { contactAction, rsvpAction } from "./actions";
 
 export async function generateMetadata() {
   const t = await getT();
@@ -23,11 +25,9 @@ type Contact = ReturnType<typeof contactList>[number];
 function ContactRow({ person, userId, t }: { person: Contact; userId: string; t: Messages }) {
   const page = t.contacts.page;
   return (
-    <li className="flex flex-wrap items-center justify-between gap-2 py-3">
-      <div className="min-w-0">
-        <p className="break-words text-sm font-semibold">{person.name}</p>
-        <p className="break-all text-xs text-slate-600">{person.email}</p>
-      </div>
+    <li id={!person.accepted && person.requestedBy !== userId ? `request-${person.id}` : undefined}
+      className="flex scroll-mt-20 flex-wrap items-center justify-between gap-2 py-3">
+      <ContactIdentity person={person} t={t} />
       <div className="flex flex-wrap items-center gap-1">
         {person.accepted && <Link href={`/contacts/${person.id}/schedule`} prefetch={false}
           aria-label={page.list.viewScheduleFor(person.name)} className="btn-secondary">{page.list.viewSchedule}</Link>}
@@ -68,11 +68,8 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
   const t = await getT();
   const locale = await getLocale();
   const page = t.contacts.page;
-  const { email: query } = await searchParams;
-  const email = typeof query === "string" ? query.trim() : "";
   const people = contactList(user.id);
-  const { person: found, error } = query === undefined ? {} : lookupContact(email);
-  const connection = people.find((p) => p.id === found?.id);
+  const directory = contactDirectory(user, await searchParams);
   const contacts = people.filter((p) => p.accepted);
   const incoming = people.filter((p) => !p.accepted && p.requestedBy !== user.id);
   const sent = people.filter((p) => !p.accepted && p.requestedBy === user.id);
@@ -81,6 +78,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
   const future = events.filter((e) => e.date >= today);
   const needsReply = (event: (typeof events)[number]) => event.response === "pending" && event.status !== "expired";
   const invitations = future.filter(needsReply);
+  const hasInbox = incoming.length > 0 || invitations.length > 0;
   const upcoming = future.filter((event) => !needsReply(event));
   const past = events.filter((e) => e.date < today).reverse();
 
@@ -92,9 +90,12 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
           <h1>{page.title}</h1>
           <p className="mt-1 text-sm text-slate-600">{page.intro}</p>
         </div>
-        <Link className="btn-primary" href="/contacts/plan">{page.planEvent}</Link>
+        <div className="flex flex-wrap gap-2">
+          {hasInbox && <a className="btn-secondary" href="#directory-heading">{page.find.heading}</a>}
+          <Link className="btn-primary" href="/contacts/plan">{page.planEvent}</Link>
+        </div>
       </header>
-      {(incoming.length > 0 || invitations.length > 0) && (
+      {hasInbox && (
         <section id="inbox" className="card scroll-mt-20 p-5" aria-labelledby="reply-heading">
           <h2 id="reply-heading" className="text-lg font-semibold">{page.requests.needsReply}</h2>
           <div className="mt-3 grid items-start gap-x-8 gap-y-3 sm:grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]">
@@ -111,24 +112,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
       )}
       <div className="grid items-start gap-5 md:grid-cols-2">
         <div className="space-y-5">
-          <section className="card p-5">
-            <h2 className="text-lg font-semibold">{page.find.heading}</h2>
-            <form action="/contacts" noValidate className="mt-3">
-              <label htmlFor="contact-email" className="label">{page.find.emailLabel}</label>
-              <div className="flex gap-2">
-                <input id="contact-email" name="email" type="email" defaultValue={email} required className="field min-w-0" placeholder={page.find.emailPlaceholder} />
-                <button className="btn-secondary">{page.find.button}</button>
-              </div>
-            </form>
-            {query !== undefined && <div className="mt-3 border-t border-slate-100 pt-3 text-sm" role="status">
-              {error ? t.contacts.errors[error] : found && (found.id === user.id ? page.find.yourself :
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <strong>{found.name}</strong>
-                  {connection ? <span className="text-slate-600">{connection.accepted ? page.find.alreadyContact : connection.requestedBy === user.id ? page.find.invitationSent : <a className="font-medium text-brand-700 underline" href="#inbox">{page.find.seeIncoming}</a>}</span>
-                    : <InvitationForm action={inviteAction.bind(null, found.email)}><button className="btn-primary">{page.find.sendRequest}</button></InvitationForm>}
-                </div>)}
-            </div>}
-          </section>
+          <ContactDirectory directory={directory} connections={people} userId={user.id} t={t} />
           {sent.length > 0 && <details className="card p-5">
             <summary className="font-semibold">{page.requests.sent}</summary>
             <ul className="mt-2 divide-y divide-slate-100">{sent.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>

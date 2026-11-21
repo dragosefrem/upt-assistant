@@ -61,7 +61,7 @@ function failure(error: unknown) {
 export const PEOPLE_TOOLS: AssistantTool[] = [
   {
     name: "lookup_contact",
-    description: "Look up the exact email a student enters on Contacts. Returns that person's name and the existing request or connection status.",
+    description: "Look up an exact account e-mail supplied by the student. Returns that person's name and the existing request or connection status.",
     input_schema: { type: "object", properties: { email: { type: "string" } }, required: ["email"] },
     run(input, { user }) {
       const { person, error } = lookupContact(str(input.email) ?? "");

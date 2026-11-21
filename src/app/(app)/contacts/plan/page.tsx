@@ -1,6 +1,7 @@
 import Form from "next/form";
 import Link from "next/link";
 import { BookingForm } from "@/components/BookingForm";
+import { ContactIdentity } from "@/components/ContactDirectory";
 import type { Messages } from "@/i18n/messages";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
@@ -38,7 +39,8 @@ function DateFields({ range, today, t }: { range: DateRange; today: string; t: M
 export default async function PlanPage({ searchParams }: PageProps<"/contacts/plan">) {
   const user = await requireOnboardedUser();
   const params = await searchParams;
-  const messages = (await getT()).contacts;
+  const translations = await getT();
+  const messages = translations.contacts;
   const t = messages.plan;
   const locale = await getLocale();
   const ids = [...new Set([params.person ?? []].flat())];
@@ -111,7 +113,7 @@ export default async function PlanPage({ searchParams }: PageProps<"/contacts/pl
           <div className="divide-y divide-slate-100">
             {contacts.map((p) => <label key={p.id} className="flex cursor-pointer items-center gap-3 py-2.5 text-sm">
               <input type="checkbox" name="person" value={p.id} defaultChecked={ids.includes(p.id)} className="h-4 w-4 accent-brand-600" />
-              <span><strong>{p.name}</strong><span className="ml-2 break-all text-slate-500">{p.email}</span></span>
+              <ContactIdentity person={p} t={translations} />
             </label>)}
           </div>
         </fieldset>
