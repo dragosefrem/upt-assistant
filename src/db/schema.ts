@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   primaryKey,
@@ -345,6 +346,52 @@ export const personalEvents = sqliteTable(
   },
   (t) => [index("personal_user").on(t.userId)],
 );
+
+/** A single invitation or accepted contact per unordered pair of accounts. */
+export const contacts = sqliteTable("contacts", {
+  firstId: text("first_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  secondId: text("second_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  requestedBy: text("requested_by").notNull(),
+  accepted: integer("accepted", { mode: "boolean" }).notNull().default(false),
+}, (t) => [
+  primaryKey({ columns: [t.firstId, t.secondId] }),
+  index("contact_second").on(t.secondId),
+  check("contact_pair", sql`${t.firstId} < ${t.secondId} and ${t.requestedBy} in (${t.firstId}, ${t.secondId})`),
+]);
+
+export type EventStatus = "pending" | "confirmed" | "expired";
+export type Attendance = "pending" | "accepted" | "declined";
+
+export const groupEvents = sqliteTable("group_events", {
+  id: text("id").primaryKey(),
+  creatorId: text("creator_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  location: text("location"),
+  date: text("date").notNull(),
+  startMin: integer("start_min").notNull(),
+  endMin: integer("end_min").notNull(),
+  /** UTC epoch milliseconds, selected in the timetable's time zone. */
+  deadline: integer("deadline").notNull(),
+  status: text("status").$type<EventStatus>().notNull().default("pending"),
+  shareToken: text("share_token").unique(),
+});
+
+export const eventParticipants = sqliteTable("event_participants", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  eventId: text("event_id").notNull().references(() => groupEvents.id, { onDelete: "cascade" }),
+  userId: text("user_id").references(() => users.id, { onDelete: "cascade" }),
+  guestName: text("guest_name"),
+  guestKeyHash: text("guest_key_hash"),
+  /** Unanimity applies to the original invitees, including the creator. */
+  invited: integer("invited", { mode: "boolean" }).notNull().default(false),
+  response: text("response").$type<Attendance>().notNull().default("pending"),
+}, (t) => [
+  uniqueIndex("participant_user").on(t.userId, t.eventId),
+  uniqueIndex("participant_guest").on(t.guestKeyHash, t.eventId),
+  index("participant_event").on(t.eventId, t.response),
+  check("participant_identity", sql`(${t.userId} is not null and ${t.guestKeyHash} is null and ${t.guestName} is null)
+    or (${t.userId} is null and ${t.guestKeyHash} is not null and ${t.guestName} is not null)`),
+]);
 
 export const chatMessages = sqliteTable(
   "chat_messages",

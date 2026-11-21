@@ -18,13 +18,14 @@ import {
   type EntryKind,
 } from "@/db/schema";
 import type { User } from "./auth";
+import { sharedEventsFor } from "./group-events";
 import { addDays, daysBetween, describeWeeks, mondayOf, weekMatches, weekday } from "./time";
 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
 export interface CalEvent {
   id: string;
-  type: "class" | "exam" | "personal";
-  kind: EntryKind | "exam" | "personal";
+  type: "class" | "exam" | "personal" | "shared";
+  kind: EntryKind | "exam" | "personal" | "shared";
   title: string;
   abbr: string | null;
   date: string;
@@ -38,6 +39,7 @@ export interface CalEvent {
   courseId?: number;
   examId?: number;
   personalId?: number;
+  groupEventId?: string;
   moved?: boolean;
 }
 
@@ -275,8 +277,8 @@ export function examsForUser(user: Pick<User, "specializationId" | "year">, from
 
 /* ───────────────────────────── Calendar events ───────────────────────────── */
 
-/** Expands the weekly timetable, exams and personal events into dated events. */
-export function eventsBetween(user: User, from: string, to: string): CalEvent[] {
+/** Expands the student's effective schedule into dated events. */
+export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">, from: string, to: string): CalEvent[] {
   const semester = currentSemester();
   const place = placeResolver(user.facultyId);
   const events: CalEvent[] = [];
@@ -355,6 +357,13 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
     }
   }
 
+  for (const e of sharedEventsFor(user.id, from, to)) {
+    events.push({
+      id: `g:${e.id}`, groupEventId: e.id, type: "shared", kind: "shared", title: e.title,
+      date: e.date, startMin: e.startMin, endMin: e.endMin, room: e.location,
+      abbr: null, teacher: null, note: null, place: null,
+    });
+  }
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin || a.endMin - b.endMin);
 }
 
@@ -382,7 +391,8 @@ export function freeSlots(
     const day = busy.filter((b) => b.date === date).sort((a, b) => a.startMin - b.startMin);
     let cursor = dayStart;
     for (const b of day) {
-      if (b.startMin - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: Math.min(b.startMin, dayEnd) });
+      const gapEnd = Math.min(b.startMin, dayEnd);
+      if (gapEnd - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: gapEnd });
       cursor = Math.max(cursor, b.endMin);
     }
     if (dayEnd - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: dayEnd });

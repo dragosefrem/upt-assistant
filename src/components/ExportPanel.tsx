@@ -64,8 +64,8 @@ export function ExportPanel({
         {googleConfigured ? (
           <>
             <p className="mt-1 text-sm text-slate-600">
-              Creates a separate calendar called “UPT Orar” in your Google account and fills it with your classes, exams and
-              personal events. The app can only see and change that one calendar.
+              Creates a separate calendar called “UPT Orar” in your Google account with your classes, exams, personal events
+              and confirmed group events you’re attending. The app can only see and change that one calendar.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {connected ? (
@@ -78,7 +78,7 @@ export function ExportPanel({
                 <a className="btn-primary" href="/api/google/connect">Connect Google Calendar</a>
               )}
             </div>
-            <p className="mt-2 text-xs text-slate-500">Export again after you change groups, courses or personal events — it replaces the previous export.</p>
+            <p className="mt-2 text-xs text-slate-500">Export again after your timetable or group RSVPs change to update your Google calendar.</p>
           </>
         ) : (
           <p className="mt-1 text-sm text-slate-600">

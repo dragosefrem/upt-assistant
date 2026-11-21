@@ -1,11 +1,14 @@
 import Link from "next/link";
 import { logoutAction } from "@/app/(auth)/actions";
 import type { User } from "@/lib/auth";
+import { incomingContactCount } from "@/lib/contacts";
+import { groupInviteCount } from "@/lib/group-events";
 import { LocationProvider } from "./LocationProvider";
 import { NavLink } from "./NavLink";
 
 /** Header and page frame shared by the student pages and the admin area. */
 export function AppShell({ user, children }: { user: User; children: React.ReactNode }) {
+  const invites = incomingContactCount(user.id) + groupInviteCount(user.id);
   return (
     <LocationProvider>
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -17,6 +20,7 @@ export function AppShell({ user, children }: { user: User; children: React.React
           <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-sm sm:gap-1">
             <NavLink href="/">Calendar</NavLink>
             <NavLink href="/exams">Exams</NavLink>
+            <NavLink href="/contacts">Contacts{invites > 0 && <span aria-label={`${invites} invitations`} className="ml-1 rounded-full bg-brand-100 px-1.5 text-xs text-brand-700">{invites}</span>}</NavLink>
             <NavLink href="/settings">Settings</NavLink>
             {user.role === "admin" && <NavLink href="/admin">Admin</NavLink>}
           </nav>

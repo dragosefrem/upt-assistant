@@ -12,6 +12,11 @@ export interface AuthState {
   name?: string;
 }
 
+function destination(form: FormData, fallback: string) {
+  const invite = form.get("invite");
+  return typeof invite === "string" && /^[A-Za-z0-9_-]{32}$/.test(invite) ? `/join/${invite}` : fallback;
+}
+
 export async function loginAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   const email = normalizeEmail(String(form.get("email") ?? ""));
   const password = String(form.get("password") ?? "");
@@ -21,7 +26,7 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
     return { error: "Wrong e-mail or password.", email };
   }
   await startSession(user.id);
-  redirect(user.onboardedAt ? "/" : "/onboarding");
+  redirect(destination(form, user.onboardedAt ? "/" : "/onboarding"));
 }
 
 export async function registerAction(_prev: AuthState, form: FormData): Promise<AuthState> {
@@ -37,7 +42,7 @@ export async function registerAction(_prev: AuthState, form: FormData): Promise<
   }
   const user = createUser({ email, name, password });
   await startSession(user.id);
-  redirect("/onboarding");
+  redirect(destination(form, "/onboarding"));
 }
 
 export async function logoutAction() {

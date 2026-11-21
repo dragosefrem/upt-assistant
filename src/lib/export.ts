@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { personalEvents } from "@/db/schema";
 import type { User } from "./auth";
+import { sharedEventsFor } from "./group-events";
 import { currentSemester, examsForUser, placeResolver, studentWeek, type Semester } from "./schedule";
 import { TIME_ZONE, addDays, describeWeeks, weekMatches, weekday } from "./time";
 
@@ -88,6 +89,10 @@ export function exportItems(user: User): ExportItem[] {
       items.push({ uid: `personal-${p.id}`, title: p.title, description: "", location: p.location ?? "", date: first, startMin: p.startMin, endMin: p.endMin, until: horizon, exdates: [] });
     }
   }
+  for (const e of sharedEventsFor(user.id)) {
+    items.push({ uid: `group-${e.id}`, title: e.title, location: e.location ?? "", description: "Shared event",
+      date: e.date, startMin: e.startMin, endMin: e.endMin });
+  }
   return items;
 }
 
@@ -97,6 +102,7 @@ const pad = (n: number) => String(n).padStart(2, "0");
 
 /** "20261120T080000" — local wall-clock time, paired with a TZID. */
 export function localStamp(date: string, minutes: number): string {
+  if (minutes === 1440) return localStamp(addDays(date, 1), 0);
   return `${date.replace(/-/g, "")}T${pad(Math.floor(minutes / 60))}${pad(minutes % 60)}00`;
 }
 

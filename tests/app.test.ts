@@ -50,6 +50,11 @@ describe("freeSlots", () => {
     expect(freeSlots([], "2026-11-21", "2026-11-22", { weekdaysOnly: false })).toHaveLength(2);
   });
 
+  it("measures the minimum gap inside the selected day bounds", () => {
+    const busy = [{ date: "2026-11-23", startMin: 480, endMin: 1190 }, { date: "2026-11-23", startMin: 1300, endMin: 1400 }];
+    expect(freeSlots(busy, "2026-11-23", "2026-11-23")).toEqual([]);
+  });
+
   it("merges overlapping classes instead of reporting negative gaps", () => {
     const overlapping = [
       { date: "2026-11-24", startMin: 8 * 60, endMin: 12 * 60 },

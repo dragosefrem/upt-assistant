@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { CalEvent } from "@/lib/schedule";
 import { DAY_NAMES, formatDate, formatMinutes, weekday } from "@/lib/time";
@@ -57,6 +58,8 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
       </dl>
 
       {event.place && <TripSuggestions room={event.room} startMin={event.startMin} />}
+
+      {event.groupEventId && <Link href={`/contacts/events/${event.groupEventId}`} className="btn-secondary">View group and change RSVP</Link>}
 
       {event.type === "class" && event.entryId && !moving && (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">

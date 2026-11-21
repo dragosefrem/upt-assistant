@@ -13,6 +13,13 @@ export, directions to the next room, and a chat/voice assistant.
   marked, plus an "up next" card. Classes follow the semester's teaching weeks
   (holidays, odd/even weeks, "weeks 1–7" courses).
 - **Exams.** A student's own exam bookings, and search across the faculty's.
+- **Contacts and group events.** Find people by account e-mail and exchange contact
+  requests. In Contacts, select a group to see shared free time this week and book a
+  slot. Everyone receives an in-app invitation. The organizer counts as going. The
+  event confirms when everyone accepts, or at the organizer's deadline if at least
+  two people have accepted. Later RSVP changes update attendees' calendars.
+  An optional guest link lets people join without an account and save a private
+  link to change their own RSVP.
 - **Changing your timetable.** Hide a class, move it to another slot, add personal
   events — from the calendar or by asking the assistant. Changes affect only you.
 - **Directions.** With location sharing on, the app estimates how to reach the next

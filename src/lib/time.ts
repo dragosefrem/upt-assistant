@@ -48,6 +48,26 @@ export function formatMinutes(min: number): string {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
 
+/** A datetime-local input value in the campus time zone. */
+export function localDateTime(at: number = Date.now()): string {
+  const { date, minutes } = nowLocal(new Date(at));
+  return `${date}T${formatMinutes(minutes)}`;
+}
+
+/** Resolve a campus wall time, including DST. A skipped minute has no instant.
+ * When the clock repeats an hour, use its first occurrence. */
+export function localInstant(value: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
+  const wall = Date.parse(`${value}:00Z`);
+  if (!Number.isFinite(wall) || new Date(wall).toISOString().slice(0, 16) !== value) return null;
+  const candidates = [-1, 1].map((day) => {
+    const sample = wall + day * 86_400_000;
+    const offset = Date.parse(`${localDateTime(sample)}:00Z`) - sample;
+    return wall - offset;
+  });
+  return candidates.sort((a, b) => a - b).find((at) => localDateTime(at) === value) ?? null;
+}
+
 export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" }, locale = "en-GB"): string {
   return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(utc(date));
 }
