@@ -92,8 +92,8 @@ export async function emailCalendar(
   }
 
   const semester = currentSemester();
-  const knownRecipient = [user.email, user.exportEmail].some((saved) => saved && normalizeEmail(saved) === normalizeEmail(address));
-  const base = knownRecipient ? publicBaseUrl() : null;
+  // Settings remembers the last recipient, including a friend who received a snapshot.
+  const base = normalizeEmail(user.email) === normalizeEmail(address) ? publicBaseUrl() : null;
   const message = calendarEmail({
     ics: toICS(items),
     semester: semester ? common[locale].time.semester(semester.number, semester.academicYear) : null,

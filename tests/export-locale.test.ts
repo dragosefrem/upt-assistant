@@ -133,8 +133,8 @@ describe("calendar export language", () => {
   it.each([
     { to: "friend@example.com", rememberAddress: false, includesFeed: false, saved: "alternate@example.com" },
     { to: "friend@example.com", rememberAddress: true, includesFeed: false, saved: "friend@example.com" },
-    { to: " ALTERNATE@example.com ", rememberAddress: false, includesFeed: true, saved: "alternate@example.com" },
-    { to: "s@example.com", rememberAddress: false, includesFeed: true, saved: "alternate@example.com" },
+    { to: " ALTERNATE@example.com ", rememberAddress: false, includesFeed: false, saved: "alternate@example.com" },
+    { to: " S@example.com ", rememberAddress: false, includesFeed: true, saved: "alternate@example.com" },
   ])("sends a snapshot to $to and preserves the requested address preference ($rememberAddress)", async (test) => {
     const db = getDb();
     const account = db.update(users).set({ exportEmail: "alternate@example.com", calendarEmailedAt: null })
