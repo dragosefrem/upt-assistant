@@ -447,7 +447,7 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
   it("verifies a missed Tuesday against the chosen student's calendar, including individual moves", () => {
     const his: ToolContext = { user: mihai, location: null, changed: false };
     const run = (name: string, args: Any) => runTool(name, args, his) as Any;
-    expect(run("move_class", { course: "FIZ", kind: "lab", to_weekday: 2 }).moved).toBeDefined();
+    expect(run("move_class", { course: "FIZ", kind: "lab", to_weekday: 2, confirmed: true }).moved).toBeDefined();
     const missed = (date: string) => run("find_makeup_lab", { course: "FIZ", missed_on: date });
     expect(missed("2026-11-17")).toMatchObject({
       scheduled_on_missed_date: false, previous_on: "2026-11-10", next_on: "2026-11-24",

@@ -1,18 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CalendarDays, CalendarPlus, ChevronDown, Clock3, GraduationCap, ListClock, Navigation, Volume2 } from "lucide-react";
+import { ArrowRight, CalendarClock, CalendarDays, CalendarPlus, ChevronDown, Clock3, GraduationCap, ListClock, Navigation, Volume2 } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { useLocale, useT } from "@/i18n/client";
+import { eventEditorTime } from "@/lib/assistant/selection";
 import type { CardEvent, CardSlot, ReplyCard } from "@/lib/assistant/reply-card";
 import { campusJourneyHref } from "@/lib/campuspath/links";
 import { kindLabel, kindStyle } from "@/lib/kinds";
 import type { CalEvent } from "@/lib/schedule";
 import { capitalize, formatDate, formatDateRange, formatMinutes, nowLocal } from "@/lib/time";
 import { PersonalEventDialog } from "./PersonalEventDialog";
+import { EventTimeEditor, type TimeEdit } from "./AssistantTimeEditor";
 
 const appearance = {
   schedule: { icon: CalendarDays, color: "bg-brand-50 text-brand-700" },
+  move: { icon: CalendarClock, color: "bg-indigo-50 text-indigo-700" },
   next: { icon: ListClock, color: "bg-indigo-50 text-indigo-700" },
   exams: { icon: GraduationCap, color: "bg-rose-50 text-rose-700" },
   free: { icon: Clock3, color: "bg-teal-50 text-teal-700" },
@@ -60,8 +63,9 @@ function Room({ event, onNavigate }: { event: CardEvent; onNavigate?: () => void
   );
 }
 
-function EventRow({ event, onNavigate }: { event: CardEvent; onNavigate?: () => void }) {
+function EventRow({ event, onNavigate, onMove }: { event: CardEvent; onNavigate?: () => void; onMove?: (e: CardEvent) => void }) {
   const locale = useLocale();
+  const t = useT().assistant;
   return (
     <div className="flex gap-3">
       <div className="w-11 shrink-0 text-right tabular-nums">
@@ -74,6 +78,11 @@ function EventRow({ event, onNavigate }: { event: CardEvent; onNavigate?: () => 
           <span aria-hidden className={`size-1.5 rounded-full ${kindStyle(event.kind).dot}`} />{kindLabel(event.kind, locale)}
         </p>
         <Room event={event} onNavigate={onNavigate} />
+        {event.move && onMove && <button type="button" onClick={() => onMove(event)}
+          aria-label={`${t.cards.moveEvent} · ${event.title} · ${formatDate(event.date, undefined, locale)} · ${event.start}`}
+          className="mt-1 inline-flex items-center gap-1.5 rounded-md py-1 text-xs font-semibold text-brand-700 hover:underline">
+          <CalendarClock size={14} aria-hidden />{t.cards.moveEvent}
+        </button>}
       </div>
     </div>
   );
@@ -137,12 +146,16 @@ function FreeTimes({ card, canPlan }: { card: Extract<ReplyCard, { type: "free" 
   );
 }
 
-export function AssistantReplyCard({ card, transcript, onRead, onNavigate, canPlan }: {
+export function AssistantReplyCard({ card, transcript, onRead, onNavigate, canPlan, onReview, busy = false }: {
   card: ReplyCard; transcript?: ReactNode; onRead: () => void; onNavigate?: () => void; canPlan: boolean;
+  onReview?: (edit: TimeEdit) => void; busy?: boolean;
 }) {
   const t = useT();
   const locale = useLocale();
   const headingId = useId();
+  const [selected, setSelected] = useState<CardEvent | null>(() => card.type === "move" && card.events.length === 1 ? card.events[0] : null);
+  const editing = !!(onReview && selected?.move);
+  const onMove = onReview && !busy ? setSelected : undefined;
   const { icon: Icon, color } = appearance[card.type];
   const day = (date: string) => capitalize(formatDate(date, undefined, locale));
   const { cards } = t.assistant;
@@ -168,24 +181,28 @@ export function AssistantReplyCard({ card, transcript, onRead, onNavigate, canPl
           <Volume2 size={16} aria-hidden />
         </button>
       </header>
-      {card.type === "schedule" && (
+      {onReview && editing && selected?.move && <div className="p-2"><EventTimeEditor title={selected.title} busy={busy}
+        initial={eventEditorTime(selected, card.type === "move" ? card.proposed : undefined)} scope={selected.move.scope}
+        original={t.assistant.preview.movingFrom(day(selected.date), [selected.start, selected.end].filter(Boolean).join("–"))}
+        onCancel={() => setSelected(null)} onReview={(time) => onReview({ ...time, occurrence: selected.move!.occurrence })} /></div>}
+      {!editing && (card.type === "schedule" || card.type === "move") && (
         <>
-          {card.holidays.map((h) => <p key={h.date + h.name} className="bg-amber-50 px-3 py-2 text-xs text-amber-900">{t.assistant.basic.holiday(day(h.date), h.name)}</p>)}
+          {card.type === "schedule" && card.holidays.map((h) => <p key={h.date + h.name} className="bg-amber-50 px-3 py-2 text-xs text-amber-900">{t.assistant.basic.holiday(day(h.date), h.name)}</p>)}
           <ResultList rows={card.events} count={card.count}>{(event, i) => (
             <>
-              {card.from !== card.to && card.events[i - 1]?.date !== event.date && <p className="mb-1.5 text-xs font-medium text-slate-600">{day(event.date)}</p>}
-              <EventRow event={event} onNavigate={onNavigate} />
+              {(card.type === "move" || card.from !== card.to) && card.events[i - 1]?.date !== event.date && <p className="mb-1.5 text-xs font-medium text-slate-600">{day(event.date)}</p>}
+              <EventRow event={event} onNavigate={onNavigate} onMove={onMove} />
             </>
           )}</ResultList>
         </>
       )}
-      {card.type === "next" && (
+      {!editing && card.type === "next" && (
         <div className="divide-y divide-slate-100">
           {(["current", "next"] as const).map((key) => {
             const event = card[key];
             return event && <div key={key} className="px-3 py-2.5">
               <p className="mb-1.5 text-xs font-medium text-indigo-700">{key === "current" ? t.calendar.nextUp.now : t.calendar.nextUp.next} · {day(event.date)}</p>
-              <EventRow event={event} onNavigate={onNavigate} />
+              <EventRow event={event} onNavigate={onNavigate} onMove={onMove} />
             </div>;
           })}
         </div>

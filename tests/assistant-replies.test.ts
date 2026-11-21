@@ -4,15 +4,19 @@ import { jsx } from "react/jsx-runtime";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { DELETE, GET, POST } from "@/app/api/assistant/route";
+import { POST as review } from "@/app/api/assistant/preview/route";
+import { POST as accept } from "@/app/api/assistant/accept/route";
 import { AssistantReplyCard } from "@/components/AssistantReplyCard";
 import { getDb } from "@/db";
-import { chatMessages, exams, examSpecializations, faculties, groups, personalEvents, specializations, users } from "@/db/schema";
+import { chatMessages, courses, entries, entryGroups, exams, examSpecializations, faculties, groups, personalEvents, semesters, specializations, users, userOverrides } from "@/db/schema";
 import { messages } from "@/i18n/messages";
 import { LocaleProvider } from "@/i18n/client";
 import { getLocale, getT } from "@/i18n/server";
 import { historyFor } from "@/lib/assistant/gemini";
+import { parseChoices } from "@/lib/assistant/choices";
 import { cardForLookup, parseReplyCard, type ReplyCard } from "@/lib/assistant/reply-card";
 import { getUser, type User } from "@/lib/auth";
+import { eventsBetween } from "@/lib/schedule";
 
 vi.mock("@/lib/auth", async (load) => ({ ...(await load<typeof import("@/lib/auth")>()), getUser: vi.fn() }));
 vi.mock("@/i18n/server", async (load) => ({ ...(await load<typeof import("@/i18n/server")>()), getLocale: vi.fn(), getT: vi.fn() }));
@@ -74,6 +78,213 @@ async function ask(message: string, spoken = false) {
 function geminiTurn(parts: unknown[]) {
   generate.mockResolvedValueOnce({ candidates: [{ content: { role: "model", parts }, finishReason: "STOP" }] });
 }
+
+const action = (route: typeof review, body: unknown) => route(new Request("http://localhost", { method: "POST", body: JSON.stringify(body) }));
+
+function classFixture() {
+  const db = getDb();
+  const semester = db.select().from(semesters).where(eq(semesters.isCurrent, true)).get()!;
+  const course = db.insert(courses).values({ semesterId: semester.id, facultyId: student.facultyId!, key: "studio", name: "Studio", year: 1 }).returning().get();
+  const entry = db.insert(entries).values({ key: "weekly-studio", semesterId: semester.id, courseId: course.id, kind: "lab", day: 4,
+    startMin: 600, endMin: 660, room: "B2", rawText: "Studio" }).returning().get();
+  db.insert(entryGroups).values({ entryId: entry.id, groupId: student.groupId! }).run();
+  return { entry, remove: () => db.delete(courses).where(eq(courses.id, course.id)).run() };
+}
+
+describe("Choosing and reviewing times in Poli chat", () => {
+  it("selects the right occurrence with a duplicate title, previews a clash, switches to a free time, and saves once", async () => {
+    const db = getDb();
+    const [a, b] = db.insert(personalEvents).values([660, 800].map((startMin) => ({
+      userId: student.id, title: "Tutoring", date: day, startMin, endMin: startMin + 30,
+    }))).returning().all();
+    const read = (id: number) => db.select().from(personalEvents).where(eq(personalEvents.id, id)).get();
+    try {
+      const { card, done } = await ask("Move my tutoring to tomorrow at 14:00");
+      if (card?.type !== "move") throw new Error("Expected a move picker");
+      expect(card.events.map((e) => e.start)).toEqual(["11:00", "13:20"]);
+      expect(card.proposed).toMatchObject({ date: "2026-11-24", start: "14:00" });
+      const edit = { id: done.messageId, occurrence: card.events[1].move.occurrence, date: "2026-11-24", start: "14:00", end: "14:30" };
+      vi.mocked(getUser).mockResolvedValue(other);
+      expect((await action(review, edit)).status).toBe(409);
+      vi.mocked(getUser).mockResolvedValue(student);
+      expect((await action(review, { ...edit, occurrence: "p:999:2026-11-23" })).status).toBe(409);
+      expect((await action(review, { ...edit, end: "13:00" })).status).toBe(400);
+      const first = await (await action(review, edit)).json();
+      expect(first.preview).toMatchObject({ from: { date: day, start: "13:20", end: "13:50" }, events: [{ title: "Project meeting", overlaps: true }] });
+      expect(first.preview.change).toBeUndefined();
+      expect(first.preview.alternatives).toHaveLength(2);
+      const slot = first.preview.alternatives[0];
+      const second = await (await action(review, { id: first.id, date: edit.date, ...slot })).json();
+      expect(second.preview).toMatchObject({ start: slot.start, end: slot.end, events: [{ overlaps: false }] });
+      expect(read(b.id)?.startMin).toBe(800);
+      expect((await action(accept, { id: first.id })).status).toBe(409);
+      const { done: saved } = await ask("Yes, move it", true);
+      expect(saved).toMatchObject({ changed: true, acceptedId: second.id });
+      expect(slot).toEqual({ start: "13:30", end: "14:00" });
+      expect(read(b.id)).toMatchObject({ date: edit.date, startMin: 810, endMin: 840 });
+      expect(read(a.id)).toMatchObject({ date: day, startMin: 660 });
+      const history = (await (await GET()).json()).messages;
+      expect(history.find((m: { id: number }) => m.id === second.id).preview.status).toBe("accepted");
+      expect((await action(accept, { id: second.id })).status).toBe(409);
+    } finally {
+      db.delete(personalEvents).where(eq(personalEvents.title, "Tutoring")).run();
+    }
+  });
+
+  it("offers a move on a timetable row and requires a fresh review when another event arrives", async () => {
+    const { card, done } = await ask("What do I have today?");
+    if (card?.type !== "schedule") throw new Error("Expected a timetable");
+    const row = card.events.find((e) => e.title === "Lunch")!;
+    const edit = { date: day, start: "16:30", end: "17:30" };
+    const draft = await (await action(review, { id: done.messageId, occurrence: row.move!.occurrence, ...edit })).json();
+    const db = getDb();
+    const blocker = db.insert(personalEvents).values({ userId: student.id, title: "New booking", date: day, startMin: 1000, endMin: 1020 }).returning().get();
+    try {
+      const response = await action(accept, { id: draft.id });
+      expect(response.status).toBe(409);
+      expect((await response.json()).error).toBe(messages.en.assistant.accept.newConflict);
+      const refreshed = await (await action(review, { id: draft.id, ...edit })).json();
+      expect(refreshed.preview.events).toContainEqual(expect.objectContaining({ title: blocker.title, overlaps: true }));
+      expect(db.select().from(personalEvents).where(eq(personalEvents.title, "Lunch")).get()?.startMin).toBe(720);
+    } finally { db.delete(personalEvents).where(eq(personalEvents.id, blocker.id)).run(); }
+  });
+
+  it("rejects a moved source, old messages, and signed-out review requests", async () => {
+    const { card, done } = await ask("Mută un eveniment de luni");
+    if (card?.type !== "move") throw new Error("Expected a move picker");
+    const row = card.events.find((e) => e.title === "Lunch")!;
+    const edit = { date: day, start: "18:00", end: "19:00" };
+    const draft = await (await action(review, { id: done.messageId, occurrence: row.move.occurrence, ...edit })).json();
+    const db = getDb();
+    const lunch = eq(personalEvents.title, "Lunch");
+    try {
+      db.update(personalEvents).set({ startMin: 730 }).where(lunch).run();
+      expect((await action(accept, { id: draft.id })).status).toBe(409);
+      expect((await action(review, { id: draft.id, ...edit })).status).toBe(409);
+      expect((await action(review, { id: done.messageId, occurrence: row.move.occurrence, ...edit })).status).toBe(409);
+      vi.mocked(getUser).mockResolvedValue(null);
+      expect((await action(review, { id: draft.id, ...edit })).status).toBe(401);
+    } finally { db.update(personalEvents).set({ startMin: 720 }).where(lunch).run(); }
+  });
+
+  it("offers concrete choices in both languages and keeps choosing separate from confirming a change", async () => {
+    const fixture = classFixture();
+    getDb().insert(userOverrides).values({ userId: student.id, entryId: fixture.entry.id, hidden: true }).run();
+    try {
+      expect((await ask("Restore all classes")).done.choices).toEqual([{ label: "Restore all", reply: "Yes" }, { label: "Keep my timetable", reply: "No" }]);
+      expect((await ask("No")).text).toBe(messages.en.assistant.basic.kept);
+      expect((await ask("Restaurează tot")).done.choices[0]).toEqual({ label: "Restabilește tot", reply: "Da" });
+      expect((await ask("Nu")).done.changed).toBe(false);
+      expect((await ask("Move my exam to Tuesday")).card).toBeUndefined();
+      expect((await ask("Move my lunch to 2026-02-30")).text).toBe(messages.en.assistant.basic.invalidDate);
+      expect(parseChoices('[{"label":"Same day","reply":"Yes","date":"invalid"}]')).toEqual([{ label: "Same day", reply: "Yes" }]);
+    } finally { fixture.remove(); }
+  });
+
+  it.each([false, true])("moves exactly the chosen class scope (whole series = %s)", async (weekly) => {
+    const fixture = classFixture();
+    try {
+      const { card, done } = await ask("Move my Studio lab on Thursday");
+      if (card?.type !== "move") throw new Error("Expected the class picker");
+      expect(card.events[0].move.scope).toBe("choose");
+      const input = { id: done.messageId, occurrence: card.events[0].move.occurrence, start: "11:15", end: "12:15" };
+      expect((await action(review, { ...input, date: "2026-12-01" })).status).toBe(422);
+      const draft = await (await action(review, { ...input, date: "2026-11-27", weekly })).json();
+      expect(draft.preview).toMatchObject({ weekly, from: { date: "2026-11-26" }, date: "2026-11-27", start: "11:15" });
+      expect((await action(accept, { id: draft.id })).status).toBe(200);
+      const classes = eventsBetween(student, "2026-11-23", "2026-12-06").filter((e) => e.entryId === fixture.entry.id);
+      expect(classes.map((e) => [e.date, e.startMin])).toEqual([["2026-11-27", 675], [weekly ? "2026-12-04" : "2026-12-03", weekly ? 675 : 600]]);
+    } finally { fixture.remove(); }
+  });
+
+  it("keeps a personal series weekly and checks the following week's conflicts and alternatives", async () => {
+    const db = getDb();
+    const [series, clash] = db.insert(personalEvents).values([
+      { userId: student.id, title: "Weekly swim", day: 3, startMin: 600, endMin: 645 },
+      { userId: student.id, title: "Pool maintenance", date: "2026-12-03", startMin: 690, endMin: 735 },
+    ]).returning().all();
+    try {
+      const { card, done } = await ask("Move my weekly swim on Wednesday");
+      if (card?.type !== "move") throw new Error("Expected the move picker");
+      expect(card.events[0].move.scope).toBe("series");
+      const draft = await (await action(review, { id: done.messageId, occurrence: card.events[0].move.occurrence,
+        date: "2026-11-26", start: "11:30", end: "12:15" })).json();
+      expect(draft.preview.events.some((e: { overlaps: boolean }) => e.overlaps)).toBe(false);
+      expect(draft.preview.otherClashes).toEqual([{ title: clash.title, date: clash.date, start: "11:30", end: "12:15" }]);
+      expect(draft.preview.alternatives).toEqual([{ start: "10:45", end: "11:30" }, { start: "12:15", end: "13:00" }]);
+      const revised = await (await action(review, { id: draft.id, date: draft.preview.date, ...draft.preview.alternatives[0] })).json();
+      expect((await action(accept, { id: revised.id })).status).toBe(200);
+      expect(db.select().from(personalEvents).where(eq(personalEvents.id, series.id)).get()).toMatchObject({ date: null, day: 4, startMin: 645, endMin: 690 });
+    } finally {
+      db.delete(personalEvents).where(eq(personalEvents.id, series.id)).run();
+      db.delete(personalEvents).where(eq(personalEvents.id, clash.id)).run();
+    }
+  });
+
+  it("preserves a Gemini destination when an event name is ambiguous", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test");
+    geminiTurn([{ functionCall: { name: "move_personal_event", args: { title: "group", new_start: "18:30" } } }]);
+    geminiTurn([{ text: "Which group would you like to move?" }]);
+    const db = getDb();
+    const otherGroup = db.insert(personalEvents).values({ userId: student.id, title: "Book group", date: day, startMin: 1140, endMin: 1200 }).returning().get();
+    try {
+      const { card } = await ask("Move my group to 18:30");
+      expect(card).toMatchObject({ type: "move", count: 2, proposed: { start: "18:30" } });
+      expect(JSON.stringify(card)).not.toContain("Someone else's event");
+    } finally { db.delete(personalEvents).where(eq(personalEvents.id, otherGroup.id)).run(); }
+  });
+
+  it("understands a spoken ordinal and reviews the selected event at the requested time", async () => {
+    const db = getDb();
+    const second = db.insert(personalEvents).values({ userId: student.id, title: "Lunch", date: day, startMin: 800, endMin: 830 }).returning().get();
+    try {
+      const { done } = await ask("Mută Lunch de luni pe marți la 15:30", true);
+      expect(done.card.events).toHaveLength(2);
+      const picked = await ask("A doua", true);
+      expect(picked.done.preview).toMatchObject({ date: "2026-11-24", start: "15:30", end: "16:00", from: { date: day, start: "13:20" } });
+      expect(db.select().from(personalEvents).where(eq(personalEvents.id, second.id)).get()?.startMin).toBe(800);
+      const history = (await (await GET()).json()).messages;
+      expect(history.at(-2).content).toBe("A doua");
+    } finally { db.delete(personalEvents).where(eq(personalEvents.id, second.id)).run(); }
+  });
+
+  it("reviews a complete request directly and binds tapped answers to their original question", async () => {
+    const { done } = await ask("Reschedule lunch to tomorrow at 14:00");
+    expect(done.preview).toMatchObject({ title: "Lunch", date: "2026-11-24", start: "14:00", end: "15:00" });
+    const invalid = await action(POST, { message: "Yes", choiceMessageId: done.messageId });
+    expect(invalid.status).toBe(409);
+    expect((await (await GET()).json()).messages).toHaveLength(2);
+    const pick = await ask("Move an event");
+    expect(pick.card?.type).toBe("move");
+    const selected = await ask("the second one", true);
+    expect(selected.card).toMatchObject({ type: "move", count: 1, events: [{ title: "Lunch" }] });
+  });
+
+  it("requires the same reviewed change for a model-assisted confirmation", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test");
+    const db = getDb();
+    const title = "Chess practice";
+    const args = { title, date: day, start: "18:00", end: "19:00", confirmed: true };
+    const turn = (start: string) => {
+      geminiTurn([{ functionCall: { name: "add_personal_event", args: { ...args, start } } }]);
+      geminiTurn([{ text: "Chess practice at the selected time." }]);
+    };
+    try {
+      turn("18:00");
+      expect((await ask("Add chess practice")).done).toMatchObject({ changed: false, preview: { start: "18:00" } });
+      turn("18:30");
+      const changedTime = await ask("Actually, half an hour later");
+      expect(changedTime.done).toMatchObject({ changed: false, preview: { start: "18:30" } });
+      expect(db.select().from(personalEvents).where(eq(personalEvents.title, title)).all()).toHaveLength(0);
+      turn("18:30");
+      expect((await ask("That looks perfect, go ahead")).done).toMatchObject({ changed: true, acceptedId: changedTime.done.messageId });
+      expect(db.select().from(personalEvents).where(eq(personalEvents.title, title)).all()).toHaveLength(1);
+      const history = (await (await GET()).json()).messages;
+      expect(history).toHaveLength(6);
+      expect(history[3].preview.status).toBe("accepted");
+    } finally { db.delete(personalEvents).where(eq(personalEvents.title, title)).run(); }
+  });
+});
 
 describe("Poli reply cards", () => {
   it.each([

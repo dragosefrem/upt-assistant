@@ -9,7 +9,7 @@ import { kindLabel } from "../kinds";
 import { currentSemester, studentWeek } from "../schedule";
 import { DAY_NAMES, addDays, dayName, formatDate, formatDateRange, mondayOf, nowLocal, weekday } from "../time";
 import { runTool, type ToolContext } from "./tools";
-import { isDate } from "./toolkit";
+import { isDate, parseClock } from "./toolkit";
 
 /**
  * Built-in assistant used when no Claude credentials are configured. It recognises a
@@ -36,7 +36,56 @@ type Any = Record<string, any>; // eslint-disable-line @typescript-eslint/no-exp
 
 function isRomanian(text: string): boolean {
   // Only words that cannot be English ("am" and "sala" would misfire on "When am I…").
-  return /[ăâîșşțţ]/i.test(text) || /\b(ce|unde|cand|azi|astazi|maine|examen|examenul|orar|orarul|liber|libera|grupa|cum|ajung|urmator|urmeaza|saptamana|luni|marti|miercuri|joi|vineri|ascunde|restaureaza)\b/.test(fold(text));
+  return /[ăâîșşțţ]/i.test(text) || /\b(ce|unde|cand|azi|astazi|maine|examen|examenul|orar|orarul|liber|libera|grupa|cum|ajung|urmator|urmeaza|saptamana|luni|marti|miercuri|joi|vineri|ascunde|restaureaza|muta|mut|reprogrameaza)\b/.test(fold(text));
+}
+
+function mentionedDate(text: string, today: string) {
+  const iso = /\b\d{4}-\d{2}-\d{2}\b/.exec(text)?.[0];
+  if (iso) return iso;
+  if (/\b(tomorrow|maine)\b/.test(text)) return addDays(today, 1);
+  if (/\b(today|azi|astazi)\b/.test(text)) return today;
+  const named = DAY_WORDS.find(([re]) => re.test(text));
+  return named && addDays(today, (named[1] - weekday(today) + 7) % 7);
+}
+
+function movePicker(text: string, ctx: ToolContext, locale: Locale) {
+  const t = assistant[locale];
+  const today = nowLocal().date;
+  const [source, destination = ""] = text.replace(/\bde pe\b/g, "de").split(/\s+(?:to|pe|pentru|la)\s+(.+)/);
+  const from = mentionedDate(source, today);
+  const target = mentionedDate(destination, today);
+  if ((from && !isDate(from)) || (target && !isDate(target))) return t.basic.invalidDate;
+  if (/\b(?:exam|exams|examenul|examen)\b/.test(source)) return t.basic.fixedExam;
+  const time = /\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b/.exec(destination.replace(/\d{4}-\d{2}-\d{2}/g, ""));
+  let newStart: string | undefined;
+  if (time && (time[2] || time[3] || Number(time[1]) >= 8)) {
+    const hour = time[3] ? Number(time[1]) % 12 + (time[3] === "pm" ? 12 : 0) : Number(time[1]);
+    const clock = `${hour}:${time[2] ?? "00"}`;
+    if (hour < 24 && parseClock(clock) !== undefined) newStart = clock;
+  }
+  const kind = /\b(?:labs?|laborator\w*)\b/.test(source) ? "lab" : /\bseminar\w*\b/.test(source) ? "seminar"
+    : /\b(class|classes)\b/.test(source) ? "class" : /\bpersonal\b/.test(source) ? "personal" : undefined;
+  const title = source.replace(/^.*?\b(?:reschedule|move|muta|mut|reprogrameaza|reprogramez)\b/, "")
+    .replace(/\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}:\d{2}\b/g, "")
+    .replace(/\b(?:my|an?|the|on|from|for|please|today|tomorrow|next|something|one|of|events?|classes|class|lab|seminar|un|o|eveniment\w*|personal|meu|mea|de|din|ora|laborator\w*|seminarul|maine|azi|astazi)\b/g, " ")
+    .replace(/['’]s\b/g, "").replace(/[^a-z0-9 ]/g, " ");
+  const query = DAY_WORDS.reduce((rest, [pattern]) => rest.replace(pattern, ""), title).replace(/\s+/g, " ").trim();
+  const result = runTool("choose_event_to_move", { from, title: query || undefined, kind, new_date: target, new_start: newStart }, ctx) as Any;
+  if (!result.events?.length) return t.basic.noMove;
+  const [only] = result.events;
+  if (result.events.length === 1 && only.type === "personal" && (target || newStart) && (!time || newStart)) {
+    const proposed = runTool("move_personal_event", { id: only.personal_event_id, new_date: target, new_start: newStart }, ctx) as Any;
+    if (ctx.preview) {
+      const p = ctx.preview;
+      const day = formatDate(p.date, p.weekly ? { weekday: "long" } : undefined, locale);
+      const reply = t.preview.review(p.title, t.preview.when(day, p.start, p.end, p.weekly));
+      const clashes = (proposed.overlaps ?? []).map((e: Any) => `${e.title} (${e.start}–${e.end})`);
+      return clashes.length ? `${reply} ${t.preview.overlaps(clashes.join(", "))}.` : reply;
+    }
+    // The slot might already be the current one. Keep its editor available.
+    runTool("choose_event_to_move", { from, title: query || undefined, kind, new_date: target, new_start: newStart }, ctx);
+  }
+  return t.basic.pickEvent + " " + result.events.slice(0, 3).map((e: Any) => `${e.title}, ${formatDate(e.date, { weekday: "short", day: "numeric", month: "short" }, locale)}, ${e.start}`).join(". ") + ".";
 }
 
 function line(e: Any, locale: Locale): string {
@@ -54,26 +103,11 @@ export function askLocal(message: string, ctx: ToolContext): string {
   const now = nowLocal();
 
   // Which day is the question about?
-  let date = now.date;
-  let dayNamed = false;
-  const explicitDate = /\b\d{4}-\d{2}-\d{2}\b/.exec(q)?.[0];
-  if (explicitDate) {
-    if (!isDate(explicitDate)) return basic.invalidDate;
-    date = explicitDate;
-    dayNamed = true;
-  } else if (/\b(tomorrow|maine)\b/.test(q)) {
-    date = addDays(now.date, 1);
-    dayNamed = true;
-  } else if (/\b(today|azi|astazi)\b/.test(q)) dayNamed = true;
-  else {
-    for (const [re, day] of DAY_WORDS) {
-      if (re.test(q)) {
-        const ahead = (day - weekday(now.date) + 7) % 7;
-        date = addDays(now.date, ahead);
-        dayNamed = true;
-      }
-    }
-  }
+  if (/\b(move|reschedule|muta|mut|reprogrameaza|reprogramez)\b/.test(q)) return movePicker(q, ctx, locale);
+  const mentioned = mentionedDate(q, now.date);
+  if (mentioned && !isDate(mentioned)) return basic.invalidDate;
+  const date = mentioned ?? now.date;
+  const dayNamed = !!mentioned;
 
   // A course mentioned by name or acronym, taken from the student's own timetable.
   const semester = currentSemester();
@@ -178,10 +212,11 @@ export function askLocal(message: string, ctx: ToolContext): string {
     const r = runTool("hide_class", { course: course.title }, ctx) as Any;
     return r.error ?? t(`Hidden from your timetable: ${r.hidden.join("; ")}. Say "restore ${course.abbr ?? course.title}" to undo.`, `Am ascuns din orarul tău: ${r.hidden.join("; ")}. Spune „restaurează ${course.abbr ?? course.title}" pentru a reveni.`);
   }
-  if (/^(yes|da)[.!\s]*$/.test(q.trim())) {
+  if (/^(yes|da|no|nu)[.!\s]*$/.test(q.trim())) {
     const previous = getDb().select({ content: chatMessages.content }).from(chatMessages)
       .where(and(eq(chatMessages.userId, ctx.user.id), eq(chatMessages.role, "assistant"))).orderBy(desc(chatMessages.id)).limit(1).get();
     if (previous?.content === assistant.en.basic.restoreAll || previous?.content === assistant.ro.basic.restoreAll) {
+      if (/^(no|nu)/.test(q.trim())) return assistant[q.trim().startsWith("nu") ? "ro" : "en"].basic.kept;
       const r = runTool("restore_class", { confirmed: true }, ctx) as Any;
       return assistant[q.trim().startsWith("da") ? "ro" : "en"].basic.restored(r.restored);
     }
@@ -191,6 +226,9 @@ export function askLocal(message: string, ctx: ToolContext): string {
     const which = restore[1].trim();
     const all = /^(?:all\b|everything\b|tot\b|toate\b)/.test(which);
     const r = runTool("restore_class", { course: all ? undefined : course?.title ?? which }, ctx) as Any;
+    if (r.needs_confirmation) ctx.choices = [
+      { label: basic.restore, reply: t("Yes", "Da") }, { label: basic.keep, reply: t("No", "Nu") },
+    ];
     return r.needs_confirmation ? basic.restoreAll : basic.restored(r.restored);
   }
 
@@ -214,7 +252,7 @@ export function askLocal(message: string, ctx: ToolContext): string {
   }
 
   return t(
-    `I can answer: "What do I have tomorrow?", "What's next?", "Do I have lab this week?", "Where is my exam?", "When am I free on ${DAY_NAMES[weekday(addDays(now.date, 1))]}?", "When is group TI 3.2 free?", "How do I get to room A204?", "What does semigrupă mean?" and "Hide <course>". For free-form questions, planning and schedule changes, an administrator can add a Gemini or Claude API key.`,
-    `Pot răspunde la: „Ce am mâine?”, „Ce urmează?”, „Am laborator săptămâna aceasta?”, „Unde am examenul?”, „Când sunt liber?”, „Când e liberă grupa TI 3.2?”, „Cum ajung la sala A204?”, „Ce înseamnă semigrupă?” și „Ascunde <materia>”. Pentru întrebări libere, planificare și modificări ale orarului, un administrator poate adăuga o cheie API Gemini sau Claude.`,
+    `I can answer: "What do I have tomorrow?", "What's next?", "Do I have lab this week?", "Where is my exam?", "When am I free on ${DAY_NAMES[weekday(addDays(now.date, 1))]}?", "When is group TI 3.2 free?", "How do I get to room A204?", "What does semigrupă mean?", "Move an event" and "Hide <course>". For other free-form questions and planning, an administrator can add a Gemini or Claude API key.`,
+    `Pot răspunde la: „Ce am mâine?”, „Ce urmează?”, „Am laborator săptămâna aceasta?”, „Unde am examenul?”, „Când sunt liber?”, „Când e liberă grupa TI 3.2?”, „Cum ajung la sala A204?”, „Ce înseamnă semigrupă?”, „Mută un eveniment” și „Ascunde <materia>”. Pentru alte întrebări libere și planificare, un administrator poate adăuga o cheie API Gemini sau Claude.`,
   );
 }

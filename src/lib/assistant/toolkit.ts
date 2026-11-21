@@ -23,6 +23,12 @@ export interface ToolContext {
   changed: boolean;
   /** Interface language: for texts a tool writes into the calendar and for the pages it links to. */
   locale?: Locale;
+  /** The displayed quick answer a spoken ordinal refers to. */
+  pickedReply?: string;
+  /** A provider can confirm only the saved preview preceding this user turn. */
+  confirmPreview?: (proposal: StoredPreview) => string | undefined;
+  acceptedId?: number;
+  savedReply?: string;
   /** Tappable choices to show under the reply (set by show_choices). */
   choices?: AssistantChoice[];
   /** Result selected for display in this turn. */
@@ -110,6 +116,9 @@ export function brief(e: CalEvent) {
     note: e.note,
     // Lets the assistant name exactly which of the student's own events to move or delete.
     ...(e.personalId != null ? { personal_event_id: e.personalId } : {}),
+    ...(e.type === "class" || e.type === "personal" ? {
+      move: { occurrence: e.id, scope: !e.recurring ? "once" : e.type === "personal" ? "series" : "choose" },
+    } : {}),
     ...(e.attendance ? { attendance: e.attendance } : {}),
   };
 }

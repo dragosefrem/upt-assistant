@@ -25,7 +25,7 @@ import {
   type CalEvent,
   type WeekEntry,
 } from "../schedule";
-import { DAY_NAMES, addDays, formatMinutes, nowLocal, weekday } from "../time";
+import { DAY_NAMES, addDays, formatMinutes, isDatedMeeting, nowLocal, weekday } from "../time";
 import { matchGroups, saveContact, SAVED_NAME_MAX } from "../saved-contacts";
 import { tentativeTimesFor } from "../group-events";
 import { listPeople, personBusy } from "../people";
@@ -63,12 +63,32 @@ function upsertOverride(userId: string, entryId: number, patch: Partial<typeof u
 }
 
 const PREVIEW_NOTE =
-  "Nothing is saved yet: the student now sees a preview of that day with Accept and Other time buttons, and Accept saves exactly this. Say in one short sentence what you propose, mentioning any overlap. If they confirm in words instead (for example by voice), call this tool again with the same details plus confirmed: true, and allow_overlap: true if they accepted an overlap.";
+  "The student now sees a preview with Accept, Edit time and any available alternatives. Say in one short sentence what you propose, mentioning any overlap. If they confirm in words, use the exact details they accepted.";
 
 /** The next date (today included) that falls on a weekday. */
 function nextOnWeekday(day: number): string {
   const today = nowLocal().date;
   return addDays(today, (day - weekday(today) + 7) % 7);
+}
+
+/** Closest time of the same length in each free gap on the proposed day. */
+function alternativeTimes(busy: CalEvent[], date: string, start: number, end: number, oldStart?: number) {
+  const now = nowLocal();
+  if (date < now.date) return [];
+  const duration = end - start;
+  const gaps = freeSlots(busy.map((e) => ({ ...e, date })), date, date, {
+    minMinutes: duration, weekdaysOnly: false, dayStart: Math.max(8 * 60, date === now.date ? now.minutes : 0),
+  });
+  const nearest = (a: number, b: number) => Math.abs(a - start) - Math.abs(b - start) || a - b;
+  const starts: number[] = [];
+  for (const gap of gaps) {
+    const options: number[] = [];
+    for (let s = Math.ceil(gap.startMin / 15) * 15; s + duration <= gap.endMin; s += 15) {
+      if (s !== oldStart) options.push(s);
+    }
+    if (options.length) starts.push(options.sort(nearest)[0]);
+  }
+  return starts.sort(nearest).slice(0, 2).sort((a, b) => a - b).map((s) => ({ start: formatMinutes(s), end: formatMinutes(s + duration) }));
 }
 
 /** That day's timeline with the proposed change, for the student to accept. */
@@ -81,24 +101,34 @@ function dayPreview(
     startMin: number;
     endMin: number;
     from?: { date: string; startMin: number; endMin: number };
+    roomChange?: StoredPreview["roomChange"];
     skip?: (e: CalEvent) => boolean;
     change: StoredPreview["change"];
   },
 ): StoredPreview {
   const date = "date" in p.when ? p.when.date : nextOnWeekday(p.when.weekday);
   const range = { startMin: p.startMin, endMin: p.endMin };
+  const weekly = !("date" in p.when);
+  const busy = eventsBetween(user, date, weekly ? addDays(date, 7) : date)
+    .filter((e) => weekday(e.date) === weekday(date) && !p.skip?.(e));
+  const clashes = busy.filter((e) => overlaps(e, range));
+  const alternatives = clashes.length ? alternativeTimes(busy, date, p.startMin, p.endMin, p.from?.date === date ? p.from.startMin : undefined) : [];
   return {
     status: "pending",
     action: p.action,
     title: p.title,
     date,
-    weekly: !("date" in p.when),
+    weekly,
+    roomChange: p.roomChange,
     start: formatMinutes(p.startMin),
     end: formatMinutes(p.endMin),
     from: p.from ? { date: p.from.date, start: formatMinutes(p.from.startMin), end: formatMinutes(p.from.endMin) } : undefined,
-    events: eventsBetween(user, date, date)
-      .filter((e) => !p.skip?.(e))
+    events: busy.filter((e) => e.date === date)
       .map((e) => ({ title: e.title, kind: e.kind, start: formatMinutes(e.startMin), end: formatMinutes(e.endMin), room: e.room, overlaps: overlaps(e, range) })),
+    ...(weekly ? { otherClashes: clashes.filter((e) => e.date !== date).map((e) => ({
+      title: e.title, date: e.date, start: formatMinutes(e.startMin), end: formatMinutes(e.endMin),
+    })) } : {}),
+    ...(alternatives.length ? { alternatives } : {}),
     change: p.change,
   };
 }
@@ -174,7 +204,39 @@ function sanitizeChoices(v: unknown): AssistantChoice[] {
 
 const showCard = { type: "boolean", description: "Show these results in chat (default true). Set false for a supplementary lookup so it leaves the student's card in place." };
 
+function moveOptions(events: CalEvent[], date: unknown, start: unknown, end: unknown) {
+  const toClock = (value: unknown) => {
+    const minutes = parseClock(value);
+    return minutes === undefined ? undefined : formatMinutes(minutes);
+  };
+  return {
+    events: events.filter((e) => e.type === "personal" || e.type === "class").map(brief),
+    proposed: { date: isDate(date) ? date : undefined, start: toClock(start), end: toClock(end) },
+  };
+}
+
 const CORE_TOOLS: AssistantTool[] = [
+  {
+    name: "choose_event_to_move",
+    description: "Show the student's matching personal events and class occurrences as selectable rows with a date/time editor. Use for open-ended rescheduling, a missing time, or multiple matches. Pass any known destination separately. The student can select, edit and preview the change directly in chat.",
+    input_schema: { type: "object", properties: {
+      from: { type: "string", format: "date", description: "Earliest CURRENT event date, default today." },
+      to: { type: "string", format: "date", description: "Last current date, default two weeks ahead or the specified from day." },
+      title: { type: "string", description: "Part of the actual event title or course acronym, if known." },
+      kind: { type: "string", description: "Optional activity kind, e.g. personal or lab." },
+      new_date: { type: "string", format: "date" }, new_start: { type: "string" }, new_end: { type: "string" },
+      show_card: showCard,
+    } },
+    run(input, { user }) {
+      const from = isDate(input.from) ? input.from : nowLocal().date;
+      const to = isDate(input.to) ? input.to : input.from ? from : addDays(from, 13);
+      const query = fold(str(input.title) ?? "");
+      const kind = str(input.kind);
+      const events = eventsBetween(user, from, to < addDays(from, 31) ? to : addDays(from, 31))
+        .filter((e) => (!kind || e.kind === kind || e.type === kind) && (!query || fold(e.title).includes(query) || fold(e.abbr ?? "") === query));
+      return moveOptions(events, input.new_date, input.new_start, input.new_end);
+    },
+  },
   {
     name: "get_schedule",
     description:
@@ -571,25 +633,28 @@ const CORE_TOOLS: AssistantTool[] = [
   {
     name: "move_class",
     description:
-      "Move a recurring class to another weekday, time or room for EVERY week in the student's personal timetable (for example when they attend a lab with another group). For one particular date, use move_class_once instead. Only affects this student. Refuses to create an overlap unless allow_overlap is true.",
+      "Preview moving a recurring class to another weekday, time or room for the entire series in the student's own timetable. For one occurrence use move_class_once. Only save after the student confirms the preview.",
     input_schema: {
       type: "object",
       properties: {
         course: { type: "string", description: "Course name or acronym." },
         kind: { type: "string", enum: ["course", "seminar", "lab", "project", "other"] },
         from_weekday: { type: "number", description: "Current weekday, if the course has several activities of that kind." },
+        entry_id: { type: "integer", description: "Exact class entry when known." },
         to_weekday: { type: "number", description: "New weekday (1 = Monday … 7 = Sunday)." },
         start: { type: "string", description: "New start time, HH:MM." },
         end: { type: "string", description: "New end time, HH:MM. Defaults to keeping the same duration." },
         room: { type: "string", description: "New room, if it changes." },
+        confirmed: { type: "boolean", description: "Save only after the student accepts the preview." },
         allow_overlap: { type: "boolean", description: "Move even if the new time overlaps other events; only after the student agreed." },
       },
-      required: ["course"],
     },
     run(input, ctx) {
       const semester = currentSemester();
       if (!semester) return { error: "No semester configured." };
-      const hits = matchEntries(studentWeek(ctx.user, semester), str(input.course) ?? "", str(input.kind), num(input.from_weekday));
+      const week = studentWeek(ctx.user, semester);
+      const hits = input.entry_id !== undefined ? week.filter((e) => e.entryId === input.entry_id)
+        : matchEntries(week, str(input.course) ?? "", str(input.kind), num(input.from_weekday));
       if (!hits.length) return { error: "No matching class in the timetable." };
       if (hits.length > 1) {
         return {
@@ -598,14 +663,27 @@ const CORE_TOOLS: AssistantTool[] = [
         };
       }
       const [e] = hits;
+      if (isDatedMeeting(e.weeks)) return { error: "This is a dated class. Use move_class_once." };
       const day = num(input.to_weekday) ?? e.day;
       const startMin = parseClock(input.start) ?? e.startMin;
       const endMin = parseClock(input.end) ?? startMin + (e.endMin - e.startMin);
-      if (day < 1 || day > 7 || endMin <= startMin) return { error: "Invalid weekday or time." };
+      if (!Number.isInteger(day) || day < 1 || day > 7 || endMin <= startMin || endMin > 1440) return { error: "Invalid weekday or time." };
+      const room = str(input.room) ?? e.room;
+      if (day === e.day && startMin === e.startMin && endMin === e.endMin && room === e.room) return { error: "That is already its time." };
       const target = `${DAY_NAMES[day]} ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
-      const clash = overlapsFor(ctx.user, { weekday: day }, startMin, endMin, (x) => x.entryId === e.entryId);
+      const itself = (x: CalEvent) => x.entryId === e.entryId && !x.originalDate;
+      const clash = overlapsFor(ctx.user, { weekday: day }, startMin, endMin, itself);
+      if (input.confirmed !== true) {
+        ctx.preview = dayPreview(ctx.user, {
+          action: "move", title: `${e.title} (${e.kind})`, when: { weekday: day }, startMin, endMin, skip: itself,
+          from: { date: nextOnWeekday(e.day), startMin: e.startMin, endMin: e.endMin },
+          roomChange: room && room !== e.room ? { from: e.room, to: room } : undefined,
+          change: { tool: "move_class", args: { entry_id: e.entryId, to_weekday: day, start: formatMinutes(startMin), end: formatMinutes(endMin), room: str(input.room) } },
+        });
+        return { preview_shown: { class: ctx.preview.title, to: target, whole_series: true }, overlaps: clash.length ? clash : undefined, note: PREVIEW_NOTE };
+      }
       if (clash.length && input.allow_overlap !== true) return { not_moved: `${e.title} (${e.kind})`, to: target, overlaps: clash, hint: OVERLAP_HINT };
-      upsertOverride(ctx.user.id, e.entryId, { hidden: false, day, startMin, endMin, room: str(input.room) ?? null });
+      upsertOverride(ctx.user.id, e.entryId, { hidden: false, day, startMin, endMin, ...(str(input.room) ? { room } : {}) });
       ctx.changed = true;
       return { moved: `${e.title} (${e.kind})`, to: target, room: str(input.room) ?? e.room, overlaps: clash.length ? clash : undefined };
     },
@@ -627,6 +705,7 @@ const CORE_TOOLS: AssistantTool[] = [
         confirmed: { type: "boolean", description: "Move now. Only after the student said yes to the preview in words." },
         allow_overlap: { type: "boolean", description: "Move even if the new time overlaps other events; only after the student agreed." },
         entry_id: { type: "number", description: "Internal id of the class, when known; replaces `course` and `kind`." },
+        original_date: { type: "string", format: "date", description: "Original occurrence date when multiple weeks now fall on the same day." },
       },
       required: ["date"],
     },
@@ -645,7 +724,7 @@ const CORE_TOOLS: AssistantTool[] = [
           : [fold(e.title), fold(e.abbr ?? "")].some((n) => n && (n === q || n.includes(q) || (q.length > 3 && q.includes(n) && n.length > 2))) &&
             (!kind || e.kind === kind));
       const onDay = eventsBetween(ctx.user, date, date);
-      const hits = onDay.filter(matches);
+      const hits = onDay.filter((e) => matches(e) && (!input.original_date || (e.originalDate ?? e.date) === input.original_date));
       if (!hits.length) {
         return {
           error: `No matching class on ${DAY_NAMES[weekday(date)]} ${date}.`,
@@ -653,7 +732,9 @@ const CORE_TOOLS: AssistantTool[] = [
         };
       }
       if (hits.length > 1) {
-        return { error: "Several classes match that day; ask which one.", candidates: hits.map((e) => `${e.title} (${e.kind}) ${formatMinutes(e.startMin)}–${formatMinutes(e.endMin)}`) };
+        const options = moveOptions(hits, input.to_date, input.start, input.end);
+        ctx.card = cardForLookup("choose_event_to_move", modelResult(options));
+        return { error: "Several classes match. Ask the student to pick one in the event picker already shown.", candidates: options.events };
       }
 
       const [e] = hits;
@@ -670,7 +751,7 @@ const CORE_TOOLS: AssistantTool[] = [
       const label = `${e.title} (${e.kind})`;
       const fromText = `${DAY_NAMES[weekday(e.date)]} ${e.date} ${formatMinutes(e.startMin)}–${formatMinutes(e.endMin)}`;
       const toText = `${DAY_NAMES[weekday(toDate)]} ${toDate} ${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
-      const itself = (x: CalEvent) => x.entryId === e.entryId && x.date === e.date;
+      const itself = (x: CalEvent) => x.id === e.id;
       const clash = overlapsFor(ctx.user, { date: toDate }, startMin, endMin, itself);
       if (input.confirmed !== true) {
         ctx.preview = dayPreview(ctx.user, {
@@ -681,7 +762,8 @@ const CORE_TOOLS: AssistantTool[] = [
           endMin,
           from: { date: e.date, startMin: e.startMin, endMin: e.endMin },
           skip: itself,
-          change: { tool: "move_class_once", args: { entry_id: e.entryId, date: e.date, to_date: toDate, start: formatMinutes(startMin), end: formatMinutes(endMin), room: room ?? undefined } },
+          roomChange: room && room !== e.room ? { from: e.room, to: room } : undefined,
+          change: { tool: "move_class_once", args: { entry_id: e.entryId, date: e.date, original_date: original, to_date: toDate, start: formatMinutes(startMin), end: formatMinutes(endMin), room: str(input.room) } },
         });
         return { preview_shown: { class: label, from: fromText, to: toText, only_this_week: true }, overlaps: clash.length ? clash : undefined, note: PREVIEW_NOTE };
       }
@@ -830,7 +912,13 @@ const CORE_TOOLS: AssistantTool[] = [
           hint: "Only events the student added move this way; look at get_schedule. Classes use move_class, and exams cannot be moved.",
         };
       }
-      if (hits.length > 1) return { error: "Several events match; ask which one.", candidates: hits.map(describePersonal) };
+      if (hits.length > 1) {
+        const dates = new Set(hits.map((p) => p.date ?? onDate ?? nextOnWeekday(p.day!)));
+        const ids = new Set(hits.map((p) => p.id));
+        const events = [...dates].sort().flatMap((d) => eventsBetween(ctx.user, d, d).filter((e) => e.personalId && ids.has(e.personalId)));
+        ctx.card = cardForLookup("choose_event_to_move", modelResult(moveOptions(events, input.new_date, input.new_start, input.new_end)));
+        return { error: "Several events match. Ask the student to pick one in the event picker already shown.", candidates: hits.map(describePersonal) };
+      }
 
       const [p] = hits;
       const startMin = parseClock(input.new_start) ?? p.startMin;
@@ -945,6 +1033,7 @@ const CORE_TOOLS: AssistantTool[] = [
 
 /** Every tool the assistant can call: the calendar core, then studying, people and app settings. */
 export const TOOLS: AssistantTool[] = [...CORE_TOOLS, ...STUDY_TOOLS, ...PEOPLE_TOOLS, ...APP_TOOLS];
+const previewTools = new Set<string>(["add_personal_event", "move_personal_event", "move_class_once", "move_class"]);
 
 /** Runs a tool; for an asynchronous tool the result is a promise, which callers await. */
 export function runTool(name: string, input: unknown, ctx: ToolContext): unknown {
@@ -962,7 +1051,24 @@ export function runTool(name: string, input: unknown, ctx: ToolContext): unknown
         return { error: `${key} must be a real calendar date (YYYY-MM-DD). Ask the student to correct it.` };
       }
     }
-    const result = tool.run(args, ctx);
+    const changesCalendar = previewTools.has(tool.name);
+    if (changesCalendar || name === "choose_event_to_move") {
+      ctx.preview = undefined;
+      ctx.choices = undefined;
+    }
+    let result: unknown;
+    if (changesCalendar && args.confirmed === true && ctx.confirmPreview) {
+      result = tool.run({ ...args, confirmed: false }, ctx);
+      const saved = ctx.preview && ctx.confirmPreview(ctx.preview);
+      if (saved) {
+        ctx.preview = undefined;
+        ctx.changed = true;
+        ctx.savedReply = saved;
+        result = { saved: true, confirmation: saved };
+      }
+    } else {
+      result = tool.run(args, ctx);
+    }
     if (result instanceof Promise) return result.then((value) => modelResult(value)).catch((err: Error) => modelResult({ error: err.message }));
     const value = modelResult(result);
     if (supportsCard && value && typeof value === "object") {
