@@ -2,7 +2,6 @@ import Link from "next/link";
 import { AskPoli } from "@/components/AskPoli";
 import { GlossarySearch } from "@/components/GlossarySearch";
 import { GuideChecklist } from "@/components/GuideChecklist";
-import { Mascot } from "@/components/Mascot";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
 import { studentBuildings } from "@/lib/campus-buildings";
@@ -56,20 +55,12 @@ export default async function GuidePage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
-      <header className="card relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-500 p-5 text-white sm:p-7">
-        <div aria-hidden className="pointer-events-none absolute -right-12 -top-12 h-44 w-44 rounded-full bg-white/10" />
-        <div className="relative flex items-center gap-4">
-          <div className="hidden rounded-2xl bg-white/15 p-2 sm:block">
-            <Mascot size={64} wave />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.heading}</h1>
-            <p className="mt-1 max-w-2xl text-sm text-white/90 sm:text-base">{t.intro}</p>
-          </div>
-        </div>
-        <nav aria-label={t.title} className="relative mt-4 flex flex-wrap gap-2">
+      <header className="page-heading">
+        <h1>{t.heading}</h1>
+        <p className="mt-2 max-w-2xl text-slate-600">{t.intro}</p>
+        <nav aria-label={t.title} className="mt-4 flex flex-wrap gap-2">
           {sections.map(([id, label]) => (
-            <a key={id} href={`#${id}`} className="rounded-full bg-white/95 px-3.5 py-1.5 text-sm font-medium text-brand-700 shadow-sm transition hover:bg-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white">
+            <a key={id} href={`#${id}`} className="btn-secondary text-xs">
               {label}
             </a>
           ))}
@@ -77,13 +68,13 @@ export default async function GuidePage() {
       </header>
 
       <section id="first-week" className="card scroll-mt-20 p-5 sm:p-6">
-        <h2 className="text-lg font-semibold text-slate-900">✅ {t.firstWeek.title}</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{t.firstWeek.title}</h2>
         <p className="mb-4 mt-1 text-sm text-slate-600">{t.firstWeek.intro}</p>
         <GuideChecklist />
       </section>
 
       <section id="semester" className="card scroll-mt-20 p-5 sm:p-6">
-        <h2 className="text-lg font-semibold text-slate-900">🗓️ {t.semester.title}</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{t.semester.title}</h2>
         {!overview ? (
           <p className="mt-2 text-sm text-slate-600">{t.semester.none}</p>
         ) : (
@@ -200,15 +191,15 @@ export default async function GuidePage() {
       </section>
 
       <section id="glossary" className="card scroll-mt-20 p-5 sm:p-6">
-        <h2 className="text-lg font-semibold text-slate-900">📖 {t.glossary.title}</h2>
+        <h2 className="text-lg font-semibold text-slate-900">{t.glossary.title}</h2>
         <p className="mb-4 mt-1 text-sm text-slate-600">{t.glossary.intro}</p>
         <GlossarySearch />
       </section>
 
       <section id="buildings" className="card scroll-mt-20 p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-lg font-semibold text-slate-900">🏛️ {t.buildings.title}</h2>
-          <Link href="/campus" className="btn-secondary ml-auto px-3 py-1.5 text-xs">🧭 {t.buildings.open}</Link>
+          <h2 className="text-lg font-semibold text-slate-900">{t.buildings.title}</h2>
+          <Link href="/campus" className="btn-secondary ml-auto px-3 py-1.5 text-xs">{t.buildings.open}</Link>
         </div>
         <p className="mt-1 text-sm text-slate-600">{t.buildings.intro}</p>
         {buildings.length ? (

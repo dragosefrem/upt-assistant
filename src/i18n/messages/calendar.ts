@@ -3,27 +3,13 @@ import { plural } from "../config";
 /** Texts for the calendar home page: welcome card, "next up", the calendar, its dialogs, travel tips and Poli. */
 const en = {
   page: {
+    heading: "My timetable",
     title: "Calendar",
     pendingSlots: (n: number, course: string) =>
       n === 1
         ? `${course} runs in several lab slots and you have not picked one yet, so it is missing from the calendar.`
         : `${n} of your courses run in several lab slots and you have not picked one yet, so they are missing from the calendar.`,
     chooseSlots: "Choose your slots",
-  },
-  quick: {
-    morning: "Good morning",
-    day: "Hi",
-    evening: "Good evening",
-    hello: (greeting: string, name: string) => `${greeting}, ${name}! 👋`,
-    intro: "I'm Poli. Tap a question, or ask me anything in the chat.",
-    /** Chip labels and the question each one sends to the assistant. */
-    chips: {
-      next: { label: "What's next?", question: "What's next?" },
-      tomorrow: { label: "Tomorrow", question: "What do I have tomorrow?" },
-      exams: { label: "My exams", question: "Where is my next exam?" },
-      free: { label: "Free time", question: "When am I free this week?" },
-      directions: { label: "Directions", question: "How do I get to my next room?" },
-    },
   },
   nextUp: {
     now: "Now",
@@ -44,11 +30,12 @@ const en = {
     addEvent: "+ Event",
   },
   grid: {
+    freeDay: "Nothing scheduled.",
     sessionExpired: "Your session has expired. Please sign in again.",
     loadFailed: "Could not load the calendar.",
     clickToAdd: "Click or drag to add an event",
-    emptyWithGroup: "Nothing scheduled in this period. Click or drag on the calendar to add your own event.",
-    emptyNoGroup: "No timetable is linked to your profile yet. Pick a group in Settings, or click on the calendar to add your own events.",
+    emptyWithGroup: "Nothing scheduled in this period. Choose “Add an event” to plan something.",
+    emptyNoGroup: "No timetable is linked to your profile yet. Pick a group in Settings, or add a personal event.",
     added: (title: string) => `“${title}” was added to your calendar ✓`,
     hidden: (title: string) => `You hid “${title}” from your timetable.`,
     manageHidden: "Restore hidden classes in Settings",
@@ -143,26 +130,13 @@ const en = {
 
 const ro: typeof en = {
   page: {
+    heading: "Orarul meu",
     title: "Calendar",
     pendingSlots: (n: number, course: string) =>
       n === 1
         ? `${course} are mai multe intervale de laborator și încă nu ți-ai ales unul, așa că lipsește din calendar.`
         : `${n} dintre materiile tale au mai multe intervale de laborator și încă nu ți-ai ales câte unul, așa că lipsesc din calendar.`,
     chooseSlots: "Alege-ți intervalele",
-  },
-  quick: {
-    morning: "Bună dimineața",
-    day: "Salut",
-    evening: "Bună seara",
-    hello: (greeting: string, name: string) => `${greeting}, ${name}! 👋`,
-    intro: "Eu sunt Poli. Alege o întrebare sau întreabă-mă orice în chat.",
-    chips: {
-      next: { label: "Ce urmează?", question: "Ce urmează?" },
-      tomorrow: { label: "Mâine", question: "Ce am mâine?" },
-      exams: { label: "Examenele mele", question: "Unde e următorul meu examen?" },
-      free: { label: "Timp liber", question: "Când sunt liber săptămâna asta?" },
-      directions: { label: "Cum ajung?", question: "Cum ajung la sala următoare?" },
-    },
   },
   nextUp: {
     now: "Acum",
@@ -184,11 +158,12 @@ const ro: typeof en = {
     addEvent: "+ Eveniment",
   },
   grid: {
+    freeDay: "Nu ai nimic programat.",
     sessionExpired: "Sesiunea ta a expirat. Autentifică-te din nou.",
     loadFailed: "Calendarul nu a putut fi încărcat.",
     clickToAdd: "Apasă sau trage ca să adaugi un eveniment",
-    emptyWithGroup: "Nimic programat în perioada asta. Apasă sau trage pe calendar ca să adaugi un eveniment al tău.",
-    emptyNoGroup: "Încă nu ai un orar legat de profil. Alege-ți grupa din Setări sau apasă pe calendar ca să adaugi evenimente proprii.",
+    emptyWithGroup: "Nimic programat în această perioadă. Poți adăuga un eveniment personal.",
+    emptyNoGroup: "Încă nu ai un orar legat de profil. Alege-ți grupa din Setări sau adaugă un eveniment personal.",
     added: (title: string) => `„${title}” a fost adăugat în calendar ✓`,
     hidden: (title: string) => `Ai ascuns „${title}” din orar.`,
     manageHidden: "Arată din nou orele ascunse din Setări",

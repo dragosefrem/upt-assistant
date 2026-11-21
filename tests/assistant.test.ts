@@ -493,8 +493,8 @@ describe("assistant tools", () => {
       const raw = String((await send.mock.results[0].value).message);
       expect(raw).toContain("To: student@example.com");
       expect(raw).toContain("Subject: Your UPT timetable");
-      expect(raw).toMatch(/Content-Type: text\/calendar; charset=utf-8; method=PUBLISH;\s+name=upt-orar\.ics/i);
-      const [, attachment] = /filename=upt-orar\.ics\n\n([A-Za-z0-9+/=\n]+)\n/.exec(raw) ?? [];
+      expect(raw).toMatch(/Content-Type: text\/calendar; charset=utf-8; method=PUBLISH;\s+name=poli\.ics/i);
+      const [, attachment] = /filename=poli\.ics\n\n([A-Za-z0-9+/=\n]+)\n/.exec(raw) ?? [];
       const ics = Buffer.from(attachment ?? "", "base64").toString("utf8");
       expect(ics).toContain("BEGIN:VCALENDAR");
       expect(ics).toContain("Sisteme de operare");

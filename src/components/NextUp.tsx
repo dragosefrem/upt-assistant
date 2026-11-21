@@ -1,5 +1,6 @@
 "use client";
 
+import { Navigation, Sun } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
@@ -59,7 +60,7 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
       <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />
       <div className="min-w-0">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label} · {when}</p>
-        <p className="truncate font-semibold text-slate-900">{e.title}</p>
+        <p className="break-words font-semibold text-slate-900">{e.title}</p>
         <p className="text-sm text-slate-600">
           {formatTimeSlot(e.startMin, e.endMin)} · {kindLabel(e.kind, locale)}
           {e.room ? ` · ${e.room}` : ""}
@@ -70,7 +71,7 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
             href={campusJourneyHref({ to: e.room, building: e.place.name, course: e.title, at: formatMinutes(e.startMin), date: e.date })}
             className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
           >
-            <span aria-hidden>🧭</span>
+            <Navigation size={14} aria-hidden />
             {messages.guide.buildings.walkthrough}
           </Link>
         )}
@@ -79,14 +80,14 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
   );
 
   return (
-    <section className="card p-4">
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
-        <h2 className="text-lg font-semibold tracking-tight text-slate-900">{capitalize(formatDate(now.date, { weekday: "long", day: "numeric", month: "long" }, locale))}</h2>
-        <span className="text-sm tabular-nums text-slate-500">
-          {formatMinutes(now.minutes)} · {leftToday ? t.leftToday(leftToday) : t.nothingLeft}
-        </span>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+    <section className="card next-up overflow-hidden">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-200 bg-brand-50/65 px-4 py-3">
+        <h2 className="flex items-center gap-2 font-semibold tracking-tight text-brand-900">
+          <Sun size={18} aria-hidden />{capitalize(formatDate(now.date, { weekday: "long", day: "numeric", month: "long" }, locale))}
+        </h2>
+        <span className="text-xs text-slate-600">{leftToday ? t.leftToday(leftToday) : t.nothingLeft}</span>
+      </header>
+      <div className="grid gap-3 p-4 sm:grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] xl:grid-cols-1">
         {current && row(t.now, current, t.until(formatMinutes(current.endMin)))}
         {next ? (
           <div className="space-y-1.5">

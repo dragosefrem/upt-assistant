@@ -11,14 +11,14 @@ import { TIME_ZONE, addDays, formatMinutes } from "./time";
 /**
  * Google Calendar export over plain REST.
  *
- * The app asks only for `calendar.app.created`: it can create its own "UPT Orar"
+ * The app asks only for `calendar.app.created`: it can create its own "Poli"
  * calendar and manage events inside it, and cannot read or touch anything else in the
  * student's Google account.
  */
 
 const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 const API = "https://www.googleapis.com/calendar/v3";
-const CALENDAR_NAME = "UPT Orar";
+const CALENDAR_NAME = "Poli";
 
 /**
  * A failure talking to Google. `known` messages are written by this app in the student's
@@ -123,7 +123,7 @@ function toGoogleEvent(item: ExportItem) {
 }
 
 /**
- * Replaces the contents of the student's "UPT Orar" Google calendar with their current
+ * Replaces the contents of the student's "Poli" Google calendar with their current
  * timetable. Returns how many events were written. Event texts and the app's own error
  * messages are in `locale`.
  */
@@ -146,7 +146,11 @@ export async function syncToGoogle(user: User, locale: Locale = user.locale ?? "
   let calendarId = user.googleCalendarId;
   if (calendarId) {
     try {
-      await call(accessToken, "GET", `/calendars/${encodeURIComponent(calendarId)}`);
+      const path = `/calendars/${encodeURIComponent(calendarId)}`;
+      const calendar = await call<{ summary: string }>(accessToken, "GET", path);
+      if (calendar.summary === "UPT Orar") {
+        await call(accessToken, "PATCH", path, { summary: CALENDAR_NAME });
+      }
     } catch (err) {
       if (err instanceof GoogleError && (err.status === 404 || err.status === 410)) calendarId = null;
       else throw err;

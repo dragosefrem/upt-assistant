@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
+import type { TimetableRoom } from "@/lib/campuspath/rooms";
+import { YourRooms } from "./YourRooms";
 import type { Classroom, ClassroomPage, Coverage } from "@/lib/campuspath/types";
 import { formatDate } from "@/lib/time";
 import { campusApi } from "./api";
-import { CampusDialog } from "./CampusDialog";
+import { Modal } from "../Modal";
 import { reachTone } from "./format";
 import { Thumb } from "./Thumb";
 
@@ -13,7 +15,27 @@ const PAGE = 20;
 const FILTERS: (Coverage | "")[] = ["", "exact", "checkpoint", "unmapped"];
 
 /** The classroom directory: search, filter by what the tour shows, page through, and route to a room. */
-export function ClassroomBrowser({ open, onClose, onTake }: { open: boolean; onClose: () => void; onTake: (room: Classroom) => void }) {
+export function ClassroomBrowser({ rooms, hasSemester, onClose, onTake, onTimetableRoom }: {
+  rooms: TimetableRoom[];
+  hasSemester: boolean;
+  onClose: () => void;
+  onTake: (room: Classroom) => void;
+  onTimetableRoom: (room: TimetableRoom) => void;
+}) {
+  const t = useT().campus;
+  const [mine, setMine] = useState(rooms.length > 0);
+  return (
+    <Modal open title={t.directory.title} onClose={onClose} wide>
+      <div role="group" aria-label={t.directory.title} className="segments mb-4">
+        <button type="button" aria-pressed={mine} onClick={() => setMine(true)}>{t.rooms.listLabel}</button>
+        <button type="button" aria-pressed={!mine} onClick={() => setMine(false)}>{t.directory.allRooms}</button>
+      </div>
+      {mine ? <YourRooms rooms={rooms} hasSemester={hasSemester} onGo={onTimetableRoom} /> : <DirectorySearch onTake={onTake} />}
+    </Modal>
+  );
+}
+
+function DirectorySearch({ onTake }: { onTake: (room: Classroom) => void }) {
   const t = useT().campus;
   const locale = useLocale();
   const [query, setQuery] = useState("");
@@ -22,33 +44,31 @@ export function ClassroomBrowser({ open, onClose, onTake }: { open: boolean; onC
   const [page, setPage] = useState<ClassroomPage | null>(null);
   const [failed, setFailed] = useState(false);
   const [loading, setLoading] = useState(false);
-  const token = useRef(0);
   const list = useRef<HTMLUListElement>(null);
 
   useEffect(() => {
-    if (!open) return;
-    const mine = ++token.current;
+    let current = true;
     const timer = window.setTimeout(() => {
       setLoading(true);
       campusApi
         .classrooms(query.trim(), coverage, offset, PAGE)
         .then((result) => {
-          if (mine !== token.current) return;
+          if (!current) return;
           setPage(result);
           setFailed(false);
-          list.current?.scrollIntoView({ block: "nearest" });
+          if (offset) list.current?.scrollIntoView({ block: "nearest" });
         })
-        .catch(() => mine === token.current && setFailed(true))
-        .finally(() => mine === token.current && setLoading(false));
+        .catch(() => current && setFailed(true))
+        .finally(() => current && setLoading(false));
     }, query ? 180 : 0);
-    return () => window.clearTimeout(timer);
-  }, [open, query, coverage, offset]);
+    return () => { window.clearTimeout(timer); current = false; };
+  }, [query, coverage, offset]);
 
   const items = page?.items ?? [];
   const summary = !page ? t.directory.loading : query.trim() ? t.directory.found(page.total) : t.directory.listed(page.total);
 
   return (
-    <CampusDialog open={open} title={t.directory.title} onClose={onClose} wide>
+    <>
       <label className="sr-only" htmlFor="campus-room-search">
         {t.directory.search}
       </label>
@@ -153,6 +173,6 @@ export function ClassroomBrowser({ open, onClose, onTake }: { open: boolean; onC
         </nav>
       )}
       {page?.asOf && <p className="mt-4 text-xs text-slate-500">{t.directory.asOf(formatDate(page.asOf, { day: "numeric", month: "long", year: "numeric" }, locale))}</p>}
-    </CampusDialog>
+    </>
   );
 }

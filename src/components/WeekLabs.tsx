@@ -1,3 +1,4 @@
+import { ChevronDown, FlaskConical } from "lucide-react";
 import Link from "next/link";
 import type { Locale } from "@/i18n/config";
 import { messagesFor } from "@/i18n/server";
@@ -19,9 +20,13 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
   const shortDate = (d: string) => formatDate(d, { weekday: "short", day: "numeric", month: "short" }, locale);
 
   return (
-    <section className="card p-4 sm:p-5" aria-labelledby="week-labs">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h2 id="week-labs" className="text-base font-semibold text-slate-900">🧪 {t.title}</h2>
+    <details className="card group/labs min-w-0 p-4">
+      <summary className="flex cursor-pointer list-none items-center gap-2 font-semibold text-slate-900">
+        <FlaskConical size={18} aria-hidden className="shrink-0 text-brand-700" />
+        <span className="flex-1">{t.title}</span>
+        <ChevronDown size={17} aria-hidden className="shrink-0 transition-transform group-open/labs:rotate-180 motion-reduce:transition-none" />
+      </summary>
+      <div className="mt-3">
         {week.week !== null && (
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${week.parity === "odd" ? "bg-violet-50 text-violet-700" : "bg-teal-50 text-teal-700"}`}>
             {week.parity === "odd" ? t.weekOdd(week.week) : t.weekEven(week.week)}
@@ -50,7 +55,7 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.thisWeek}</h3>
             {week.running.length ? (
-              <ul className="mt-2 grid gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="mt-2 grid gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-1">
                 {week.running.map((e) => (
                   <li key={e.id} className="flex gap-2 text-sm">
                     <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />
@@ -79,7 +84,7 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
           {week.skipped.length > 0 && (
             <div className="rounded-2xl bg-slate-50 px-3 py-2.5">
               <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t.notThisWeek}</h3>
-              <ul className="mt-2 grid gap-x-5 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+              <ul className="mt-2 grid gap-x-5 gap-y-2 sm:grid-cols-2 xl:grid-cols-1">
                 {week.skipped.map((e) => (
                   <li key={e.entryId} className="flex gap-2 text-sm text-slate-500">
                     <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-300" />
@@ -96,6 +101,6 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
           )}
         </div>
       )}
-    </section>
+    </details>
   );
 }

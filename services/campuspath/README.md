@@ -80,7 +80,7 @@ curl -G http://127.0.0.1:8765/api/qr -o b527.png -d format=png \
   --data-urlencode 'link=http://127.0.0.1:8765/?from=355&to=B527'
 ```
 
-The address must be a route of this app: the host the request came to, the home page or `/campus`, and no fields other than `from`, `to`, `dest` and `lang`. Anything else returns HTTP 400. Behind a proxy, pass the public host on in the `Host` header. An app that embeds the planner, such as UPT Orar, opens routes at `https://<its host>/campus?from=…&to=…`.
+The address must be a route of this app: the host the request came to, the home page or `/campus`, and no fields other than `from`, `to`, `dest` and `lang`. Anything else returns HTTP 400. Behind a proxy, pass the public host on in the `Host` header. An app that embeds the planner, such as Poli, opens routes at `https://<its host>/campus?from=…&to=…`.
 
 ## Floors, doors and what is ahead
 

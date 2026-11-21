@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Calendar } from "@/components/Calendar";
 import { NextUp } from "@/components/NextUp";
-import { QuickActions } from "@/components/QuickActions";
+import { WelcomeTour } from "@/components/WelcomeTour";
 import { WeekLabs } from "@/components/WeekLabs";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
@@ -18,7 +18,7 @@ export default async function HomePage() {
   const user = await requireOnboardedUser();
   const t = await getT();
   const locale = await getLocale();
-  const { date: today, minutes } = nowLocal();
+  const { date: today } = nowLocal();
   const from = mondayOf(today);
   const to = addDays(from, 6);
   const semester = currentSemester();
@@ -28,17 +28,27 @@ export default async function HomePage() {
     : [];
 
   return (
-    <div className="mx-auto grid w-full max-w-[1200px] min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-5">
-      <div className="flex min-w-0 flex-col gap-5">
-        <QuickActions name={user.name} hour={Math.floor(minutes / 60)} />
-        <NextUp initial={eventsBetween(user, today, addDays(today, 14), locale)} />
-        {pending.length > 0 && (
-          <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            {t.calendar.page.pendingSlots(pending.length, pending[0].name)}{" "}
-            <Link href="/settings#courses" className="font-semibold underline">{t.calendar.page.chooseSlots}</Link>
+    <div className="space-y-5">
+      <header className="page-heading">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1>{t.calendar.page.heading}</h1>
+          {!user.welcomeSeenAt && <WelcomeTour name={user.name} />}
+        </div>
+        {group && (
+          <p className="mt-1.5 text-sm text-slate-600">
+            {group.faculty.shortName ?? group.faculty.name} · {group.spec.name} · {t.common.time.year(group.group.year)} · {group.label === t.common.time.wholeYear ? group.label : t.common.time.group(group.label)}
+            {semester ? ` · ${t.common.time.semester(semester.number, semester.academicYear)}` : ""}
           </p>
         )}
-        <WeekLabs user={user} date={today} locale={locale} />
+      </header>
+      {pending.length > 0 && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          {t.calendar.page.pendingSlots(pending.length, pending[0].name)}{" "}
+          <Link href="/settings#courses" className="font-semibold underline">{t.calendar.page.chooseSlots}</Link>
+        </p>
+      )}
+      <div className="schedule-layout">
+        <NextUp initial={eventsBetween(user, today, addDays(today, 14), locale)} />
         <Calendar
           initialEvents={eventsBetween(user, from, to, locale)}
           initialHolidays={holidaysBetween(from, to, locale)}
@@ -48,12 +58,7 @@ export default async function HomePage() {
           today={today}
           hasGroup={!!user.groupId}
         />
-        {group && (
-          <p className="text-xs text-slate-500">
-            {group.faculty.shortName ?? group.faculty.name} · {group.spec.name} · {t.common.time.year(group.group.year)} · {group.label === t.common.time.wholeYear ? group.label : t.common.time.group(group.label)}
-            {semester ? ` · ${t.common.time.semester(semester.number, semester.academicYear)}` : ""}
-          </p>
-        )}
+        <WeekLabs user={user} date={today} locale={locale} />
       </div>
     </div>
   );

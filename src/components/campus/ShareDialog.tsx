@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useT } from "@/i18n/client";
 import { qrUrl } from "./api";
-import { CampusDialog } from "./CampusDialog";
+import { Modal } from "../Modal";
 import { slug } from "./format";
 
 /** The route's address as a QR code to scan from the screen, print or put in a timetable. */
@@ -33,7 +33,7 @@ export function ShareDialog({
   const local = /^https?:\/\/(localhost|[^/]+\.localhost|127(\.\d+){3}|\[::1\])(:\d+)?\//.test(link);
 
   return (
-    <CampusDialog open={open} title={t.share.title} onClose={onClose}>
+    <Modal open={open} title={t.share.title} onClose={onClose}>
       <p className="break-words text-sm font-semibold text-slate-800">{title}</p>
       {open && !failed && (
         <img
@@ -60,6 +60,6 @@ export function ShareDialog({
           </a>
         )}
       </div>
-    </CampusDialog>
+    </Modal>
   );
 }

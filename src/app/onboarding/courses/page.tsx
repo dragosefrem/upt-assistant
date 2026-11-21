@@ -19,12 +19,12 @@ export default async function OnboardingCoursesPage() {
   return (
     <OnboardingFrame
       step={3}
-      bubble={
+      heading={
         <>
           <p className="text-sm font-semibold text-brand-700">
             {group ? `${group.spec.name} · ${messages.common.time.year(group.group.year)} · ${group.label}` : t.almostDone}
           </p>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{t.heading}</h1>
+          <h1>{t.heading}</h1>
           <p className="mt-1 text-sm leading-relaxed text-slate-600">{t.intro}</p>
         </>
       }

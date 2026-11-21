@@ -1,6 +1,6 @@
 /** Texts shared by the whole interface: navigation, event kinds, generic buttons. */
 const en = {
-  appName: "UPT Orar",
+  appName: "Poli",
   tagline: "Your timetable, exams and study buddy at Politehnica Timișoara.",
   holidays: {
     newYear: "New Year’s Day", newYearSecond: "Second day of the New Year",
@@ -24,6 +24,8 @@ const en = {
     signIn: "Sign in",
     register: "Create account",
     menu: "Account menu",
+    more: "More",
+    skipContent: "Skip to content",
     language: "Language",
     invitations: (n: number) => `${n} ${n === 1 ? "invitation" : "invitations"}`,
   },
@@ -91,7 +93,7 @@ const en = {
 };
 
 const ro: typeof en = {
-  appName: "UPT Orar",
+  appName: "Poli",
   tagline: "Orarul, examenele și asistentul tău la Politehnica Timișoara.",
   holidays: {
     newYear: "Anul Nou", newYearSecond: "A doua zi de Anul Nou",
@@ -115,6 +117,8 @@ const ro: typeof en = {
     signIn: "Autentificare",
     register: "Creează cont",
     menu: "Meniul contului",
+    more: "Mai multe",
+    skipContent: "Sari la conținut",
     language: "Limbă",
     invitations: (n: number) => (n === 1 ? "o invitație" : n < 20 ? `${n} invitații` : `${n} de invitații`),
   },

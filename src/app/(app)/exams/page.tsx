@@ -1,3 +1,4 @@
+import { Search } from "lucide-react";
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { exams, sources } from "@/db/schema";
@@ -42,6 +43,9 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
     ? db.select().from(sources).where(and(eq(sources.facultyId, user.facultyId), eq(sources.kind, "exams"))).all()
     : [];
 
+  const examCount = upcomingExams(user).length;
+  const savedBlocks = studyBlocks(user.id).length;
+
   const table = (list: Exam[]) => (
     <div className="overflow-x-auto">
       <table className="w-full text-left text-sm">
@@ -81,12 +85,10 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
+      <div className="page-heading">
+        <h1>{t.title}</h1>
         <p className="mt-1 text-sm text-slate-600">{t.intro(faculty?.shortName ?? null)}</p>
       </div>
-
-      <StudyPlanCard examCount={upcomingExams(user).length} savedBlocks={studyBlocks(user.id).length} />
 
       {mine.length ? (
         mine.map((e) => <ExamCard key={e.id} exam={e} />)
@@ -96,20 +98,18 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
         </p>
       )}
 
-      <section className="card overflow-hidden">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3">
-          <h2 className="text-sm font-semibold">{t.searchHeading(faculty?.shortName ?? null)}</h2>
-          <form className="ml-auto flex min-w-0 max-w-full gap-2">
+      {(examCount > 0 || savedBlocks > 0) && <StudyPlanCard examCount={examCount} savedBlocks={savedBlocks} />}
+
+      {(all.length > 0 || q) && <section className="card overflow-hidden">
+        <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+          <h2 className="flex items-center gap-2 text-sm font-semibold"><Search size={16} aria-hidden />{t.searchHeading(faculty?.shortName ?? null)}</h2>
+          <form className="flex w-full min-w-0 gap-2 sm:ml-auto sm:w-auto">
             <input name="q" defaultValue={q} className="field w-56 min-w-0" placeholder={t.searchPlaceholder} aria-label={t.searchLabel} />
             <button className="btn-secondary">{messages.common.actions.search}</button>
           </form>
         </div>
-        {q ? (
-          found.length ? table(found) : <p className="px-4 py-6 text-sm text-slate-600">{t.noMatch(q)}</p>
-        ) : (
-          <p className="px-4 py-6 text-sm text-slate-600">{t.imported(all.length)}</p>
-        )}
-      </section>
+        {q && (found.length ? table(found) : <p className="px-4 py-4 text-sm text-slate-600">{t.noMatch(q)}</p>)}
+      </section>}
 
       {documents.length > 0 && (
         <p className="text-xs text-slate-500">

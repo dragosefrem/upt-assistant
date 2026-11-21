@@ -10,7 +10,7 @@ export default async function ForgotPasswordPage() {
   const t = await getT();
   return (
     <>
-      <h2 className="mb-3 text-base font-semibold text-slate-900">{t.auth.forgot.title}</h2>
+      <h1 className="page-heading mb-4">{t.auth.forgot.title}</h1>
       <ForgotForm action={forgotPasswordAction} />
     </>
   );

@@ -2,8 +2,9 @@
 const en = {
   title: "Attendance",
   intro:
-    "Every recurring class, exam and personal event you marked, each with its own statistics. Open an event in the calendar to mark it — each date is recorded on its own.",
+    "See your attendance by course. Mark each session from your calendar.",
   overall: "Overall summary",
+  records: "Details and dates",
   attended: "Attended",
   missed: "Missed",
   rate: "Rate",
@@ -48,8 +49,9 @@ const en = {
 const ro: typeof en = {
   title: "Prezențe",
   intro:
-    "Fiecare oră, examen și eveniment personal recurent pe care l-ai marcat, fiecare cu statisticile lui. Deschide un eveniment în calendar ca să-l marchezi — fiecare dată se înregistrează separat.",
+    "Vezi prezențele pentru fiecare disciplină. Poți marca fiecare oră din calendar.",
   overall: "Rezumat general",
+  records: "Detalii și date",
   attended: "Prezent",
   missed: "Absent",
   rate: "Procent",

@@ -1,5 +1,8 @@
 "use client";
 
+import { ArrowRight, ArrowUpRight, ChevronDown, LocateFixed, MapPin, Route as RouteIcon, X } from "lucide-react";
+import Image from "next/image";
+import entrancePhoto from "../../../services/campuspath/examples/b419.jpg";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/client";
 import { campusHref, routeGoal, routeLink, routeTitle, sharedHref, type CampusLink } from "@/lib/campuspath/links";
@@ -14,7 +17,6 @@ import type { RouteKind } from "./RouteView";
 import { ShareDialog } from "./ShareDialog";
 import { StartPicker } from "./StartPicker";
 import { Thumb } from "./Thumb";
-import { YourRooms } from "./YourRooms";
 
 /** A starting point: a tour checkpoint (number) or a classroom (id), with what to call it. */
 interface Start {
@@ -59,7 +61,7 @@ function recalledStart(): Start | null {
 }
 
 /**
- * The campus page: the student's own rooms, the planner, and the walk in view. A request without
+ * A destination-first planner and its walkthrough. A request without
  * a starting point is a door-to-door journey: to the nearest building entrance on a map, then
  * inside on the walkthrough. The address bar follows the route (`/campus?to=…&dest=…`, with
  * `from=` when the student chose a start), and such an address opens it.
@@ -144,6 +146,7 @@ export function CampusPage({
       pending.current = input;
       retry.current = { input, from };
       setResult(null);
+      setUnavailable(false);
       setQuestion(null);
       setError(null);
       setFormError(null);
@@ -191,6 +194,12 @@ export function CampusPage({
   const loadExample = useCallback(async () => {
     const mine = ++generation.current;
     retry.current = "example";
+    pending.current = null;
+    setUnavailable(false);
+    setQuestion(null);
+    setError(null);
+    setFormError(null);
+    setResult(null);
     setBusy("example");
     try {
       const route = await campusApi.example();
@@ -203,7 +212,7 @@ export function CampusPage({
     }
   }, [showRoute, failWith]);
 
-  // First load: open the route the address asks for, else the example. Restore the starting point.
+  // Linked destinations open directly. A plain visit waits for the student to choose a room.
   const opened = useRef(false);
   useEffect(() => {
     if (opened.current) return;
@@ -235,10 +244,8 @@ export function CampusPage({
         from: first ? undefined : initial.from,
       };
       void plan(input, first);
-    } else {
-      void loadExample();
     }
-  }, [initial, plan, loadExample]);
+  }, [initial, plan]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,16 +259,17 @@ export function CampusPage({
   };
 
   const goToRoom = (room: TimetableRoom) => {
+    setBrowsing(false);
     setPrompt(room.room);
     applyContext({ building: room.building ?? undefined });
-    void plan({ prompt: room.room, hint: room.hint, auto: true });
+    void plan({ prompt: room.room, hint: room.hint });
   };
 
   const takeRoom = (room: Classroom) => {
     setBrowsing(false);
     setPrompt(room.code || room.label);
     applyContext({});
-    void plan({ prompt: room.code || room.label, destination: room.index, auto: true });
+    void plan({ prompt: room.code || room.label, destination: room.index });
   };
 
   const answer = (option: CampusPlace) => {
@@ -316,25 +324,16 @@ export function CampusPage({
   const startLabel = start?.name ?? startText;
 
   return (
-    <div className="space-y-5">
-      <header className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
-            {t.page.heading}
-            <span className="text-brand-500">.</span>
-          </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-600 sm:text-base">{t.page.lead}</p>
-        </div>
-        <Mascot size={56} className="hidden sm:inline-flex" wave />
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+      <header className="page-heading">
+        <h1>{t.page.heading}</h1>
+        <p className="mt-2 text-slate-600">{t.page.lead}</p>
       </header>
 
-      <YourRooms rooms={rooms} hasSemester={hasSemester} busyRoom={busy} onGo={goToRoom} />
-
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,23rem)_minmax(0,1fr)]">
-        <section aria-labelledby="campus-plan-title" className="card p-4 sm:p-5 lg:sticky lg:top-20">
-          <h2 id="campus-plan-title" className="text-lg font-semibold text-slate-900">
-            <span aria-hidden>🗺️ </span>
-            {t.planner.title}
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(20rem,.82fr)_minmax(0,1.18fr)]">
+        <section aria-labelledby="campus-plan-title" className="card p-5 sm:p-6 lg:sticky lg:top-20">
+          <h2 id="campus-plan-title" className="mb-5 flex items-center gap-2 text-xl font-semibold tracking-tight text-slate-900">
+            <RouteIcon size={22} className="text-brand-600" aria-hidden />{t.planner.title}
           </h2>
           <form onSubmit={submit} className="mt-3 space-y-4" noValidate>
             <div>
@@ -354,7 +353,7 @@ export function CampusPage({
                 className="field mt-1 resize-none text-base sm:text-sm"
                 placeholder={t.planner.placeholder}
                 value={prompt}
-                aria-describedby="campus-prompt-hint"
+                aria-describedby={formError ? "campus-form-error" : undefined}
                 aria-invalid={!!formError}
                 onChange={(e) => {
                   setPrompt(e.target.value);
@@ -367,22 +366,8 @@ export function CampusPage({
                   }
                 }}
               />
-              <p id="campus-prompt-hint" className="mt-1 text-xs text-slate-500">
-                {t.planner.hint}{" "}
-                <button
-                  type="button"
-                  className="font-medium text-brand-700 hover:underline"
-                  onClick={() => {
-                    setPrompt(t.planner.examplePrompt);
-                    setFormError(null);
-                    promptBox.current?.focus();
-                  }}
-                >
-                  {t.planner.tryExample(t.planner.examplePrompt)}
-                </button>
-              </p>
               {formError && (
-                <p role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
+                <p id="campus-form-error" role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
                   {formError}
                 </p>
               )}
@@ -399,7 +384,7 @@ export function CampusPage({
                   onClick={() => setPicker({ locate: true })}
                   aria-haspopup="dialog"
                 >
-                  <span aria-hidden>📍</span>
+                  <LocateFixed size={15} aria-hidden />
                   {t.planner.locate}
                 </button>
               </div>
@@ -411,11 +396,11 @@ export function CampusPage({
                   onClick={() => setPicker({ locate: false })}
                   className={`field flex min-w-0 flex-1 items-center gap-2 text-left ${startLabel ? "" : "text-slate-500"}`}
                 >
-                  <span aria-hidden>🚩</span>
+                  <MapPin size={16} className="shrink-0 text-brand-600" aria-hidden />
                   <span id="campus-start-value" className="min-w-0 flex-1 truncate">
                     {startLabel ?? t.planner.chooseStart}
                   </span>
-                  <span aria-hidden className="text-slate-400">▾</span>
+                  <ChevronDown size={15} aria-hidden />
                 </button>
                 {startLabel && (
                   <button
@@ -425,7 +410,7 @@ export function CampusPage({
                     aria-label={t.planner.clearStart}
                     title={t.planner.clearStart}
                   >
-                    <span aria-hidden>✕</span>
+                    <X size={16} aria-hidden />
                   </button>
                 )}
               </div>
@@ -433,20 +418,20 @@ export function CampusPage({
             </div>
 
             <button type="submit" className="btn-primary w-full py-2.5" disabled={!!busy && busy !== "example"}>
-              <span aria-hidden>🎬</span> {busy && busy !== "example" ? t.planner.submitting : t.planner.submit}
+              {busy && busy !== "example" ? t.planner.submitting : t.planner.submit}<ArrowRight size={17} aria-hidden />
             </button>
           </form>
         </section>
 
         <div ref={resultBox} className="min-w-0 scroll-mt-20 space-y-4">
-          {busy && busy !== "example" && (
+          {busy && (
             <p role="status" className="flex items-center gap-2 rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-200">
               <span className="typing-dots text-brand-500" aria-hidden>
                 <span />
                 <span />
                 <span />
               </span>
-              {t.planner.submitting}
+              {busy === "example" ? t.route.loading : t.planner.submitting}
             </p>
           )}
           {unavailable ? (
@@ -523,12 +508,17 @@ export function CampusPage({
                   onStartElsewhere={startElsewhere}
                 />
               ) : (
-                !question &&
-                !error && (
-                  <div className="card flex items-center gap-3 p-5 text-sm text-slate-600" role="status">
-                    <Mascot size={44} />
-                    {t.route.loading}
-                  </div>
+                !busy && !question && !error && (
+                  <section className="campus-example">
+                    <Image src={entrancePhoto} alt="" fill sizes="(min-width: 1024px) 640px, 100vw" className="object-cover" />
+                    <div className="campus-example-copy">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-white/85">{t.route.kindExample}</p>
+                      <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t.route.exampleName}</h2>
+                      <button type="button" className="btn mt-4 bg-white text-brand-900 hover:bg-brand-50" onClick={loadExample}>
+                        {t.route.openExample}<ArrowRight size={16} aria-hidden />
+                      </button>
+                    </div>
+                  </section>
                 )
               )}
             </>
@@ -536,7 +526,7 @@ export function CampusPage({
           <p className="px-1 text-xs text-slate-500">
             {t.page.credit}{" "}
             <a href="https://visit360.upt.ro/" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700 hover:underline">
-              {t.page.tourLink} ↗
+              {t.page.tourLink} <ArrowUpRight size={12} className="inline" aria-hidden />
             </a>
           </p>
         </div>
@@ -546,7 +536,7 @@ export function CampusPage({
         setPicker(null);
         resume.current = false;
       }} onPick={pickStart} />
-      <ClassroomBrowser open={browsing} onClose={() => setBrowsing(false)} onTake={takeRoom} />
+      {browsing && <ClassroomBrowser rooms={rooms} hasSemester={hasSemester} onClose={() => setBrowsing(false)} onTake={takeRoom} onTimetableRoom={goToRoom} />}
       {result && (
         <ShareDialog
           open={sharing}

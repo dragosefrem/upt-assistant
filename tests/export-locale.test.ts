@@ -82,7 +82,7 @@ describe("calendar export language", () => {
     expect(ro.text).toContain("Adaugă tot");
     expect(ro.text).toContain("https://orar.example.ro/api/ics/abc.ics");
     expect(ro.text).not.toMatch(/Hi,|calendar today|Import & export/);
-    expect(ro.attachments[0].filename).toBe("upt-orar.ics");
+    expect(ro.attachments[0].filename).toBe("poli.ics");
   });
 
   it("replaces only the signed-in student's subscription and serves the new link immediately", async () => {

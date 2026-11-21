@@ -74,7 +74,7 @@ describe("password reset", () => {
     await mail.deliver();
     const [message] = mail.send.mock.calls[0];
     expect(message.to).toBe(EMAIL);
-    expect(message.subject).toBe("Resetează-ți parola UPT Orar");
+    expect(message.subject).toBe("Resetează-ți parola Poli");
     expect(message.text).toContain("Salut, Ana,");
     const token = tokenIn(String(message.text));
     expect(message.text).toContain(`${BASE}/reset/${token}`);
@@ -154,7 +154,7 @@ describe("password reset", () => {
 
   it("writes the message in English too and escapes the name", () => {
     const mail = resetEmail({ name: "<b>Eve</b> O'Neil" }, `${BASE}/reset/abc`, "en");
-    expect(mail.subject).toBe("Reset your UPT Orar password");
+    expect(mail.subject).toBe("Reset your Poli password");
     expect(mail.text).toContain("Hi <b>Eve</b>,");
     expect(mail.html).toContain("Hi &lt;b&gt;Eve&lt;/b&gt;,");
   });

@@ -12,8 +12,7 @@ export async function generateMetadata() {
 }
 
 /**
- * Walks on campus through the UPT 360° tour: the student's own rooms first, a planner for any
- * room or place, and the walkthrough video with its steps. `?from=…&to=…&dest=…` opens a route.
+ * Campus route planner, classroom directory and UPT 360° walkthroughs. `?from=…&to=…&dest=…` opens a route.
  */
 export default async function CampusRoute({ searchParams }: PageProps<"/campus">) {
   const user = await requireOnboardedUser();

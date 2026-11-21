@@ -48,13 +48,13 @@ const en = {
     again: "Send me a new link",
   },
   mail: {
-    subject: "Reset your UPT Orar password",
+    subject: "Reset your Poli password",
     greeting: (name: string) => `Hi ${name},`,
-    line: "Someone asked to reset the password of your UPT Orar account. If it was you, choose a new password here:",
+    line: "Someone asked to reset the password of your Poli account. If it was you, choose a new password here:",
     button: "Choose a new password",
     expires: "The link works once, for one hour.",
     ignore: "If you did not ask for this, ignore this message: your password stays as it is.",
-    signature: "Poli, from UPT Orar",
+    signature: "Poli",
   },
 };
 
@@ -107,13 +107,13 @@ const ro: typeof en = {
     again: "Trimite-mi un link nou",
   },
   mail: {
-    subject: "Resetează-ți parola UPT Orar",
+    subject: "Resetează-ți parola Poli",
     greeting: (name: string) => `Salut, ${name},`,
-    line: "Cineva a cerut resetarea parolei contului tău UPT Orar. Dacă ai fost tu, alege-ți o parolă nouă aici:",
+    line: "Cineva a cerut resetarea parolei contului tău Poli. Dacă ai fost tu, alege-ți o parolă nouă aici:",
     button: "Alege o parolă nouă",
     expires: "Linkul merge o singură dată, timp de o oră.",
     ignore: "Dacă nu ai cerut tu asta, ignoră mesajul: parola ta rămâne neschimbată.",
-    signature: "Poli, de la UPT Orar",
+    signature: "Poli",
   },
 };
 

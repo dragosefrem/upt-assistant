@@ -16,7 +16,7 @@ export default async function ResetPasswordPage({ params }: PageProps<"/reset/[t
   if (!target) {
     return (
       <div className="space-y-4 text-center">
-        <h2 className="text-base font-semibold text-slate-900">{t.auth.reset.invalidTitle}</h2>
+        <h1 className="page-heading">{t.auth.reset.invalidTitle}</h1>
         <p className="text-sm text-slate-600">{t.auth.errors.invalid}</p>
         <Link href="/forgot" className="btn-primary w-full">{t.auth.reset.again}</Link>
       </div>
@@ -24,7 +24,7 @@ export default async function ResetPasswordPage({ params }: PageProps<"/reset/[t
   }
   return (
     <>
-      <h2 className="mb-3 text-base font-semibold text-slate-900">{t.auth.reset.title}</h2>
+      <h1 className="page-heading mb-4">{t.auth.reset.title}</h1>
       <ResetForm action={resetPasswordAction.bind(null, token)} email={target.email} />
     </>
   );

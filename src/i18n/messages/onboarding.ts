@@ -1,13 +1,13 @@
 /** Texts for setting up a new account and the welcome tour shown on the first visit. */
 const en = {
-  steps: { account: "Account", group: "Your group", courses: "Your courses", ready: "Ready" },
+  steps: { account: "Account", group: "Your group", courses: "Your courses" },
   stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
   signOut: "Sign out",
   profile: {
     title: "Set up your timetable",
     hello: (name: string) => `Welcome, ${name}!`,
     heading: "Where do you study?",
-    intro: "Tell me your faculty, year and group and I will load exactly your classes and exams. You can change this any time in Settings.",
+    intro: "Choose your faculty, programme and group to see the timetable for your year. You can change these in Settings.",
     helpTitle: "Not sure which group you are in?",
     help: [
       "Your faculty publishes the list of groups before the semester starts (on its website or notice board).",
@@ -33,7 +33,7 @@ const en = {
     submit: "Finish",
   },
   tour: {
-    title: "Welcome tour",
+    title: "Quick tour",
     skip: "Skip the tour",
     next: "Next",
     back: "Back",
@@ -49,11 +49,11 @@ const en = {
       {
         emoji: "🤖",
         title: () => "Meet Poli",
-        body: "Tap Poli in the top bar. Ask “Do I have lab this week?” or “When is Ana free tomorrow?” in English or Romanian. Poli checks your timetable and can also move an event for you.",
+        body: "Ask “Do I have a lab this week?” in the chat. Poli can also find a free hour with a classmate or move an event.",
       },
       {
         emoji: "🧭",
-        title: () => "Never hunt for a room again",
+        title: () => "Find a classroom",
         body: "Open any class and tap “Show me the way”, or go to Campus: you get a video walkthrough through the university's 360° tour, from the building entrance to the room.",
       },
       {
@@ -66,14 +66,14 @@ const en = {
 };
 
 const ro: typeof en = {
-  steps: { account: "Cont", group: "Grupa ta", courses: "Disciplinele tale", ready: "Gata" },
+  steps: { account: "Cont", group: "Grupa ta", courses: "Disciplinele tale" },
   stepOf: (n: number, total: number) => `Pasul ${n} din ${total}`,
   signOut: "Deconectare",
   profile: {
     title: "Configurează-ți orarul",
     hello: (name: string) => `Bine ai venit, ${name}!`,
     heading: "Unde înveți?",
-    intro: "Spune-mi facultatea, anul și grupa și îți încarc exact orele și examenele tale. Poți schimba oricând din Setări.",
+    intro: "Alege facultatea, specializarea și grupa ca să vezi orarul pentru anul tău. Le poți schimba din Setări.",
     helpTitle: "Nu știi sigur în ce grupă ești?",
     help: [
       "Facultatea publică listele cu grupele înainte de începerea semestrului (pe site sau la avizier).",
@@ -99,7 +99,7 @@ const ro: typeof en = {
     submit: "Finalizează",
   },
   tour: {
-    title: "Tur de bun venit",
+    title: "Tur rapid",
     skip: "Sari peste tur",
     next: "Înainte",
     back: "Înapoi",
@@ -115,7 +115,7 @@ const ro: typeof en = {
       {
         emoji: "🤖",
         title: () => "Fă cunoștință cu Poli",
-        body: "Apasă pe Poli în bara de sus. Întreabă-l „Am laborator săptămâna asta?” sau „Când e liberă Ana mâine?”, în română ori în engleză. Poli verifică orarul tău și îți poate muta și un eveniment.",
+        body: "Întreabă în chat „Am laborator săptămâna asta?”. Poli te poate ajuta și să găsești o oră liberă cu un coleg sau să muți un eveniment.",
       },
       {
         emoji: "🧭",

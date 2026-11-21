@@ -48,17 +48,14 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
-      <h1 className="text-2xl font-semibold tracking-tight">{s.page.title}</h1>
+      <h1 className="page-heading">{s.page.title}</h1>
 
-      <section className="card flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-4">
-        <div className="min-w-0">
-          <h2 className="text-base font-semibold">{s.language.title}</h2>
-          <p className="mt-0.5 text-sm text-slate-600">{s.language.hint}</p>
-        </div>
-        <LanguageSwitch />
-      </section>
-
-      <section className="card p-6">
+      <nav aria-label={s.page.title} className="flex flex-wrap gap-2">
+        {([["profile", s.study.title], ["courses", s.courses.title], ["export", s.export.title], ["language", s.language.title]] as const).map(([id, label]) => (
+          <a key={id} href={`#${id}`} className="btn-secondary text-xs">{label}</a>
+        ))}
+      </nav>
+      <section id="profile" className="card scroll-mt-20 p-6">
         <h2 className="text-base font-semibold">{s.study.title}</h2>
         <p className="mb-5 mt-1 text-sm text-slate-600">{s.study.hint}</p>
         <ProfilePicker
@@ -106,9 +103,17 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
         />
       </section>
 
+      <section id="language" className="card scroll-mt-20 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-4">
+        <div className="min-w-0">
+          <h2 className="text-base font-semibold">{s.language.title}</h2>
+          <p className="mt-0.5 text-sm text-slate-600">{s.language.hint}</p>
+        </div>
+        <LanguageSwitch />
+      </section>
+
       {faculty && (
-        <section className="card p-6">
-          <h2 className="text-base font-semibold">{s.documents.title(faculty.shortName ?? faculty.name)}</h2>
+        <details className="card p-5">
+          <summary className="cursor-pointer font-semibold">{s.documents.title(faculty.shortName ?? faculty.name)}</summary>
           <p className="mb-3 mt-1 text-sm text-slate-600">{s.documents.hint}</p>
           {documents.length ? (
             <ul className="divide-y divide-slate-100 text-sm">
@@ -136,7 +141,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
               )}
             </p>
           )}
-        </section>
+        </details>
       )}
 
       <p className="text-xs text-slate-500">{s.page.signedInAs(user.email, s.page.roles[user.role] ?? user.role)}</p>

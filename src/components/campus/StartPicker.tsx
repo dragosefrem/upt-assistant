@@ -6,7 +6,7 @@ import { rankPins, type RankedPin } from "@/lib/campuspath/links";
 import { isClassroom, type CampusPlace, type Checkpoint } from "@/lib/campuspath/types";
 import { useLocation } from "../LocationProvider";
 import { campusApi } from "./api";
-import { CampusDialog } from "./CampusDialog";
+import { Modal } from "../Modal";
 import { distanceLabel, roomFacts } from "./format";
 import { Thumb } from "./Thumb";
 
@@ -111,7 +111,7 @@ export function StartPicker({
   }, [locating, open, location.status, location.position, t, locale]);
 
   return (
-    <CampusDialog open={open} title={t.picker.title} onClose={onClose}>
+    <Modal open={open} title={t.picker.title} onClose={onClose}>
       <label className="sr-only" htmlFor="campus-start-search">
         {t.picker.search}
       </label>
@@ -159,7 +159,7 @@ export function StartPicker({
           </li>
         ))}
       </ul>
-    </CampusDialog>
+    </Modal>
   );
 }
 

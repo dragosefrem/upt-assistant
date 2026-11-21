@@ -5,17 +5,15 @@ const en = {
   page: {
     title: "Exams",
     intro: (faculty: string | null) =>
-      `Your exams published by ${faculty ?? "your faculty"} for your specialization and year, with a few tips from Poli.`,
+      `Exam dates for your programme and year at ${faculty ?? "your faculty"}.`,
     noneBooked:
       "No exam is booked for your specialization and year yet. Faculties fill in the session calendar as the exam period approaches. Search below to see what has been published so far.",
     noneImported:
-      "No exam schedule has been imported for your faculty. It either has not been published yet or is in a format that cannot be read automatically.",
-    searchHeading: (faculty: string | null) => `🔎 Search all exams${faculty ? ` at ${faculty}` : ""}`,
+      "Your faculty’s exam dates aren’t available here yet. Check the faculty announcements for the latest schedule.",
+    searchHeading: (faculty: string | null) => `Search all exams${faculty ? ` at ${faculty}` : ""}`,
     searchPlaceholder: "Course, teacher, room…",
     searchLabel: "Search exams",
     noMatch: (q: string) => `Nothing matches “${q}”.`,
-    imported: (n: number) =>
-      `${n} exam ${n === 1 ? "booking" : "bookings"} imported. Search by course name or acronym, teacher or room.`,
     columns: { date: "Date", time: "Time", course: "Course", where: "Where", audience: "For" },
     source: "Source:",
     lastImported: (date: string) => `last imported ${date}`,
@@ -39,7 +37,7 @@ const en = {
     unsupported: "This browser can't show notifications.",
     blocked: "Notifications are blocked for this site. Allow them in the browser's site settings to get reminders.",
     deviceTitle: "Notify me on this device",
-    deviceHint: "A week, a day, 2 h and 30 min before, while UPT Orar is open.",
+    deviceHint: "A week, a day, 2 h and 30 min before, while Poli is open.",
     exportBefore: "📱 Want reminders even when the app is closed? ",
     exportLink: "Export to Google Calendar",
     exportAfter: ": exams come with alerts a day and 2 hours before.",
@@ -119,13 +117,11 @@ const ro: typeof en = {
     noneBooked:
       "Încă nu e programat niciun examen pentru specializarea și anul tău. Facultățile completează calendarul sesiunii pe măsură ce se apropie examenele. Caută mai jos ca să vezi ce s-a publicat până acum.",
     noneImported:
-      "Pentru facultatea ta nu a fost importată nicio programare a examenelor. Fie nu a fost publicată încă, fie e într-un format care nu poate fi citit automat.",
-    searchHeading: (faculty: string | null) => `🔎 Caută în toate examenele${faculty ? ` de la ${faculty}` : ""}`,
+      "Datele examenelor nu sunt încă disponibile aici. Verifică anunțurile facultății pentru programul actualizat.",
+    searchHeading: (faculty: string | null) => `Caută în toate examenele${faculty ? ` de la ${faculty}` : ""}`,
     searchPlaceholder: "Materie, cadru didactic, sală…",
     searchLabel: "Caută examene",
     noMatch: (q: string) => `Nimic nu se potrivește cu „${q}”.`,
-    imported: (n: number) =>
-      `${plural("ro", n, { one: "O programare de examen importată", few: `${n} programări de examene importate`, other: `${n} de programări de examene importate` })}. Caută după numele sau acronimul materiei, cadrul didactic sau sală.`,
     columns: { date: "Data", time: "Ora", course: "Materia", where: "Unde", audience: "Pentru" },
     source: "Sursa:",
     lastImported: (date: string) => `ultimul import: ${date}`,
@@ -149,7 +145,7 @@ const ro: typeof en = {
     unsupported: "Browserul acesta nu poate afișa notificări.",
     blocked: "Notificările sunt blocate pentru acest site. Permite-le din setările site-ului, în browser, ca să primești reamintiri.",
     deviceTitle: "Anunță-mă pe acest dispozitiv",
-    deviceHint: "Cu o săptămână, o zi, 2 h și 30 min înainte, cât timp UPT Orar e deschis.",
+    deviceHint: "Cu o săptămână, o zi, 2 h și 30 min înainte, cât timp Poli e deschis.",
     exportBefore: "📱 Vrei reamintiri și când aplicația e închisă? ",
     exportLink: "Exportă în Google Calendar",
     exportAfter: ": examenele vin cu alerte cu o zi și cu 2 ore înainte.",

@@ -36,6 +36,7 @@ const en = {
 
   /** ProfilePicker: faculty → cycle → year → specialization → group. */
   profile: {
+    facultyPlaceholder: "Choose your faculty",
     faculty: "Faculty",
     chooseFaculty: "Choose your faculty to continue.",
     chooseYear: "Choose your year to continue.",
@@ -77,7 +78,7 @@ const en = {
   export: {
     title: "Export your calendar",
     flash: {
-      synced: "Connected. Your timetable is now in the “UPT Orar” calendar in Google Calendar.",
+      synced: "Connected. Your timetable is now in the “Poli” calendar in Google Calendar.",
       denied: "Google access was not granted, so nothing was exported.",
       failed: "Connecting to Google failed. Please try again.",
       unconfigured: "Google Calendar export is not configured on this server.",
@@ -90,7 +91,7 @@ const en = {
       sending: "Sending…",
       snapshot: "The file is a snapshot, so send it again after you change courses or events, or subscribe with the link below to stay in sync.",
       notConfigured: "E-mail isn’t set up on this server yet (it needs SMTP settings). Meanwhile, download the file below.",
-      sent: (to: string) => `Sent to ${to}. Open the attached upt-orar.ics, or import it into your calendar (the e-mail explains how).`,
+      sent: (to: string) => `Sent to ${to}. Open the attached poli.ics, or import it into your calendar (the e-mail explains how).`,
       failed: "The e-mail could not be sent.",
     },
     file: {
@@ -107,7 +108,7 @@ const en = {
     },
     google: {
       title: "Google Calendar",
-      hint: "Creates a separate calendar called “UPT Orar” in your Google account with your classes, exams, personal events and confirmed group events you’re attending. The app can only see and change that one calendar.",
+      hint: "Creates a separate calendar called “Poli” in your Google account with your classes, exams, personal events and confirmed group events you’re attending. The app can only see and change that one calendar.",
       exportAgain: "Export again",
       exporting: "Exporting…",
       disconnect: "Disconnect",
@@ -144,17 +145,17 @@ const en = {
     subject: "Your UPT timetable",
     greeting: "Hi,",
     attached: (semester: string | null) =>
-      `Your UPT timetable is attached as upt-orar.ics: your classes, exams and own events${semester ? ` for ${semester}` : ""}.`,
+      `Your UPT timetable is attached as poli.ics: your classes, exams and own events${semester ? ` for ${semester}` : ""}.`,
     howTo: "To add it to your calendar:",
     google:
-      "- Google Calendar, on a computer: Settings > Import & export > Import, choose upt-orar.ics and the calendar to add it to. Tip: create a calendar called \"UPT Orar\" first, so you can remove it all in one go later.",
+      "- Google Calendar, on a computer: Settings > Import & export > Import, choose poli.ics and the calendar to add it to. Tip: create a calendar called \"Poli\" first, so you can remove it all in one go later.",
     apple: "- iPhone, iPad or Mac: open the attachment and choose Add All.",
     outlook: "- Outlook: open the attachment and add it to your calendar.",
     snapshot:
       "The file is a snapshot of your calendar today. After you change your group, courses or events, send it again from Settings > Export your calendar.",
     subscribe:
       "To stay in sync automatically instead, subscribe to this link (in Google Calendar: Other calendars > + > From URL). Anyone with the link can see your timetable, so keep it to yourself:",
-    signature: "UPT Orar",
+    signature: "Poli",
   },
 };
 
@@ -194,6 +195,7 @@ const ro: typeof en = {
   },
 
   profile: {
+    facultyPlaceholder: "Alege facultatea",
     faculty: "Facultatea",
     chooseFaculty: "Alege facultatea ca să continui.",
     chooseYear: "Alege anul de studiu ca să continui.",
@@ -233,7 +235,7 @@ const ro: typeof en = {
   export: {
     title: "Exportă calendarul",
     flash: {
-      synced: "Gata, conectat. Orarul tău e acum în calendarul „UPT Orar” din Google Calendar.",
+      synced: "Gata, conectat. Orarul tău e acum în calendarul „Poli” din Google Calendar.",
       denied: "Nu ai dat acces la Google, așa că nu s-a exportat nimic.",
       failed: "Conectarea la Google nu a reușit. Încearcă din nou.",
       unconfigured: "Exportul în Google Calendar nu e configurat pe acest server.",
@@ -246,7 +248,7 @@ const ro: typeof en = {
       sending: "Se trimite…",
       snapshot: "Fișierul surprinde calendarul de acum, așa că trimite-l din nou după ce schimbi disciplinele sau evenimentele — sau abonează-te cu linkul de mai jos ca să rămână mereu la zi.",
       notConfigured: "Trimiterea de e-mailuri nu e încă configurată pe acest server (are nevoie de setări SMTP). Până atunci, descarcă fișierul de mai jos.",
-      sent: (to: string) => `Trimis la ${to}. Deschide atașamentul upt-orar.ics sau importă-l în calendarul tău (în e-mail scrie cum).`,
+      sent: (to: string) => `Trimis la ${to}. Deschide atașamentul poli.ics sau importă-l în calendarul tău (în e-mail scrie cum).`,
       failed: "E-mailul nu a putut fi trimis.",
     },
     file: {
@@ -263,7 +265,7 @@ const ro: typeof en = {
     },
     google: {
       title: "Google Calendar",
-      hint: "Creează în contul tău Google un calendar separat, „UPT Orar”, cu orele, examenele, evenimentele personale și evenimentele de grup confirmate la care participi. Aplicația poate vedea și modifica doar acel calendar.",
+      hint: "Creează în contul tău Google un calendar separat, „Poli”, cu orele, examenele, evenimentele personale și evenimentele de grup confirmate la care participi. Aplicația poate vedea și modifica doar acel calendar.",
       exportAgain: "Exportă din nou",
       exporting: "Se exportă…",
       disconnect: "Deconectează",
@@ -300,17 +302,17 @@ const ro: typeof en = {
     subject: "Orarul tău UPT",
     greeting: "Salut,",
     attached: (semester: string | null) =>
-      `Ți-am atașat orarul UPT în fișierul upt-orar.ics: orele, examenele și evenimentele tale${semester ? ` din ${semester}` : ""}.`,
+      `Ți-am atașat orarul UPT în fișierul poli.ics: orele, examenele și evenimentele tale${semester ? ` din ${semester}` : ""}.`,
     howTo: "Ca să-l adaugi în calendar:",
     google:
-      "- Google Calendar, de pe calculator: Setări > Importă și exportă > Importă, alege upt-orar.ics și calendarul în care să-l adaugi. Sfat: creează mai întâi un calendar numit „UPT Orar”, ca să-l poți șterge dintr-odată mai târziu.",
+      "- Google Calendar, de pe calculator: Setări > Importă și exportă > Importă, alege poli.ics și calendarul în care să-l adaugi. Sfat: creează mai întâi un calendar numit „Poli”, ca să-l poți șterge dintr-odată mai târziu.",
     apple: "- iPhone, iPad sau Mac: deschide atașamentul și alege Adaugă tot.",
     outlook: "- Outlook: deschide atașamentul și adaugă-l în calendar.",
     snapshot:
       "Fișierul surprinde calendarul tău de azi. După ce îți schimbi grupa, disciplinele sau evenimentele, trimite-l din nou din Setări > Exportă calendarul.",
     subscribe:
       "Dacă vrei să rămână la zi automat, abonează-te la linkul de mai jos (în Google Calendar: Alte calendare > + > Din adresa URL). Oricine are linkul îți poate vedea orarul, așa că păstrează-l doar pentru tine:",
-    signature: "UPT Orar",
+    signature: "Poli",
   },
 };
 

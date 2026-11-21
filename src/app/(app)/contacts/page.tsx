@@ -79,15 +79,25 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
       <InvitationRefresh />
-      <header className="flex flex-wrap items-center justify-between gap-3">
+      <header className="page-heading flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">{page.title}</h1>
+          <h1>{page.title}</h1>
           <p className="mt-1 text-sm text-slate-600">{page.intro}</p>
         </div>
         <Link className="btn-primary" href="/contacts/plan">{page.planEvent}</Link>
       </header>
       <div className="grid items-start gap-5 md:grid-cols-2">
         <div className="space-y-5">
+          {requests.length > 0 && <section className="card p-5">
+            <h2 className="text-lg font-semibold">{page.requests.heading}</h2>
+            {(["incoming", "sent"] as const).map((kind) => {
+              const list = requests.filter((p) => (p.requestedBy !== user.id) === (kind === "incoming"));
+              return list.length > 0 && <div className="mt-3" key={kind}>
+                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">{page.requests[kind]}</h3>
+                <ul className="divide-y divide-slate-100">{list.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>
+              </div>;
+            })}
+          </section>}
           <section className="card p-5">
             <h2 className="text-lg font-semibold">{page.find.heading}</h2>
             <form action="/contacts" noValidate className="mt-3">
@@ -106,16 +116,6 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
                 </div>)}
             </div>}
           </section>
-          {requests.length > 0 && <section className="card p-5">
-            <h2 className="text-lg font-semibold">{page.requests.heading}</h2>
-            {(["incoming", "sent"] as const).map((kind) => {
-              const list = requests.filter((p) => (p.requestedBy !== user.id) === (kind === "incoming"));
-              return list.length > 0 && <div className="mt-3" key={kind}>
-                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">{page.requests[kind]}</h3>
-                <ul className="divide-y divide-slate-100">{list.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>
-              </div>;
-            })}
-          </section>}
           <section className="card p-5">
             <h2 className="text-lg font-semibold">{page.list.heading}</h2>
             {contacts.length ? <ul className="mt-1 divide-y divide-slate-100">{contacts.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>

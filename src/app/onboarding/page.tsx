@@ -17,10 +17,9 @@ export default async function OnboardingPage() {
   return (
     <OnboardingFrame
       step={2}
-      bubble={
+      heading={
         <>
-          <p className="text-sm font-semibold text-brand-700">{t.hello(user.name.split(/\s+/)[0] || user.name)}</p>
-          <h1 className="text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">{t.heading}</h1>
+          <h1>{t.heading}</h1>
           <p className="mt-1 text-sm leading-relaxed text-slate-600">{t.intro}</p>
         </>
       }
@@ -41,7 +40,7 @@ export default async function OnboardingPage() {
         />
       </div>
       <details className="card mt-4 px-4 py-3 text-sm">
-        <summary className="cursor-pointer font-medium text-slate-800">💡 {t.helpTitle}</summary>
+        <summary className="cursor-pointer font-medium text-slate-800">{t.helpTitle}</summary>
         <ul className="mt-2 list-disc space-y-1.5 pl-5 leading-relaxed text-slate-600">
           {t.help.map((line) => (<li key={line}>{line}</li>))}
         </ul>

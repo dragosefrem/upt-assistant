@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
@@ -156,9 +157,6 @@ export function Calendar({
   }, [load, range]);
 
   useEffect(() => {
-    // Phones get the single-day view, where a week grid would be unreadable.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time adaptation to the viewport after hydration
-    if (window.matchMedia("(max-width: 640px)").matches) setView("day");
     const tick = setInterval(() => setNow(nowLocal()), 60_000);
     return () => clearInterval(tick);
   }, []);
@@ -239,32 +237,27 @@ export function Calendar({
   };
 
   return (
-    <section className="card flex min-h-0 flex-col overflow-hidden">
-      <header className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3">
-        <div className="flex items-center gap-1">
-          <button className="btn-ghost px-2" onClick={() => step(-1)} aria-label={t.toolbar.previous} title={t.toolbar.previous}>‹</button>
-          <button className="btn-secondary" onClick={() => setAnchor(today)}>{messages.common.time.today}</button>
-          <button className="btn-ghost px-2" onClick={() => step(1)} aria-label={t.toolbar.next} title={t.toolbar.next}>›</button>
-        </div>
-        <h2 className="order-first w-full truncate text-base font-semibold text-slate-900 sm:order-none sm:w-auto sm:min-w-0 sm:flex-1">
+    <section className="card timetable flex min-h-0 min-w-0 flex-col overflow-hidden">
+      <header className="calendar-toolbar">
+        <h2 className="calendar-range">
           {title}
-          {view !== "month" && teachingWeek && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{messages.common.time.week(teachingWeek)}</span>}
-          {loading && <span className="ml-2 text-xs font-normal text-slate-400">{messages.common.status.loading}</span>}
+          {view !== "month" && teachingWeek != null && <span className="week-label">{messages.common.time.week(teachingWeek)}</span>}
         </h2>
-        <div role="group" aria-label={t.toolbar.viewLabel} className="ml-auto flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm sm:ml-0">
+        <div className="calendar-dates">
+          <button type="button" className="btn-ghost px-2" onClick={() => step(-1)} aria-label={t.toolbar.previous}><ChevronLeft size={17} aria-hidden /></button>
+          <button type="button" className="btn-ghost px-2.5" onClick={() => setAnchor(today)}>{messages.common.time.today}</button>
+          <button type="button" className="btn-ghost px-2" onClick={() => step(1)} aria-label={t.toolbar.next}><ChevronRight size={17} aria-hidden /></button>
+        </div>
+        <div role="group" aria-label={t.toolbar.viewLabel} className="segments calendar-views">
           {(["day", "week", "month"] as const).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`rounded-md px-3 py-1 ${view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
-              aria-pressed={view === v}
-            >
-              {t.toolbar.views[v]}
-            </button>
+            <button key={v} type="button" onClick={() => setView(v)} aria-pressed={view === v}>{t.toolbar.views[v]}</button>
           ))}
         </div>
-        <button className="btn-primary" onClick={() => setAdding({ date: view === "month" ? today : anchor })}>{t.toolbar.addEvent}</button>
+        <button type="button" className="btn-primary calendar-add" onClick={() => setAdding({ date: view === "month" && today.startsWith(anchor.slice(0, 7)) ? today : anchor })}>
+          <Plus size={16} aria-hidden />{t.grid.addEvent}
+        </button>
       </header>
+      {loading && <p role="status" className="px-4 pt-2 text-xs text-slate-600">{messages.common.status.loading}</p>}
 
       {error && <p role="alert" className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
       {hiddenClass && (
@@ -293,8 +286,43 @@ export function Calendar({
           onAddOnDay={(d) => setAdding({ date: d })}
         />
       ) : (
-        <div className="overflow-auto">
-          <div className="grid min-w-full" style={{ gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(${view === "day" ? "0" : "7.5rem"}, 1fr))` }}>
+        <>
+          {view === "week" && (
+            <div className="week-agenda md:hidden">
+              {visible.length > 0 || days.some((day) => holidayNames.has(day)) ? days.map((date) => {
+                const dayEvents = visible.filter((event) => event.date === date);
+                return (
+                  <section key={date} className="border-t border-slate-100 px-4 py-2.5 first:border-0">
+                    <button type="button" className="flex w-full items-center gap-2 py-1.5 text-left text-sm font-semibold text-brand-900"
+                      onClick={() => { setAnchor(date); setView("day"); }}>
+                      {capitalize(formatDate(date, { weekday: "long", day: "numeric", month: "short" }, locale))}
+                      {date === today && <span className="week-label">{messages.common.time.today}</span>}
+                      <ChevronRight size={15} className="ml-auto shrink-0" aria-hidden />
+                    </button>
+                    {holidayNames.has(date) && <p className="my-1 text-xs font-medium text-amber-800">{holidayNames.get(date)}</p>}
+                    {dayEvents.length ? (
+                      <ul className="agenda-enter">
+                        {dayEvents.map((event) => (
+                          <li key={event.id}>
+                            <button type="button" onClick={() => setSelected(event)} className="agenda-event">
+                              <span className="font-mono text-xs tabular-nums">{formatMinutes(event.startMin)}</span>
+                              <span className={`h-7 w-1 shrink-0 rounded-full ${kindStyle(event.kind).dot}`} aria-hidden />
+                              <span className="min-w-0 flex-1"><strong className="block text-sm">{event.title}</strong>
+                                <span className="text-xs text-slate-600">{kindLabel(event.kind, locale)}{event.room ? ` · ${event.room}` : ""}</span>
+                              </span>
+                              <AttendanceMark status={event.attendance} />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : <p className="text-xs text-slate-600">{t.grid.freeDay}</p>}
+                  </section>
+                );
+              }) : !loading && <p className="p-5 text-sm text-slate-600">{hasGroup ? t.grid.emptyWithGroup : t.grid.emptyNoGroup}</p>}
+            </div>
+          )}
+          <div className={view === "week" ? "hidden overflow-auto md:block" : "overflow-auto"}>
+          <div className="grid min-w-full" style={{ gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(${view === "day" ? "0" : "5.6rem"}, 1fr))` }}>
             <div className="sticky top-0 z-20 border-b border-slate-200 bg-white" />
             {days.map((d) => (
               <button
@@ -388,17 +416,18 @@ export function Calendar({
               {hasGroup ? t.grid.emptyWithGroup : t.grid.emptyNoGroup}
             </p>
           )}
-        </div>
+          </div>
+        </>
       )}
 
-      <footer aria-label={t.grid.legend} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 px-4 py-2 text-xs text-slate-500">
-        {["course", "seminar", "lab", "project", "exam", "personal"].map((k) => (
+      {visible.length > 0 && <footer aria-label={t.grid.legend} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 px-4 py-2 text-xs text-slate-500">
+        {Array.from(new Set(visible.map((event) => event.kind))).map((k) => (
           <span key={k} className="inline-flex items-center gap-1.5">
             <span className={`h-2 w-2 rounded-full ${kindStyle(k).dot}`} />
             {kindLabel(k, locale)}
           </span>
         ))}
-      </footer>
+      </footer>}
 
       {selected && <EventDialog event={selected} onHidden={setHiddenClass} onClose={() => setSelected(null)} />}
       {adding && (
@@ -411,7 +440,7 @@ export function Calendar({
         />
       )}
       {toast && (
-        <p role="status" className="animate-pop fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
+        <p role="status" className="animate-pop fixed bottom-20 lg:bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
           {toast}
         </p>
       )}
@@ -451,19 +480,20 @@ function MonthGrid({
         const inMonth = d.startsWith(month);
         const holiday = holidayNames.get(d);
         return (
-          <div key={d} className={`group/cell relative min-h-24 border-b border-l border-slate-100 transition hover:bg-slate-50 ${inMonth ? "" : "bg-slate-50/60 text-slate-400"}`}>
+          <div key={d} className={`group/cell relative min-w-0 min-h-16 sm:min-h-24 border-b border-l border-slate-100 transition hover:bg-slate-50 ${inMonth ? "" : "bg-slate-50/60 text-slate-400"}`}>
           <button
             type="button"
             onClick={() => onAddOnDay(d)}
-            className="absolute right-0 top-0 z-10 flex h-8 w-1/2 max-w-8 items-center justify-center text-sm font-bold text-white opacity-0 transition group-hover/cell:opacity-100 focus-visible:opacity-100 max-sm:opacity-60"
+            className="absolute right-0 top-0 z-10 hidden sm:flex h-8 w-1/2 max-w-8 items-center justify-center text-sm font-bold text-white opacity-0 transition group-hover/cell:opacity-100 focus-visible:opacity-100"
             aria-label={t.grid.addOn(formatDate(d, { weekday: "long", day: "numeric", month: "long" }, locale))}
             title={t.grid.addEvent}
           >
             <span className="grid h-5 w-5 place-items-center rounded-full bg-brand-600 shadow-sm sm:h-6 sm:w-6">+</span>
           </button>
           <button
+            aria-label={formatDate(d, { weekday: "long", day: "numeric", month: "long" }, locale)}
             onClick={() => onPickDay(d)}
-            className="flex h-full min-h-24 w-full min-w-0 flex-col justify-start px-0.5 py-1.5 text-left sm:p-1.5"
+            className="flex h-full min-h-16 sm:min-h-24 w-full min-w-0 flex-col justify-start px-0.5 py-1.5 text-left sm:p-1.5"
           >
             <span className={`inline-flex h-5 min-w-5 self-start items-center justify-center rounded-full px-0.5 text-xs font-semibold sm:h-6 sm:min-w-6 sm:px-1 sm:text-sm ${d === today ? "bg-brand-600 text-white" : ""}`}>
               {+d.slice(8)}
@@ -472,7 +502,7 @@ function MonthGrid({
               <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600" />
               <span className="truncate">{holiday}</span>
             </span>}
-            <span className="mt-1 block min-w-0 space-y-0.5">
+            <span className="mt-1 block w-full min-w-0 space-y-0.5">
               {dayEvents.slice(0, 3).map((e) => (
                 <span key={e.id} className="flex items-center gap-1 truncate">
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />

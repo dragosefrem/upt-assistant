@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useLayoutEffect, useId, useRef } from "react";
+import { X } from "lucide-react";
 import { useT } from "@/i18n/client";
 
 /**
@@ -24,25 +25,27 @@ export function Modal({
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     if (open && !dialog.open) dialog.showModal();
-    if (!open && dialog.open) dialog.close();
+    return () => { if (dialog.open) dialog.close(); };
   }, [open]);
 
   return (
     <dialog
       ref={ref}
       aria-labelledby={titleId}
-      onClose={(event) => {
-        if (event.target === event.currentTarget) onClose();
+      onCancel={(event) => {
+        if (event.target !== event.currentTarget) return;
+        event.preventDefault();
+        onClose();
       }}
       onMouseDown={(e) => {
         // A press on the backdrop (the dialog element itself, outside its content) closes it.
         if (e.target === e.currentTarget) onClose();
       }}
-      className={`fixed inset-x-0 bottom-0 top-auto m-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden rounded-t-3xl bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-900/40 open:motion-safe:animate-pop sm:inset-0 sm:m-auto sm:max-h-[85dvh] sm:rounded-3xl ${
+      className={`app-dialog fixed inset-x-0 bottom-0 top-auto m-0 flex max-h-[92dvh] w-full max-w-none flex-col overflow-hidden rounded-t-3xl bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-900/40 sm:inset-0 sm:m-auto sm:max-h-[85dvh] sm:rounded-3xl ${
         wide ? "sm:max-w-3xl" : "sm:max-w-lg"
       } [&:not([open])]:hidden`}
     >
@@ -51,7 +54,7 @@ export function Modal({
           {title}
         </h2>
         <button type="button" className="btn-ghost -mr-2 px-2.5" onClick={onClose} aria-label={t.common.actions.close} title={t.common.actions.close}>
-          <span aria-hidden>✕</span>
+          <X size={18} aria-hidden />
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-5 pt-3 sm:px-5">{children}</div>

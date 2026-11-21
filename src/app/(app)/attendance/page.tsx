@@ -22,9 +22,6 @@ function SeriesCard({ series, details, t, locale }: { series: SeriesTally; detai
   const when = `${dayName(series.weekday, locale)} ${formatMinutes(series.startMin)}–${formatMinutes(series.endMin)}`;
   // [label, value, emphasised]
   const rows: Array<[string, React.ReactNode, boolean?]> = [
-    [details.kind === "personal" ? f.event : f.course, details.title, true],
-    [f.abbr, details.abbr && details.abbr !== details.title ? details.abbr : null],
-    [f.type, kind],
     [f.date, details.examDates.map((d) => formatDate(d, { weekday: "long", day: "numeric", month: "long", year: "numeric" }, locale)).join(" / ")],
     [f.when, details.examDates.length ? `${formatMinutes(series.startMin)}–${formatMinutes(series.endMin)}` : when],
     [f.weeks, details.weeks],
@@ -51,17 +48,6 @@ function SeriesCard({ series, details, t, locale }: { series: SeriesTally; detai
         </p>
       </header>
 
-      <dl className="grid grid-cols-[minmax(6.5rem,auto)_1fr] gap-x-3 gap-y-1.5 border-b border-slate-100 px-4 py-3 text-sm">
-        {rows
-          .filter(([, value]) => value)
-          .map(([label, value, strong]) => (
-            <div key={label} className="contents">
-              <dt className="text-slate-500">{label}</dt>
-              <dd className={strong ? "font-medium text-slate-900" : "text-slate-800"}>{value}</dd>
-            </div>
-          ))}
-      </dl>
-
       <dl className="grid grid-cols-3 divide-x divide-slate-100 border-b border-slate-100 text-center">
         <div className="px-2 py-2.5">
           <dt className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{t.attended}</dt>
@@ -80,21 +66,35 @@ function SeriesCard({ series, details, t, locale }: { series: SeriesTally; detai
         <div className="h-full bg-emerald-500" style={{ width: `${series.rate ?? 0}%` }} />
       </div>
 
-      <ul className="max-h-64 divide-y divide-slate-100 overflow-y-auto text-sm" aria-label={t.datesFor(series.title)}>
-        {series.records.map((r) => {
-          const attended = r.status === "attended";
-          return (
-            <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-2">
-              <span className="font-medium text-slate-800">{formatDate(r.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" }, locale)}</span>
-              <span
-                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${attended ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
-              >
-                {attended ? t.markAttended : t.markMissed}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
+      <details>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-brand-700">{t.records}</summary>
+        <dl className="grid grid-cols-[minmax(6.5rem,auto)_1fr] gap-x-3 gap-y-1.5 border-b border-slate-100 px-4 py-3 text-sm">
+          {rows
+            .filter(([, value]) => value)
+            .map(([label, value, strong]) => (
+              <div key={label} className="contents">
+                <dt className="text-slate-500">{label}</dt>
+                <dd className={strong ? "font-medium text-slate-900" : "text-slate-800"}>{value}</dd>
+              </div>
+            ))}
+        </dl>
+
+        <ul className="max-h-64 divide-y divide-slate-100 overflow-y-auto text-sm" aria-label={t.datesFor(series.title)}>
+          {series.records.map((r) => {
+            const attended = r.status === "attended";
+            return (
+              <li key={r.id} className="flex items-center justify-between gap-3 px-4 py-2">
+                <span className="font-medium text-slate-800">{formatDate(r.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" }, locale)}</span>
+                <span
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${attended ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}
+                >
+                  {attended ? t.markAttended : t.markMissed}
+                </span>
+              </li>
+            );
+          })}
+        </ul>
+      </details>
     </section>
   );
 }
@@ -115,19 +115,19 @@ export default async function AttendancePage() {
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
+      <div className="page-heading">
+        <h1>{t.title}</h1>
         <p className="mt-1 text-sm text-slate-600">{t.intro}</p>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-3" aria-label={t.overall}>
+      {summary.series.length > 0 && <section className="grid grid-cols-3 gap-2 sm:gap-4" aria-label={t.overall}>
         {stats.map((s) => (
-          <div key={s.label} className="card px-4 py-3">
+          <div key={s.label} className="card px-2.5 py-3 sm:px-4">
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{s.label}</p>
             <p className={`mt-1 text-3xl font-semibold tabular-nums ${s.tone}`}>{s.value}</p>
           </div>
         ))}
-      </section>
+      </section>}
 
       {summary.series.length ? (
         <div className="grid gap-4 md:grid-cols-2">

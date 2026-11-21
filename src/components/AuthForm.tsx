@@ -37,6 +37,7 @@ export function AuthForm({ mode, action, invite, notice }: { mode: "login" | "re
   const inviteQuery = invite ? `?invite=${encodeURIComponent(invite)}` : "";
   return (
     <form action={formAction} noValidate className="space-y-4">
+      <h1 className="page-heading mb-6">{register ? t.auth.register.title : t.auth.login.title}</h1>
       {invite && <input type="hidden" name="invite" value={invite} />}
       {invite && !state.error && <p className="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900">{t.auth.register.invited}</p>}
       {notice && !state.error && <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{notice}</p>}

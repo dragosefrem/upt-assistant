@@ -70,12 +70,6 @@ export function ProfilePicker({
   const missing = !faculty ? p.chooseFaculty : !specs.length ? p.noCycle : !year ? p.chooseYear : !validSpec ? p.chooseProgramme
     : groups.length && !groups.some((g) => g.id === groupId) ? p.chooseGroup : "";
 
-  const step = (n: number, title: string, done: boolean) => (
-    <div className="mb-2 flex items-center gap-2">
-      <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold ${done ? "bg-brand-600 text-white" : "bg-slate-200 text-slate-600"}`}>{n}</span>
-      <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-    </div>
-  );
   const chip = (active: boolean) =>
     `rounded-lg border px-3 py-2 text-left text-sm transition ${active ? "border-brand-500 bg-brand-50 text-brand-900 ring-1 ring-brand-500" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"}`;
 
@@ -94,29 +88,19 @@ export function ProfilePicker({
 
   return (
     <form action={formAction} className="space-y-7">
-      <input type="hidden" name="facultyId" value={facultyId ?? ""} />
       <input type="hidden" name="specializationId" value={specId ?? ""} />
       <input type="hidden" name="year" value={year ?? ""} />
       <input type="hidden" name="groupId" value={groupId ?? ""} />
 
       <section>
-        {step(1, p.faculty, !!facultyId)}
-        <div className="grid gap-2 sm:grid-cols-2">
-          {data.faculties.map((f) => (
-            <button
-              type="button"
-              key={f.id}
-              className={chip(f.id === facultyId)}
-              aria-pressed={f.id === facultyId}
-              onClick={() => {
-                if (f.id !== facultyId) choose({ facultyId: f.id, year: null, specializationId: null, groupId: null });
-              }}
-            >
-              {f.shortName && <span className="mr-2 font-semibold">{f.shortName}</span>}
-              <span className="text-slate-600">{f.name.replace(/^Facultatea de /, "")}</span>
-            </button>
-          ))}
-        </div>
+        <label htmlFor="profile-faculty" className="label">{p.faculty}</label>
+        <select id="profile-faculty" name="facultyId" className="field" value={facultyId ?? ""}
+          onChange={(e) => {
+            choose({ facultyId: Number(e.target.value), year: null, specializationId: null, groupId: null });
+          }}>
+          <option value="" disabled>{p.facultyPlaceholder}</option>
+          {data.faculties.map((f) => <option key={f.id} value={f.id}>{f.shortName ? `${f.shortName} · ` : ""}{f.name}</option>)}
+        </select>
         {!data.faculties.length && (
           <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{p.noFaculties}</p>
         )}
@@ -124,7 +108,7 @@ export function ProfilePicker({
 
       {facultyId && (
         <section>
-          {step(2, p.cycleAndYear, !!year)}
+          <h2 className="label">{p.cycleAndYear}</h2>
           <div className="flex flex-wrap items-center gap-2">
             {(["bachelor", "master"] as const).map((d) => (
               <button
@@ -159,7 +143,7 @@ export function ProfilePicker({
 
       {facultyId && year && (
         <section>
-          {step(3, p.specialization, validSpec)}
+          <h2 className="label">{p.specialization}</h2>
           <div className="grid gap-2 sm:grid-cols-2">
             {scheduled.map(specButton)}
           </div>
@@ -175,7 +159,7 @@ export function ProfilePicker({
 
       {validSpec && year && (
         <section>
-          {step(4, p.group, !!groupId)}
+          <h2 className="label">{p.group}</h2>
           {groups.length ? (
             <div className="space-y-3">
               {seriesList.map((series) => (

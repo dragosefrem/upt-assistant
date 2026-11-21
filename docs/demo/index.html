@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>UPT Orar · Demo</title>
+<title>Poli · Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -258,10 +258,10 @@
 </style>
 </head>
 <body>
-<div class="demo-band">Demo interactiv UPT Orar · orar de exemplu · evenimentele adăugate rămân doar în browserul tău</div>
+<div class="demo-band">Demo interactiv Poli · orar de exemplu · evenimentele adăugate rămân doar în browserul tău</div>
 <header class="top">
   <div class="top-in">
-    <div class="logo"><span data-mascot="34"></span><span class="t">UPT <b>Orar</b></span></div>
+    <div class="logo"><span data-mascot="34"></span><span class="t">Poli</span></div>
     <nav>
       <button class="nav on" data-view="home">📅 <span class="t">Calendar</span></button>
       <button class="nav" data-view="exams">📝 <span class="t">Exams</span></button>
@@ -829,7 +829,7 @@
         <p class="muted">${fmt(r.date, { weekday: "short", day: "numeric", month: "short" })}, ${hm(r.s)} · <b style="color:var(--slate-800)">Room ${esc(r.room)}</b>${r.building ? " · " + esc(r.building.name) : ""}</p>
         <p class="muted" style="font-size:12px;margin-top:4px">💡 ${esc(r.tips[0])}</p>
         ${r.map ? `<a href="${r.map}" target="_blank" rel="noreferrer" style="font-size:12px;color:var(--brand-600);font-weight:500;text-decoration:none">Open map ↗</a>` : ""}</div></li>`).join("")}</ul>
-      <div class="drop-f"><div style="display:flex;gap:12px;align-items:center;justify-content:space-between"><span><b style="color:var(--slate-800)">Notify me on this device</b><br>A week, a day, 2 h and 30 min before, while UPT Orar is open.</span>
+      <div class="drop-f"><div style="display:flex;gap:12px;align-items:center;justify-content:space-between"><span><b style="color:var(--slate-800)">Notify me on this device</b><br>A week, a day, 2 h and 30 min before, while Poli is open.</span>
       <button class="switch ${deviceOn ? "on" : ""}" id="devSwitch" role="switch" aria-checked="${deviceOn}" aria-label="Notify me on this device"></button></div>
       <p style="margin:8px 0 0">📱 Want reminders even when the app is closed? In the full app, export to Google Calendar: exams come with alerts a day and 2 hours before.</p></div>`;
     // Lives on <body> so it sits above Poli's button and the chat.
