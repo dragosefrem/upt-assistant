@@ -92,7 +92,8 @@ export const getUser = cache(async (): Promise<User | null> => {
 
 export async function requireUser(): Promise<User> {
   const user = await getUser();
-  if (!user) redirect("/login");
+  // Visitors who are not signed in see the landing page, which leads to sign-in.
+  if (!user) redirect("/welcome");
   return user;
 }
 

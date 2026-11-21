@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "tail -n 80 \"$CLAUDE_PROJECT_DIR\"/docs/LOG.md 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
+  }
+}

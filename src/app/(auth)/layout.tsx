@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
 import { getUser } from "@/lib/auth";
@@ -15,6 +16,9 @@ export default async function AuthLayout({ children }: LayoutProps<"/">) {
           <p className="mt-1 text-sm text-slate-600">Your timetable, exams and study buddy at Politehnica Timișoara.</p>
         </div>
         <div className="card p-6">{children}</div>
+        <p className="mt-4 text-center text-sm">
+          <Link href="/welcome" className="text-slate-500 hover:text-brand-600">← What is UPT Orar?</Link>
+        </p>
       </div>
     </main>
   );

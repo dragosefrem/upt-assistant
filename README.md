@@ -22,6 +22,9 @@ export, directions to the next room, and a chat/voice assistant.
   faculty's exams. A bell in the header lists exams in the next 30 days and can notify
   the device a week, a day, 2 hours and 30 minutes before (while the app is open); the
   Google Calendar and `.ics` exports carry alerts a day and 2 hours before each exam.
+- **Landing page.** Visitors who are not signed in see `/welcome`, a Romanian page about
+  what UPT Orar does, with live counts of the imported classes and exams; it leads to
+  sign-up and sign-in. The counts and the faculty list appear after the first scrape.
 - **Poli.** The assistant's mascot. Pressing any Poli opens the chat; it also greets the
   student with one-tap questions on the calendar page. Placeholder images live in
   `public/images`; `docs/IMAGINI.md` has prompts for the final artwork.

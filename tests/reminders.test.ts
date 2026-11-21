@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { roCount } from "@/lib/landing-format";
 import { countdown, everydayTip, EVERYDAY_TIPS, examHeadline, examStage, examTips, whereTo } from "@/lib/examTips";
 import { toICS } from "@/lib/export";
 
@@ -57,5 +58,17 @@ describe("exam alarms in the .ics export", () => {
   it("adds no alarm to ordinary events", () => {
     const ics = toICS([{ uid: "p-1", title: "Gym", description: "", location: "", date: "2027-01-20", startMin: 1080, endMin: 1140 }]);
     expect(ics).not.toContain("VALARM");
+  });
+});
+
+describe("Romanian counts on the landing page", () => {
+
+  it("says 1 oră, 19 ore, 20 de ore, 2.374 de ore, 101 ore", () => {
+    expect(roCount(1, "oră", "ore")).toBe("1 oră");
+    expect(roCount(19, "oră", "ore")).toBe("19 ore");
+    expect(roCount(20, "oră", "ore")).toBe("20 de ore");
+    expect(roCount(2374, "oră", "ore")).toBe("2.374 de ore");
+    expect(roCount(101, "examen", "examene")).toBe("101 examene");
+    expect(roCount(100, "examen", "examene")).toBe("100 de examene");
   });
 });

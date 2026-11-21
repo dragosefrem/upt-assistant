@@ -42,5 +42,5 @@ export async function registerAction(_prev: AuthState, form: FormData): Promise<
 
 export async function logoutAction() {
   await endSession();
-  redirect("/login");
+  redirect("/welcome");
 }
