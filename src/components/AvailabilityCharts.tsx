@@ -18,6 +18,7 @@ const elapsedPattern = {
 export const windowLabel = (slot: FreeSlot) => `${formatMinutes(slot.startMin)}–${formatMinutes(slot.endMin)}`;
 
 interface ChartProps {
+  shared: boolean;
   days: AvailabilityDay[];
   selectedDay: AvailabilityDay;
   selectedSlot?: FreeSlot;
@@ -26,7 +27,7 @@ interface ChartProps {
   onSelect: (date: string, slot?: FreeSlot) => void;
 }
 
-export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hours, onSelect }: ChartProps) {
+export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hours, onSelect, shared }: ChartProps) {
   const t = useT().contacts.availability;
   const locale = useLocale();
   const duration = (minutes: number) => t.duration(Math.floor(minutes / 60), minutes % 60);
@@ -59,7 +60,7 @@ export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hour
         })}
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-24 text-xs text-slate-600 sm:pr-0">
-        <span>{t.sharedFree}</span>
+        <span>{shared ? t.sharedFree : t.yourFree}</span>
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           {duration(0)}
           <span className="flex gap-0.5" aria-hidden="true">{[0, 0.25, 0.5, 0.75, 1].map((part) => <span key={part} className={`h-3 w-3 rounded-sm sm:w-4 ${shade(part)}`} />)}</span>
@@ -113,7 +114,7 @@ export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hour
         </div>)}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-600">
-        <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-teal-600" />{t.freeTogether}</span>
+        <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-teal-600" />{shared ? t.freeTogether : t.yourFree}</span>
         <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-slate-200" />{t.busy}</span>
         <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-brand-600" />{t.selected}</span>
         {elapsedWidth > 0 && week.some((day) => day.date === today) && <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm" style={elapsedPattern} />{t.past}</span>}

@@ -55,29 +55,34 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
   const next = events.find((e) => e.date > now.date || (e.date === now.date && e.startMin > now.minutes));
   const leftToday = events.filter((e) => e.date === now.date && e.endMin > now.minutes).length;
 
-  const row = (label: string, e: CalEvent, when: string) => (
-    <div className="flex items-start gap-3">
-      <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />
-      <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label} · {when}</p>
-        <p className="break-words font-semibold text-slate-900">{e.title}</p>
-        <p className="text-sm text-slate-600">
-          {formatTimeSlot(e.startMin, e.endMin)} · {kindLabel(e.kind, locale)}
-          {e.room ? ` · ${e.room}` : ""}
-          {e.place ? ` · ${e.place.name}` : ""}
-        </p>
-        {e.room && e.place && (
-          <Link
-            href={campusJourneyHref({ to: e.room, building: e.place.name, course: e.title, at: formatMinutes(e.startMin), date: e.date })}
-            className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
-          >
-            <Navigation size={14} aria-hidden />
-            {messages.guide.buildings.walkthrough}
-          </Link>
-        )}
+  const row = (label: string, e: CalEvent, when: string) => {
+    const destination = e.campusRoom ?? (e.place ? e.room : null);
+    return (
+      <div className="flex items-start gap-3">
+        <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label} · {when}</p>
+          <p className="break-words font-semibold text-slate-900">{e.groupEventId
+            ? <Link href={`/contacts/events/${e.groupEventId}`} className="text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-current">{e.title}</Link>
+            : e.title}</p>
+          <p className="text-sm text-slate-600">
+            {formatTimeSlot(e.startMin, e.endMin)} · {kindLabel(e.kind, locale)}
+            {e.room ? ` · ${e.room}` : (e.type === "class" || e.type === "exam") && ` · ${messages.exams.card.roomUnknown}`}
+            {e.place && ` · ${e.place.approximate ? messages.campus.rooms.approximate(e.place.name) : e.place.name}`}
+          </p>
+          {destination && (
+            <Link
+              href={campusJourneyHref({ to: destination, building: e.place?.name, course: e.title, at: formatMinutes(e.startMin), date: e.date })}
+              className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
+            >
+              <Navigation size={14} aria-hidden />
+              {messages.guide.buildings.walkthrough}
+            </Link>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <section className="card next-up overflow-hidden">

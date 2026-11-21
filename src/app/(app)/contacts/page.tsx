@@ -11,7 +11,7 @@ import { contactList, lookupContact } from "@/lib/contacts";
 import { myGroupEvents } from "@/lib/group-events";
 import { listSavedContacts } from "@/lib/saved-contacts";
 import { capitalize, formatDate, formatMinutes, nowLocal } from "@/lib/time";
-import { contactAction, inviteAction } from "./actions";
+import { contactAction, inviteAction, rsvpAction } from "./actions";
 
 export async function generateMetadata() {
   const t = await getT();
@@ -42,7 +42,7 @@ function ContactRow({ person, userId, t }: { person: Contact; userId: string; t:
   );
 }
 
-function EventList({ events, t, locale }: { events: ReturnType<typeof myGroupEvents>; t: Messages; locale: Locale }) {
+function EventList({ events, t, locale, canReply = false }: { events: ReturnType<typeof myGroupEvents>; t: Messages; locale: Locale; canReply?: boolean }) {
   return (
     <ul className="divide-y divide-slate-100">
       {events.map((event) => (
@@ -53,6 +53,10 @@ function EventList({ events, t, locale }: { events: ReturnType<typeof myGroupEve
             <span className="block text-sm text-slate-700">{capitalize(formatDate(event.date, { weekday: "short", day: "numeric", month: "short" }, locale))} · {formatMinutes(event.startMin)}–{formatMinutes(event.endMin)}</span>
             <span className="text-xs text-slate-500">{t.contacts.event.hostedBy(event.host)} · {responseLabel(event.response, locale)}</span>
           </Link>
+          {canReply && <InvitationForm action={rsvpAction.bind(null, event.id)} className="mb-3 flex gap-2">
+            <button className="btn-primary" name="response" value="accepted">{t.contacts.event.accept}</button>
+            <button className="btn-ghost" name="response" value="declined">{t.contacts.event.decline}</button>
+          </InvitationForm>}
         </li>
       ))}
     </ul>
@@ -70,10 +74,14 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
   const { person: found, error } = query === undefined ? {} : lookupContact(email);
   const connection = people.find((p) => p.id === found?.id);
   const contacts = people.filter((p) => p.accepted);
-  const requests = people.filter((p) => !p.accepted);
+  const incoming = people.filter((p) => !p.accepted && p.requestedBy !== user.id);
+  const sent = people.filter((p) => !p.accepted && p.requestedBy === user.id);
   const events = myGroupEvents(user.id);
   const today = nowLocal().date;
-  const upcoming = events.filter((e) => e.date >= today);
+  const future = events.filter((e) => e.date >= today);
+  const needsReply = (event: (typeof events)[number]) => event.response === "pending" && event.status !== "expired";
+  const invitations = future.filter(needsReply);
+  const upcoming = future.filter((event) => !needsReply(event));
   const past = events.filter((e) => e.date < today).reverse();
 
   return (
@@ -86,18 +94,23 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
         </div>
         <Link className="btn-primary" href="/contacts/plan">{page.planEvent}</Link>
       </header>
+      {(incoming.length > 0 || invitations.length > 0) && (
+        <section id="inbox" className="card scroll-mt-20 p-5" aria-labelledby="reply-heading">
+          <h2 id="reply-heading" className="text-lg font-semibold">{page.requests.needsReply}</h2>
+          <div className="mt-3 grid items-start gap-x-8 gap-y-3 sm:grid-cols-[repeat(auto-fit,minmax(16rem,1fr))]">
+            {incoming.length > 0 && <div>
+              <h3 className="text-sm font-medium text-slate-600">{page.requests.heading}</h3>
+              <ul className="divide-y divide-slate-100">{incoming.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>
+            </div>}
+            {invitations.length > 0 && <div>
+              <h3 className="text-sm font-medium text-slate-600">{page.events.invitations}</h3>
+              <EventList events={invitations} t={t} locale={locale} canReply />
+            </div>}
+          </div>
+        </section>
+      )}
       <div className="grid items-start gap-5 md:grid-cols-2">
         <div className="space-y-5">
-          {requests.length > 0 && <section className="card p-5">
-            <h2 className="text-lg font-semibold">{page.requests.heading}</h2>
-            {(["incoming", "sent"] as const).map((kind) => {
-              const list = requests.filter((p) => (p.requestedBy !== user.id) === (kind === "incoming"));
-              return list.length > 0 && <div className="mt-3" key={kind}>
-                <h3 className="text-xs font-medium uppercase tracking-wide text-slate-500">{page.requests[kind]}</h3>
-                <ul className="divide-y divide-slate-100">{list.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>
-              </div>;
-            })}
-          </section>}
           <section className="card p-5">
             <h2 className="text-lg font-semibold">{page.find.heading}</h2>
             <form action="/contacts" noValidate className="mt-3">
@@ -111,11 +124,15 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
               {error ? t.contacts.errors[error] : found && (found.id === user.id ? page.find.yourself :
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <strong>{found.name}</strong>
-                  {connection ? <span className="text-slate-600">{connection.accepted ? page.find.alreadyContact : connection.requestedBy === user.id ? page.find.invitationSent : page.find.seeIncoming}</span>
+                  {connection ? <span className="text-slate-600">{connection.accepted ? page.find.alreadyContact : connection.requestedBy === user.id ? page.find.invitationSent : <a className="font-medium text-brand-700 underline" href="#inbox">{page.find.seeIncoming}</a>}</span>
                     : <InvitationForm action={inviteAction.bind(null, found.email)}><button className="btn-primary">{page.find.sendRequest}</button></InvitationForm>}
                 </div>)}
             </div>}
           </section>
+          {sent.length > 0 && <details className="card p-5">
+            <summary className="font-semibold">{page.requests.sent}</summary>
+            <ul className="mt-2 divide-y divide-slate-100">{sent.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>
+          </details>}
           <section className="card p-5">
             <h2 className="text-lg font-semibold">{page.list.heading}</h2>
             {contacts.length ? <ul className="mt-1 divide-y divide-slate-100">{contacts.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>

@@ -548,6 +548,17 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   const last = messages.at(-1);
   const lastChoices = !busy && last?.role === "assistant" && !last.pending ? last.choices : undefined;
 
+  const questionButton = (s: { emoji: string; text: string }) => (
+    <button
+      key={s.text}
+      className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:text-brand-700 hover:shadow-sm"
+      onClick={() => send(s.text)}
+    >
+      <span aria-hidden className="text-base">{s.emoji}</span>
+      {s.text}
+    </button>
+  );
+
   return (
     <section className="card flex h-full min-h-0 flex-col overflow-hidden shadow-[0_24px_60px_-12px_rgba(20,36,87,0.35)]">
       <header className="flex items-center gap-2 border-b border-slate-200 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
@@ -592,16 +603,11 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
               <p className="mt-0.5 text-xs">{tr.empty.hint}</p>
             </div>
             <div className="grid w-full gap-2">
-              {tr.suggestions.map((s) => (
-                <button
-                  key={s.text}
-                  className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:text-brand-700 hover:shadow-sm"
-                  onClick={() => send(s.text)}
-                >
-                  <span aria-hidden className="text-base">{s.emoji}</span>
-                  {s.text}
-                </button>
-              ))}
+              {tr.suggestions.map(questionButton)}
+              {(engine === "gemini" || engine === "claude") && <details className="text-left">
+                <summary className="py-1 text-sm font-medium text-brand-700">{tr.moreExamples}</summary>
+                <div className="mt-1 grid gap-2">{tr.advancedSuggestions.map(questionButton)}</div>
+              </details>}
             </div>
           </div>
         )}

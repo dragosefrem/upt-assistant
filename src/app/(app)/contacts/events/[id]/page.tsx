@@ -27,7 +27,7 @@ export default async function GroupEventPage({ params }: PageProps<"/contacts/ev
     <div className="mx-auto w-full max-w-2xl space-y-4">
       <Link href="/contacts" className="text-sm font-medium text-brand-700 hover:underline">{t.back}</Link>
       <article className="card space-y-5 p-5 sm:p-7">
-        <GroupEventSummary event={event} />
+        <GroupEventSummary event={event} showDirections />
         <InvitationRefresh deadline={event.status === "pending" ? event.deadline : undefined} />
         {event.status !== "expired" && <InvitationForm action={rsvpAction.bind(null, event.id)} className="flex flex-wrap gap-2">
           <RsvpButtons response={event.response} />

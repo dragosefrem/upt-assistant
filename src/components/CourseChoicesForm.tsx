@@ -40,7 +40,7 @@ export function CourseChoicesForm({ choices, returnTo, submitLabel }: { choices:
           {optional.some((course) => course.slots.length > 0) && <p className="mb-3 text-sm text-slate-600">{m.slotsHint}</p>}
           <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
             {optional.map((c) => (
-              <li key={c.courseId} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <li key={c.courseId} className="elective-choice flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <label className="flex items-start gap-3 text-sm">
                   <input type="checkbox" name={`enrolled-${c.courseId}`} defaultChecked={c.enrolled} className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-brand-600" />
                   <span>

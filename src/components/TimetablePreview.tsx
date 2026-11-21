@@ -52,7 +52,7 @@ export function TimetablePreview() {
           {week[day].flatMap((item, i, slots) => {
             const previous = slots[i - 1];
             return [
-              previous && previous.end < item.start && <li key="free" className="preview-event" data-kind="free">
+              previous && previous.end < item.start && <li key={`break-${previous.end}`} className="preview-event" data-kind="free">
                 <SlotTimes start={previous.end} end={item.start} /><div><strong>{t.free}</strong></div>
               </li>,
               <li key={item.start} className="preview-event" data-kind={item.kind}>

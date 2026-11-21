@@ -1,6 +1,9 @@
+import { Navigation } from "lucide-react";
+import Link from "next/link";
+import { campusJourneyHref } from "@/lib/campuspath/links";
 import { getLocale, getT } from "@/i18n/server";
 import type { ExamReminder } from "@/lib/reminders";
-import { capitalize, formatDate, formatMinutes } from "@/lib/time";
+import { capitalize, formatDate, formatMinutes, formatTimeSlot } from "@/lib/time";
 import { Mascot } from "./Mascot";
 
 const STAGE_STYLE: Record<ExamReminder["stage"], string> = {
@@ -14,7 +17,8 @@ const STAGE_STYLE: Record<ExamReminder["stage"], string> = {
 
 /** One upcoming exam: countdown, when, where to go, and Poli's suggestions. A server component. */
 export async function ExamCard({ exam, compact = false, tips = true }: { exam: ExamReminder; compact?: boolean; tips?: boolean }) {
-  const t = (await getT()).exams.card;
+  const messages = await getT();
+  const t = messages.exams.card;
   const locale = await getLocale();
   const urgent = exam.stage === "now" || exam.stage === "today" || exam.stage === "tomorrow";
   return (
@@ -30,7 +34,7 @@ export async function ExamCard({ exam, compact = false, tips = true }: { exam: E
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STAGE_STYLE[exam.stage]}`}>{exam.countdown}</span>
           </div>
           <p className="text-sm text-slate-600">
-            {capitalize(formatDate(exam.date, { weekday: "long", day: "numeric", month: "long" }, locale))} · {formatMinutes(exam.startMin)}–{formatMinutes(exam.endMin)}
+            {capitalize(formatDate(exam.date, { weekday: "long", day: "numeric", month: "long" }, locale))} · {formatTimeSlot(exam.startMin, exam.endMin)}
             {exam.teacher ? ` · ${exam.teacher}` : ""}
           </p>
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-sm">
@@ -42,6 +46,12 @@ export async function ExamCard({ exam, compact = false, tips = true }: { exam: E
                 {exam.place.address ? `, ${exam.place.address}` : ""}
                 {exam.place.approximate ? ` ${t.approximate}` : ""}
               </span>
+            )}
+            {exam.room && exam.place && (
+              <Link href={campusJourneyHref({ to: exam.room, building: exam.place.name, course: exam.course, at: formatMinutes(exam.startMin), date: exam.date })}
+                className="inline-flex items-center gap-1 font-medium text-brand-700 hover:underline">
+                <Navigation size={14} aria-hidden />{messages.campus.rooms.showWay}
+              </Link>
             )}
             {exam.mapsUrl && (
               <a href={exam.mapsUrl} target="_blank" rel="noreferrer" className="font-medium text-brand-600 hover:underline">

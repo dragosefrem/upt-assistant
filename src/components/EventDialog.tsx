@@ -35,7 +35,8 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
   // Labs, seminars and projects are held per group, so another group's session can stand in for a missed one.
   const canMakeUp = event.type === "class" && (event.kind === "lab" || event.kind === "seminar" || event.kind === "project");
   // A room in a building (not "online") can be walked to on the Campus page.
-  const walkable = !!event.room && (event.type === "class" || event.type === "exam") && !!event.place;
+  const academic = event.type === "class" || event.type === "exam";
+  const destination = event.campusRoom ?? (academic && event.place ? event.room : null);
 
   const send = async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -65,8 +66,8 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
         </span>
       </p>
       <dl className="mb-4 grid grid-cols-[minmax(5.5rem,auto)_1fr] gap-x-3 gap-y-1.5 text-sm">
-        {event.room && (<><dt className="text-slate-500">{t.room}</dt><dd className="font-medium text-slate-900">{event.room}</dd></>)}
-        {event.place && (<><dt className="text-slate-500">{t.building}</dt><dd className="text-slate-800">{event.place.name}{event.place.address ? `, ${event.place.address}` : ""}</dd></>)}
+        {(event.room || academic) && (<><dt className="text-slate-500">{t.room}</dt><dd className="font-medium text-slate-900">{event.room ?? messages.exams.card.roomUnknown}</dd></>)}
+        {event.place && (<><dt className="text-slate-500">{t.building}</dt><dd className="text-slate-800">{event.place.approximate ? messages.campus.rooms.approximate(event.place.name) : event.place.name}{event.place.address ? `, ${event.place.address}` : ""}</dd></>)}
         {event.teacher && (<><dt className="text-slate-500">{t.teacher}</dt><dd className="text-slate-800">{event.teacher}</dd></>)}
         {event.note && (<><dt className="text-slate-500">{t.note}</dt><dd className="text-slate-800">{event.note}</dd></>)}
       </dl>
@@ -75,11 +76,11 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
 
       {event.place && <TripSuggestions room={event.room} startMin={event.startMin} />}
 
-      {(walkable || canMakeUp) && (
+      {(destination || canMakeUp) && (
         <div className="mt-3 flex flex-wrap gap-2">
-          {walkable && (
+          {destination && (
             <Link
-              href={campusJourneyHref({ to: event.room!, building: event.place?.name, course: event.title, at: formatMinutes(event.startMin), date: event.date })}
+              href={campusJourneyHref({ to: destination, building: event.place?.name, course: event.title, at: formatMinutes(event.startMin), date: event.date })}
               className="btn-secondary"
               onClick={onClose}
             >

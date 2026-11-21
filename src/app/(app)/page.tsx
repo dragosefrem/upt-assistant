@@ -5,6 +5,7 @@ import { WelcomeTour } from "@/components/WelcomeTour";
 import { WeekLabs } from "@/components/WeekLabs";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
+import { programmeTimetable } from "@/lib/catalog";
 import { holidaysBetween } from "@/lib/holidays";
 import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
 import { addDays, mondayOf, nowLocal } from "@/lib/time";
@@ -57,6 +58,8 @@ export default async function HomePage() {
           initialWeek={semester ? teachingWeek(semester, from) : null}
           today={today}
           hasGroup={!!user.groupId}
+          programme={user.groupId ? null : programmeTimetable(user.specializationId)}
+          year={user.year}
         />
         <WeekLabs user={user} date={today} locale={locale} />
       </div>

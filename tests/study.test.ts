@@ -1,3 +1,4 @@
+import { placeResolver } from "@/lib/schedule";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getDb } from "@/db";
@@ -344,6 +345,18 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     expect(en).toContain("Fizică (lab) — Wednesday 2 December 14:00–16:00");
     expect(askLocal("Ce înseamnă semigrupă?", ctx)).toMatch(/^Semigrupă: Jumătate de grupă/);
     expect(askLocal("What does restanță mean?", ctx)).toMatch(/^Restanță: An exam you still have to pass/);
+  });
+
+  it("keeps contact availability, missed labs and study plans out of personal timetable lookups", () => {
+    expect(askLocal("Which of my contacts are free tomorrow at 14:00?", ctx)).toContain("Plan a group event");
+    expect(askLocal("Am lipsit de la un laborator. Ce alte grupe îl au săptămâna aceasta?", ctx)).toContain("recuperare");
+    expect(askLocal("Make me a study plan for the exam session", ctx)).toContain("study planner");
+  });
+
+  it("withholds a faculty location for an unpublished or blank room", () => {
+    const resolve = placeResolver(ana.facultyId);
+    expect(resolve(null)).toBeNull();
+    expect(resolve("  ")).toBeNull();
   });
 
   it("explains terms and opens pages", () => {

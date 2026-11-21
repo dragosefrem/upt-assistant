@@ -55,6 +55,14 @@ export function pickerData(): PickerData {
   };
 }
 
+/** Where students can check for a timetable before their group has been published here. */
+export function programmeTimetable(specializationId: number | null) {
+  if (!specializationId) return null;
+  return getDb().select({ name: specializations.name, facultyUrl: faculties.scheduleUrl })
+    .from(specializations).innerJoin(faculties, eq(specializations.facultyId, faculties.id))
+    .where(eq(specializations.id, specializationId)).get() ?? null;
+}
+
 export function facultyOf(id: number | null) {
   return id ? getDb().select().from(faculties).where(eq(faculties.id, id)).get() ?? null : null;
 }

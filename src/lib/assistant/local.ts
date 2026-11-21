@@ -82,6 +82,19 @@ export function askLocal(message: string, ctx: ToolContext): string {
   const named = (abbr: string) => words.has(fold(abbr)) && (!EVERYDAY_WORDS.has(fold(abbr)) || capitals.has(abbr.toUpperCase()));
   const course = week.find((e) => (e.abbr && named(e.abbr)) || (fold(e.title).length > 4 && q.includes(fold(e.title))));
 
+  if (/\b(contacts?|contactele|colegi[il]?|friends?)\b/.test(q) && /\b(free|available|liber[aei]?|disponibil[ei]?)\b/.test(q)) {
+    return t("In Contacts, choose “Plan a group event” and select the classmates whose calendars you want to compare.",
+      "În Contacte, alege „Plănuiește o întâlnire” și selectează colegii ale căror orare vrei să le compari.");
+  }
+  if (/\b(missed|make.?up|lipsit|recuper[a-z]*)\b/.test(q) && /\b(labs?|laborator[a-z]*|seminar[a-z]*)\b/.test(q)) {
+    return t("Open the missed lab or seminar in your timetable and choose “Find a make-up session” to see alternatives.",
+      "Deschide în orar laboratorul sau seminarul la care ai lipsit și alege opțiunea de recuperare.");
+  }
+  if (/\b(study plan|plan (?:de |pentru )?(?:invatat|studiu|invatare))\b/.test(q)) {
+    return t("Open Exams and choose the study planner to fit preparation around your classes.",
+      "În Examene, deschide planul de învățare ca să găsești timp de pregătire între cursuri.");
+  }
+
   // "What does semigrupă mean?" — answered from the glossary.
   const term = /\b(?:what does|what is an?|what is|ce inseamna|ce este|ce e)\s+(?:the\s+|un\s+|o\s+)?["„“”']?([a-z0-9 ./-]{1,30}?)["„“”']?(?:\s+mean)?\s*\??$/.exec(q)?.[1]?.trim();
   if (term) {

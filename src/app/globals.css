@@ -241,11 +241,27 @@ a.hero-cta.btn-primary { box-shadow: 0 8px 20px -12px #14213da6; }
   .stage-files li { font-size: .87rem; padding: .72rem .85rem; }
   .stage-files li:nth-child(2) { margin-left: 1rem; }
   .stage-files li:nth-child(3) { margin-left: .35rem; }
+  .stage-input { position: relative; isolation: isolate; }
+  .stage-input::before {
+    content: ''; position: absolute; z-index: -1; top: 50%; left: 32%; right: -2rem;
+    border-top: 2px dotted #c2cde1;
+  }
+  .stage-input::after {
+    content: ''; position: absolute; top: calc(50% - 3px); right: -2rem; width: 7px; height: 7px;
+    border-top: 2px solid #8d9bb4; border-right: 2px solid #8d9bb4; transform: rotate(45deg);
+  }
 }
 @media (prefers-reduced-motion: no-preference) {
   @keyframes arrive { from { opacity: .6; transform: translateY(7px); } to { opacity: 1; transform: none; } }
   @keyframes paper-arrives { from { transform: translate(-9px, 3px) rotate(-2deg); } to { transform: none; } }
   @keyframes poli-sorts { 35% { transform: translateY(-6px) rotate(-6deg); } 70% { transform: rotate(3deg); } }
+  @keyframes file-to-poli {
+    0%, 100% { translate: 0 0; }
+    55% { translate: min(3vw, 2.3rem) -.2rem; }
+  }
+  @media (min-width: 60rem) {
+    .stage-files li:nth-child(n) { animation-name: file-to-poli; animation-duration: .75s; }
+  }
   @keyframes filing-pulse { from { box-shadow: 0 0 0 0 #2f5fe04a; } to { box-shadow: 0 0 0 16px transparent; } }
   .welcome-hero, .page-heading { animation: arrive .4s ease-out; }
   .stage-files li { animation: paper-arrives .55s .05s both ease-out; }
@@ -334,6 +350,7 @@ a.hero-cta.btn-primary { box-shadow: 0 8px 20px -12px #14213da6; }
   .schedule-layout .timetable { grid-column: 1; grid-row: 1 / 3; }
   .schedule-layout .next-up, .schedule-layout > details { grid-column: 2; }
 }
+.elective-choice:not(:has(input:checked)) select { display: none; }
 .setup-steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
 .setup-steps li { border-top: 3px solid #dce2eb; padding-top: .5rem; color: #64748b; font-size: .78rem; }
 .setup-steps li[aria-current=step] { color: var(--color-brand-700); font-weight: 650; border-color: var(--color-brand-600); }
