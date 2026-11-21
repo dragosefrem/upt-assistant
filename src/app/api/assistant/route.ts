@@ -12,6 +12,7 @@ import { askClaude, claudeConfigured, forgetSession } from "@/lib/assistant/clau
 import { askGemini, geminiConfigured } from "@/lib/assistant/gemini";
 import { askLocal } from "@/lib/assistant/local";
 import type { AssistantChunk } from "@/lib/assistant/prompt";
+import { parseReplyCard } from "@/lib/assistant/reply-card";
 import type { ToolContext } from "@/lib/assistant/tools";
 
 type Engine = "gemini" | "claude" | "basic";
@@ -44,7 +45,7 @@ function failureNotice(engine: Engine, err: unknown, t: Messages["assistant"]["a
  *   {"type":"tool","name":…}  the assistant is looking something up
  *   {"type":"text","text":…}  a piece of the reply
  *   {"type":"done","engine":"gemini"|"claude"|"basic","changed":bool,"choices"?:[…],"links"?:[…],
- *    "open"?:"/path","locale"?:"ro"|"en","notice"?:…}
+ *    "card"?:{…},"open"?:"/path","locale"?:"ro"|"en","notice"?:…}
  * `choices` are tappable options (time slots, "Yes, add it") to show under the reply, `links`
  * buttons that open a page of the app. `open` asks the browser to go to a page and `locale`
  * to switch the interface language, when the student asked the assistant for that.
@@ -95,6 +96,7 @@ export async function POST(request: Request) {
           }
           engine = ai;
         } catch (err) {
+          ctx.card = undefined;
           // Claude: start a fresh session next time; a stale one is the usual cause.
           if (ai === "claude") forgetSession(user);
           console.error(`Assistant: ${ai} request failed`, err);
@@ -103,12 +105,14 @@ export async function POST(request: Request) {
       }
       if (engine === "basic" && !reply) {
         reply = askLocal(message, ctx);
+        if (ctx.card) ctx.card.textIsTranscript = true;
         send({ type: "text", text: reply });
       }
       // Choices and previews only make sense next to the reply that offered them.
       const choices = engine !== "basic" && reply ? ctx.choices : undefined;
       const preview = engine !== "basic" && reply ? ctx.preview : undefined;
       const links = engine !== "basic" && reply && ctx.links?.length ? ctx.links : undefined;
+      const card = reply && !preview && !choices && !ctx.changed ? ctx.card : undefined;
 
       const saved = reply
         ? db
@@ -120,6 +124,7 @@ export async function POST(request: Request) {
               choices: choices ? JSON.stringify(choices) : null,
               preview: preview ? JSON.stringify(preview) : null,
               links: links ? JSON.stringify(links) : null,
+              card: card ? JSON.stringify(card) : null,
             })
             .returning({ id: chatMessages.id })
             .get()
@@ -132,6 +137,7 @@ export async function POST(request: Request) {
         choices,
         preview: publicPreview(preview),
         links,
+        card,
         open: reply ? ctx.open : undefined,
         locale: ctx.setLocale,
         checklistEdits: ctx.checklistEdits,
@@ -150,14 +156,14 @@ export async function GET() {
   const user = await getUser();
   if (!user) return Response.json({ error: (await getT()).assistant.api.notSignedIn }, { status: 401 });
   const rows = getDb()
-    .select({ id: chatMessages.id, role: chatMessages.role, content: chatMessages.content, choices: chatMessages.choices, preview: chatMessages.preview, links: chatMessages.links })
+    .select({ id: chatMessages.id, role: chatMessages.role, content: chatMessages.content, choices: chatMessages.choices, preview: chatMessages.preview, links: chatMessages.links, card: chatMessages.card })
     .from(chatMessages)
     .where(eq(chatMessages.userId, user.id))
     .orderBy(desc(chatMessages.id))
     .limit(30)
     .all()
     .reverse()
-    .map((m) => ({ ...m, choices: parseChoices(m.choices), preview: publicPreview(parsePreview(m.preview)), links: parseLinks(m.links) }));
+    .map((m) => ({ ...m, choices: parseChoices(m.choices), preview: publicPreview(parsePreview(m.preview)), links: parseLinks(m.links), card: parseReplyCard(m.card) }));
   return Response.json({ messages: rows, engine: activeEngine() });
 }
 

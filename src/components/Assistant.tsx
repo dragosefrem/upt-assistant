@@ -8,6 +8,8 @@ import { setLocaleAction } from "@/app/actions/locale";
 import { useLocale, useT } from "@/i18n/client";
 import { DATE_LOCALE, isLocale } from "@/i18n/config";
 import type { AssistantChoice, AssistantLink, DayPreview } from "@/lib/assistant/choices";
+import type { ReplyCard } from "@/lib/assistant/reply-card";
+import { AssistantReplyCard } from "./AssistantReplyCard";
 import { SCHEDULE_CHANGED } from "./Calendar";
 import { DayPreviewCard } from "./DayPreview";
 import { useLocation } from "./LocationProvider";
@@ -25,6 +27,7 @@ interface Message {
   preview?: DayPreview;
   /** Buttons that open a page of the app. */
   links?: AssistantLink[];
+  card?: ReplyCard;
   /** The stored message's id, which accepting a preview refers to. */
   dbId?: number;
 }
@@ -187,6 +190,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   }, [engine]);
   const serverVoice = engine === "gemini";
   const scroller = useRef<HTMLDivElement>(null);
+  const historyReady = useRef<Promise<void> | null>(null);
   // Bumped whenever speech is started or cancelled, so a finished utterance only runs
   // its follow-up (re-opening the mic) if nothing interrupted it.
   const speechToken = useRef(0);
@@ -203,6 +207,22 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
     positionRef.current = position;
   }, [position]);
 
+  const loadHistory = useCallback(() => {
+    historyReady.current ??= fetch("/api/assistant")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setEngine(data.engine);
+        const history = data.messages.map((m: Omit<Message, "id"> & { id: number }) => ({
+          ...m, id: String(m.id), dbId: m.id,
+        }));
+        // A student may already have typed while history was loading.
+        setMessages((current) => [...history, ...current]);
+      })
+      .catch(() => {});
+    return historyReady.current;
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- feature detection must wait for the browser
     setVoiceSupported(!!recognitionCtor() || recorderSupported());
@@ -212,20 +232,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
     };
     loadVoices();
     synth?.addEventListener("voiceschanged", loadVoices);
-    fetch("/api/assistant")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) return;
-        setEngine(data.engine);
-        setMessages(
-          data.messages.map((m: { id: number; role: Message["role"]; content: string; choices?: AssistantChoice[]; preview?: DayPreview; links?: AssistantLink[] }) => ({
-            ...m,
-            id: String(m.id),
-            dbId: m.id,
-          })),
-        );
-      })
-      .catch(() => {});
+    void loadHistory();
     const token = speechToken;
     return () => {
       token.current++;
@@ -234,7 +241,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       synth?.removeEventListener("voiceschanged", loadVoices);
       synth?.cancel();
     };
-  }, []);
+  }, [loadHistory]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -406,6 +413,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       let reply = "";
       let offered: AssistantChoice[] = [];
       try {
+        await loadHistory();
         const res = await fetch("/api/assistant", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -441,7 +449,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
               if (choices) offered = choices;
               if (preview) offered = [{ label: tr.preview.accept, reply: "Yes" }];
               const links = Array.isArray(chunk.links) && chunk.links.length ? (chunk.links as AssistantLink[]) : undefined;
-              setMessages((m) => m.map((x) => (x.id === replyId ? { ...x, choices, preview, links, dbId: chunk.messageId } : x)));
+              setMessages((m) => m.map((x) => (x.id === replyId ? { ...x, choices, preview, links, card: chunk.card, dbId: chunk.messageId } : x)));
               // Things Poli did to the app itself: switch the language, open a page.
               if (isLocale(chunk.locale) && chunk.locale !== locale) {
                 void setLocaleAction(chunk.locale).then(() => router.refresh());
@@ -461,7 +469,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         setActivity(null);
       }
     },
-    [busy, speak, say, listen, tr, locale, router],
+    [busy, speak, say, listen, tr, locale, router, loadHistory],
   );
 
   useEffect(() => {
@@ -540,9 +548,20 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   };
 
   const clear = async () => {
+    if (busy) return;
     stopSpeaking();
-    setMessages([]);
-    await fetch("/api/assistant", { method: "DELETE" }).catch(() => {});
+    setBusy(true);
+    setNotice(null);
+    try {
+      await loadHistory();
+      const response = await fetch("/api/assistant", { method: "DELETE" });
+      if (!response.ok) throw new Error();
+      setMessages([]);
+    } catch {
+      setNotice(tr.errors.serverUnreachable);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const last = messages.at(-1);
@@ -588,7 +607,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         >
           {speak ? tr.speech.on : tr.speech.off}
         </button>
-        <button className="btn-ghost px-2 text-xs" onClick={clear} title={tr.clearTitle}>{tr.clear}</button>
+        <button className="btn-ghost px-2 text-xs" disabled={busy} onClick={clear} title={tr.clearTitle}>{tr.clear}</button>
         {onClose && (
           <button className="btn-ghost px-2" onClick={onClose} aria-label={tr.close} title={tr.close}>✕</button>
         )}
@@ -613,19 +632,27 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         )}
         {messages.map((m) => (
           <div key={m.id} className="space-y-2">
-            <div className={`flex animate-pop items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            <div className={`flex animate-pop gap-2 ${m.card ? "items-start" : "items-end"} ${m.role === "user" ? "justify-end" : "justify-start"}`}>
               {m.role === "assistant" && <Mascot size={26} className="mb-0.5" />}
-              <div className={`max-w-[85%] whitespace-pre-wrap break-words px-3.5 py-2 text-sm leading-relaxed ${m.role === "user" ? "rounded-2xl rounded-br-md bg-brand-600 text-white" : "rounded-2xl rounded-bl-md bg-brand-50 text-slate-900"}`}>
-                {m.pending ? (
-                  <span className="flex items-center gap-2 text-slate-500">
-                    <span className="typing-dots text-brand-500" aria-hidden><span /><span /><span /></span>
-                    {activity ?? tr.thinking}
-                  </span>
-                ) : (
-                  <Linkified text={m.role === "user" && m.content === "✓ Accepted" ? tr.preview.accepted : m.content} mapLabel={tr.openMap} />
+              <div className={`min-w-0 space-y-2 ${m.card ? "flex-1" : "max-w-[85%]"}`}>
+                {!m.card?.textIsTranscript && (
+                  <div className={`whitespace-pre-wrap break-words px-3.5 py-2 text-sm leading-relaxed ${m.role === "user" ? "rounded-2xl rounded-br-md bg-brand-600 text-white" : "rounded-2xl rounded-bl-md bg-brand-50 text-slate-900"}`}>
+                    {m.pending ? (
+                      <span className="flex items-center gap-2 text-slate-500">
+                        <span className="typing-dots text-brand-500" aria-hidden><span /><span /><span /></span>
+                        {activity ?? tr.thinking}
+                      </span>
+                    ) : (
+                      <Linkified text={m.role === "user" && m.content === "✓ Accepted" ? tr.preview.accepted : m.content} mapLabel={tr.openMap} />
+                    )}
+                    {m.role === "assistant" && !m.pending && !m.card && (
+                      <button className="ml-2 align-middle text-xs opacity-50 hover:opacity-100" onClick={() => say(m.content)} title={tr.speech.readAloud} aria-label={tr.speech.readAloud}>🔊</button>
+                    )}
+                  </div>
                 )}
-                {m.role === "assistant" && !m.pending && (
-                  <button className="ml-2 align-middle text-xs opacity-50 hover:opacity-100" onClick={() => say(m.content)} title={tr.speech.readAloud} aria-label={tr.speech.readAloud}>🔊</button>
+                {m.card && (
+                  <AssistantReplyCard card={m.card} onNavigate={onClose} onRead={() => say(m.content)} canPlan={m === last && !busy}
+                    transcript={m.card.textIsTranscript && <Linkified text={m.content} mapLabel={tr.openMap} />} />
                 )}
               </div>
             </div>

@@ -7,6 +7,7 @@ import type { LatLng } from "../directions";
 import type { CalEvent } from "../schedule";
 import { DAY_NAMES, formatMinutes, weekday } from "../time";
 import type { AssistantChoice, AssistantLink, StoredPreview } from "./choices";
+import type { ReplyCard } from "./reply-card";
 
 /** Types and small parsers shared by every group of assistant tools. */
 
@@ -24,6 +25,8 @@ export interface ToolContext {
   locale?: Locale;
   /** Tappable choices to show under the reply (set by show_choices). */
   choices?: AssistantChoice[];
+  /** Result selected for display in this turn. */
+  card?: ReplyCard;
   /** A proposed calendar change to preview for the student (set by add/move without `confirmed`). */
   preview?: StoredPreview;
   /** Buttons under the reply that open a page of the app. */
@@ -100,6 +103,8 @@ export function brief(e: CalEvent) {
     end: e.endMin === e.startMin ? null : formatMinutes(e.endMin),
     room: e.room,
     building: e.place?.name ?? null,
+    ...(e.place?.approximate ? { approximate: true } : {}),
+    ...(e.campusRoom ? { campus_room: e.campusRoom } : {}),
     address: e.place?.address ?? null,
     teacher: e.teacher,
     note: e.note,

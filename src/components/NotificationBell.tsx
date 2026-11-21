@@ -312,7 +312,7 @@ export function NotificationBell() {
       )}
 
       {toast && mounted && createPortal(
-        <div role="status" className="animate-pop fixed right-4 top-16 z-[70] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-3 rounded-2xl border border-brand-100 bg-white p-3 shadow-xl">
+        <div role="status" className="exam-reminder-toast animate-pop fixed right-4 top-16 z-[70] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-3 rounded-2xl border border-brand-100 bg-white p-3 shadow-xl">
           <Mascot size={36} wave />
           <div className="min-w-0 flex-1 text-sm">
             <p className="font-semibold text-slate-900">{toast.title}</p>

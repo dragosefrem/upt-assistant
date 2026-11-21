@@ -29,10 +29,19 @@ const en = {
   },
   suggestions: [
     { emoji: "⏭️", text: "What's next?" },
+    { emoji: "🗓️", text: "When am I free next week?" },
     { emoji: "🧪", text: "Do I have lab this week?" },
     { emoji: "🧭", text: "How do I get to my next class?" },
   ],
   moreExamples: "More questions",
+  cards: {
+    schedule: "Timetable", next: "Now and next", exams: "Exam dates", free: "Free time",
+    asOf: (when: string) => `As of ${when}`,
+    more: (n: number) => `Show ${n} more`, less: "Show fewer",
+    showing: (n: number, total: number) => `Showing the first ${n} of ${total}.`,
+    plan: "Plan an event", transcript: "Read full reply", examCalendar: "Open exams",
+    slotChanged: "Your availability has changed. Ask Poli for your free time again.",
+  },
   advancedSuggestions: [
     { emoji: "🤝", text: "Which of my contacts are free tomorrow at 14:00?" },
     { emoji: "🔁", text: "I missed a lab. Which other groups have it this week?" },
@@ -209,10 +218,19 @@ const ro: typeof en = {
   },
   suggestions: [
     { emoji: "⏭️", text: "Ce urmează?" },
+    { emoji: "🗓️", text: "Când sunt liber săptămâna viitoare?" },
     { emoji: "🧪", text: "Am laborator săptămâna aceasta?" },
     { emoji: "🧭", text: "Cum ajung la ora următoare?" },
   ],
   moreExamples: "Alte întrebări",
+  cards: {
+    schedule: "Orar", next: "Acum și în continuare", exams: "Programarea examenelor", free: "Timp liber",
+    asOf: (when: string) => `La ${when}`,
+    more: (n: number) => `Arată încă ${n}`, less: "Arată mai puține",
+    showing: (n: number, total: number) => `Sunt afișate primele ${n} din ${total}.`,
+    plan: "Planifică un eveniment", transcript: "Citește răspunsul complet", examCalendar: "Deschide examenele",
+    slotChanged: "Intervalul liber s-a schimbat. Întreabă-l din nou pe Poli când ai timp liber.",
+  },
   advancedSuggestions: [
     { emoji: "🤝", text: "Care dintre contactele mele sunt libere mâine la 14:00?" },
     { emoji: "🔁", text: "Am lipsit de la un laborator. Ce alte grupe îl au săptămâna aceasta?" },

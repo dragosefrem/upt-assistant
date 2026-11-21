@@ -528,6 +528,8 @@ export const chatMessages = sqliteTable(
     preview: text("preview"),
     /** JSON list of buttons that open a page of the app (a walkthrough, a group event). */
     links: text("links"),
+    /** Read-only timetable, exam or availability snapshot displayed with a reply. */
+    card: text("card"),
     createdAt: createdAt(),
   },
   (t) => [index("chat_user").on(t.userId, t.id)],

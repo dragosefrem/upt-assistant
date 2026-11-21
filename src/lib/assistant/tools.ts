@@ -33,6 +33,7 @@ import type { AssistantChoice, StoredPreview } from "./choices";
 import { APP_TOOLS } from "./tools-app";
 import { PEOPLE_TOOLS, resolvePeople } from "./tools-people";
 import { STUDY_TOOLS } from "./tools-study";
+import { cardForLookup } from "./reply-card";
 import { brief, fold, isDate, modelResult, num, parseClock, str, strList, type AssistantTool, type ToolContext } from "./toolkit";
 
 export type { AssistantTool, ToolContext } from "./toolkit";
@@ -171,6 +172,8 @@ function sanitizeChoices(v: unknown): AssistantChoice[] {
   });
 }
 
+const showCard = { type: "boolean", description: "Show these results in chat (default true). Set false for a supplementary lookup so it leaves the student's card in place." };
+
 const CORE_TOOLS: AssistantTool[] = [
   {
     name: "get_schedule",
@@ -182,6 +185,7 @@ const CORE_TOOLS: AssistantTool[] = [
         from: { type: "string", format: "date", description: "First day, YYYY-MM-DD." },
         to: { type: "string", format: "date", description: "Last day, YYYY-MM-DD. Defaults to `from`. At most 31 days after `from`." },
         language: { type: "string", enum: ["ro", "en"], description: "Language of the student's question, for holiday names." },
+        show_card: showCard,
       },
       required: ["from"],
     },
@@ -202,7 +206,7 @@ const CORE_TOOLS: AssistantTool[] = [
   {
     name: "get_next_event",
     description: "What the student is in right now and what comes next today or on the following days.",
-    input_schema: { type: "object", properties: {} },
+    input_schema: { type: "object", properties: { show_card: showCard } },
     run(_input, { user }) {
       const now = nowLocal();
       const upcoming = eventsBetween(user, now.date, addDays(now.date, 14));
@@ -220,6 +224,10 @@ const CORE_TOOLS: AssistantTool[] = [
       properties: {
         course: { type: "string", description: "Course name or acronym to look for." },
         everyone: { type: "boolean", description: "Search all exams of the faculty, not only the student's." },
+        from: { type: "string", format: "date", description: "Only sittings on or after this date." },
+        to: { type: "string", format: "date", description: "Only sittings on or before this date." },
+        next_only: { type: "boolean", description: "Return only the next upcoming sitting, including exams tied at that time." },
+        show_card: showCard,
       },
     },
     run(input, { user }) {
@@ -232,22 +240,34 @@ const CORE_TOOLS: AssistantTool[] = [
           : [];
       }
       if (course) list = list.filter((x) => fold(`${x.courseName} ${x.courseAbbr ?? ""}`).includes(fold(course)));
+      const { from, to } = input;
+      if (isDate(from)) list = list.filter((x) => x.date >= from);
+      if (isDate(to)) list = list.filter((x) => x.date <= to);
       list.sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin);
+      if (input.next_only === true) {
+        const now = nowLocal();
+        const next = list.find((x) => x.date > now.date || (x.date === now.date && x.startMin >= now.minutes));
+        list = next ? list.filter((x) => x.date === next.date && x.startMin === next.startMin) : [];
+      }
       return {
         count: list.length,
-        exams: list.slice(0, 40).map((x) => ({
-          course: x.courseName,
-          acronym: x.courseAbbr,
-          date: x.date,
-          weekday: DAY_NAMES[weekday(x.date)],
-          start: formatMinutes(x.startMin),
-          end: x.endMin === x.startMin ? null : formatMinutes(x.endMin),
-          room: x.room,
-          building: place(x.room)?.name ?? null,
-          address: place(x.room)?.address ?? null,
-          teacher: x.teacher,
-          for: x.audience,
-        })),
+        exams: list.slice(0, 40).map((x) => {
+          const building = place(x.room);
+          return {
+            course: x.courseName,
+            acronym: x.courseAbbr,
+            date: x.date,
+            weekday: DAY_NAMES[weekday(x.date)],
+            start: formatMinutes(x.startMin),
+            end: x.endMin === x.startMin ? null : formatMinutes(x.endMin),
+            room: x.room,
+            building: building?.name ?? null,
+            address: building?.address ?? null,
+            ...(building?.approximate ? { approximate: true } : {}),
+            teacher: x.teacher,
+            for: x.audience,
+          };
+        }),
         note: list.length ? undefined : "No exam is scheduled yet for this query. Sessions are published by the faculty closer to the exam period.",
       };
     },
@@ -263,6 +283,7 @@ const CORE_TOOLS: AssistantTool[] = [
         to: { type: "string", format: "date", description: "Last day, YYYY-MM-DD (at most 14 days after `from`)." },
         min_minutes: { type: "number", description: "Shortest gap worth reporting. Default 60." },
         group: { type: "string", description: "Another group to check instead of the student." },
+        show_card: showCard,
         day_start: { type: "string", description: "Earliest hour to consider, HH:MM. Default 08:00." },
         day_end: { type: "string", description: "Latest hour to consider, HH:MM. Default 20:00." },
       },
@@ -928,16 +949,27 @@ export const TOOLS: AssistantTool[] = [...CORE_TOOLS, ...STUDY_TOOLS, ...PEOPLE_
 /** Runs a tool; for an asynchronous tool the result is a promise, which callers await. */
 export function runTool(name: string, input: unknown, ctx: ToolContext): unknown {
   const tool = TOOLS.find((t) => t.name === name);
+  const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+  const supportsCard = tool && "show_card" in tool.input_schema.properties;
+  const background = supportsCard && args.show_card === false;
+  // A correction, choice or change supersedes the previous result. Looking up
+  // a supporting fact in the background keeps the card the student asked for.
+  if (!background) ctx.card = undefined;
   if (!tool) return { error: `Unknown tool: ${name}` };
   try {
-    const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
     for (const [key, schema] of Object.entries(tool.input_schema.properties)) {
       if (schema && typeof schema === "object" && "format" in schema && schema.format === "date" && args[key] !== undefined && !isDate(args[key])) {
         return { error: `${key} must be a real calendar date (YYYY-MM-DD). Ask the student to correct it.` };
       }
     }
     const result = tool.run(args, ctx);
-    return result instanceof Promise ? result.then((value) => modelResult(value)).catch((err: Error) => modelResult({ error: err.message })) : modelResult(result);
+    if (result instanceof Promise) return result.then((value) => modelResult(value)).catch((err: Error) => modelResult({ error: err.message }));
+    const value = modelResult(result);
+    if (supportsCard && value && typeof value === "object") {
+      if (!background) ctx.card = cardForLookup(name, value);
+      return { ...value, chat_card: ctx.card?.type ?? null };
+    }
+    return value;
   } catch (err) {
     return modelResult({ error: (err as Error).message });
   }

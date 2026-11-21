@@ -2,10 +2,12 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { chatMessages } from "@/db/schema";
+import type { Locale } from "@/i18n/config";
 import { assistant } from "@/i18n/messages/assistant";
 import type { PublicHoliday } from "../holidays";
+import { kindLabel } from "../kinds";
 import { currentSemester, studentWeek } from "../schedule";
-import { DAY_NAMES, addDays, formatDate, nowLocal, weekday } from "../time";
+import { DAY_NAMES, addDays, dayName, formatDate, formatDateRange, mondayOf, nowLocal, weekday } from "../time";
 import { runTool, type ToolContext } from "./tools";
 import { isDate } from "./toolkit";
 
@@ -37,9 +39,9 @@ function isRomanian(text: string): boolean {
   return /[ăâîșşțţ]/i.test(text) || /\b(ce|unde|cand|azi|astazi|maine|examen|examenul|orar|orarul|liber|libera|grupa|cum|ajung|urmator|urmeaza|saptamana|luni|marti|miercuri|joi|vineri|ascunde|restaureaza)\b/.test(fold(text));
 }
 
-function line(e: Any): string {
+function line(e: Any, locale: Locale): string {
   const where = [e.room, e.building].filter(Boolean).join(", ");
-  return `${e.start}–${e.end} ${e.title}${e.kind && e.kind !== "exam" && e.kind !== "personal" ? ` (${e.kind})` : ""}${where ? ` — ${where}` : ""}`;
+  return `${e.end ? `${e.start}–${e.end}` : e.start} ${e.title}${e.kind && e.kind !== "exam" && e.kind !== "personal" ? ` (${kindLabel(e.kind, locale)})` : ""}${where ? ` — ${where}` : ""}`;
 }
 
 export function askLocal(message: string, ctx: ToolContext): string {
@@ -81,6 +83,9 @@ export function askLocal(message: string, ctx: ToolContext): string {
   const capitals = new Set(message.split(/[^A-Za-z0-9]+/).filter((w) => w.length >= 2 && w === w.toUpperCase()));
   const named = (abbr: string) => words.has(fold(abbr)) && (!EVERYDAY_WORDS.has(fold(abbr)) || capitals.has(abbr.toUpperCase()));
   const course = week.find((e) => (e.abbr && named(e.abbr)) || (fold(e.title).length > 4 && q.includes(fold(e.title))));
+
+  const weekRequest = !dayNamed && /\b(this week|next week|saptamana (?:asta|aceasta|viitoare))\b/.test(q);
+  const weekStart = mondayOf(/\b(next week|saptamana viitoare)\b/.test(q) ? addDays(now.date, 7) : now.date);
 
   if (/\b(contacts?|contactele|colegi[il]?|friends?)\b/.test(q) && /\b(free|available|liber[aei]?|disponibil[ei]?)\b/.test(q)) {
     return t("In Contacts, choose “Plan a group event” and select the classmates whose calendars you want to compare.",
@@ -127,15 +132,22 @@ export function askLocal(message: string, ctx: ToolContext): string {
   }
 
   if (/\b(exam|exams|examen|examene|examenul|sesiune|sesiunea|colocviu)\b/.test(q)) {
-    const acronym = /\b(?:exam(?:en(?:ul)?)?|la|for|at|de)\s+([a-z0-9]{2,8})\b/.exec(q)?.[1];
-    const r = runTool("find_exams", { course: course?.title ?? (acronym && !/^(exam|examen|the|my|meu|mele|held|tinut)$/.test(acronym) ? acronym : undefined) }, ctx) as Any;
+    const acronym = /\b(?:exam(?:en(?:ul)?)?|la|for|at|de)\s+(?:(?:for|la|de)\s+)?([a-z][a-z0-9]{1,7})\b/.exec(q)?.[1];
+    const courseHint = acronym && !DAY_WORDS.some(([re]) => re.test(acronym))
+      && !/^(exam|examen|the|my|meu|mele|held|tinut|on|at|in|pe|is|next|tomorrow|today|maine|azi)$/.test(acronym) ? acronym : undefined;
+    const r = runTool("find_exams", {
+      course: course?.title ?? courseHint,
+      from: weekRequest ? weekStart : dayNamed ? date : undefined,
+      to: weekRequest ? addDays(weekStart, 6) : dayNamed ? date : undefined,
+      next_only: !weekRequest && /\b(next|urmatorul|urmator)\b/.test(q),
+    }, ctx) as Any;
     if (!r.count) {
       return t(
         "I couldn't find a scheduled exam for that yet. Faculties publish the session calendar closer to the exam period, so check again later.",
         "Nu am găsit încă un examen programat. Facultățile publică programarea mai aproape de sesiune, așa că merită să verifici din nou mai târziu.",
       );
     }
-    const list = (r.exams as Any[]).slice(0, 6).map((x) => `${x.course}: ${formatDate(x.date)} ${x.start}–${x.end}, ${[x.room, x.building].filter(Boolean).join(", ") || t("room not set", "sala nestabilită")}`);
+    const list = (r.exams as Any[]).slice(0, 6).map((x) => `${x.course}: ${formatDate(x.date, undefined, locale)} ${x.end ? `${x.start}–${x.end}` : x.start}, ${[x.room, x.building].filter(Boolean).join(", ") || t("room not set", "sala nestabilită")}`);
     return `${t(`I found ${r.count} exam(s):`, `Am găsit ${r.count} examen(e):`)}\n${list.join("\n")}`;
   }
 
@@ -153,10 +165,11 @@ export function askLocal(message: string, ctx: ToolContext): string {
 
   if (/\b(free|gap|gaps|liber|libera|libere|fereastra|ferestre)\b/.test(q)) {
     const group = /\b(?:group|grupa|grupei)\s+([a-z0-9. ]{1,30})/i.exec(message)?.[1]?.trim();
-    const to = dayNamed ? date : addDays(now.date, 4);
-    const r = runTool("find_free_slots", { from: dayNamed ? date : now.date, to, group }, ctx) as Any;
+    const from = weekRequest && weekStart > now.date ? weekStart : date;
+    const to = weekRequest ? addDays(weekStart, 6) : dayNamed ? date : addDays(now.date, 4);
+    const r = runTool("find_free_slots", { from, to, group }, ctx) as Any;
     if (r.error) return r.error;
-    const slots = (r.free as Any[]).slice(0, 8).map((s) => `${s.weekday} ${s.date.slice(5)}: ${s.start}–${s.end}`);
+    const slots = (r.free as Any[]).slice(0, 8).map((s) => `${formatDate(s.date, undefined, locale)}: ${s.start}–${s.end}`);
     if (!slots.length) return t("No free slot of an hour or more in that period.", "Nu există nicio fereastră de cel puțin o oră în perioada aceea.");
     return `${t(`Free time for ${r.for}:`, `Timp liber pentru ${r.for === "you" ? "tine" : r.for}:`)}\n${slots.join("\n")}`;
   }
@@ -181,20 +194,23 @@ export function askLocal(message: string, ctx: ToolContext): string {
     return r.needs_confirmation ? basic.restoreAll : basic.restored(r.restored);
   }
 
-  if (/\b(next|now|urmator|urmatoarea|urmeaza|acum)\b/.test(q) && !dayNamed) {
+  if (/\b(next|now|urmator|urmatoarea|urmeaza|acum)\b/.test(q) && !dayNamed && !weekRequest) {
     const r = runTool("get_next_event", {}, ctx) as Any;
     const parts: string[] = [];
-    if (r.current) parts.push(`${t("Now:", "Acum:")} ${line(r.current)}`);
-    if (r.next) parts.push(`${t("Next:", "Urmează:")} ${r.next.date === now.date ? "" : `${r.next.weekday} `}${line(r.next)}`);
+    if (r.current) parts.push(`${t("Now:", "Acum:")} ${line(r.current, locale)}`);
+    if (r.next) parts.push(`${t("Next:", "Urmează:")} ${r.next.date === now.date ? "" : `${dayName(weekday(r.next.date), locale)} `}${line(r.next, locale)}`);
     return parts.join("\n") || t("Nothing coming up in the next two weeks.", "Nu ai nimic programat în următoarele două săptămâni.");
   }
 
-  if (dayNamed || /\b(schedule|timetable|classes|orar|orarul|cursuri|ore)\b/.test(q)) {
-    const r = runTool("get_schedule", { from: date }, { ...ctx, locale }) as Any;
-    const label = formatDate(date, undefined, ro ? "ro-RO" : "en-GB");
-    if (r.holidays.length) return [...(r.holidays as PublicHoliday[]).map(holidayLine), ...(r.events as Any[]).map(line)].join("\n");
+  if (dayNamed || weekRequest || /\b(schedule|timetable|classes|orar|orarul|cursuri|ore)\b/.test(q)) {
+    const from = weekRequest ? weekStart : date;
+    const to = weekRequest ? addDays(from, 6) : date;
+    const r = runTool("get_schedule", { from, to, language: locale }, ctx) as Any;
+    const label = weekRequest ? formatDateRange(from, to, locale) : formatDate(date, undefined, locale);
+    const lines = (r.events as Any[]).map((e) => weekRequest ? `${dayName(weekday(e.date), locale)} ${line(e, locale)}` : line(e, locale));
+    if (r.holidays.length) return [...(r.holidays as PublicHoliday[]).map(holidayLine), ...lines].join("\n");
     if (!r.events.length) return t(`Nothing scheduled on ${label}.`, `Nu ai nimic programat ${label}.`);
-    return `${label}:\n${(r.events as Any[]).map(line).join("\n")}`;
+    return `${label}:\n${lines.join("\n")}`;
   }
 
   return t(
