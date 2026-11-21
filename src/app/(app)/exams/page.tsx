@@ -1,18 +1,18 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { exams, sources } from "@/db/schema";
-import Link from "next/link";
 import { ExamCard } from "@/components/ExamCard";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf } from "@/lib/catalog";
 import { examReminders } from "@/lib/reminders";
-import { examsForUser, placeResolver } from "@/lib/schedule";
+import { placeResolver } from "@/lib/schedule";
 import { formatDate, formatMinutes, nowLocal } from "@/lib/time";
 
 export const metadata = { title: "Exams" };
 
 type Exam = typeof exams.$inferSelect;
 
+/** The student's exams with Poli's tips, and a search across the faculty's exam list. */
 export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
   const user = await requireOnboardedUser();
   const params = await searchParams;
@@ -22,8 +22,8 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
   const place = placeResolver(user.facultyId);
   const today = nowLocal().date;
 
-  const mine = examsForUser(user);
-  const upcoming = examReminders(user);
+  // Every upcoming exam of the session, not just the next 30 days.
+  const mine = examReminders(user, new Date(), 366);
   const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const all = user.facultyId
     ? db.select().from(exams).where(eq(exams.facultyId, user.facultyId)).orderBy(asc(exams.date), asc(exams.startMin)).all()
@@ -65,45 +65,27 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
   );
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-4">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Exams</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Exam bookings published by {faculty?.shortName ?? "your faculty"} for your specialization and year. They also appear in your calendar.
+          Your exams published by {faculty?.shortName ?? "your faculty"} for your specialization and year, with a few tips from Poli.
         </p>
       </div>
 
-      {upcoming.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <h2 className="text-lg font-semibold tracking-tight">⏳ Coming up</h2>
-            <p className="text-xs text-slate-500">
-              🔔 Turn on reminders from the bell at the top, or{" "}
-              <Link href="/settings" className="font-medium text-brand-600 hover:underline">export to Google Calendar</Link> for alerts on your phone.
-            </p>
-          </div>
-          {upcoming.map((e) => (
-            <ExamCard key={e.id} exam={e} />
-          ))}
-        </section>
+      {mine.length ? (
+        mine.map((e) => <ExamCard key={e.id} exam={e} />)
+      ) : (
+        <p className="card px-4 py-6 text-sm text-slate-600">
+          {all.length
+            ? "No exam is booked for your specialization and year yet. Faculties fill in the session calendar as the exam period approaches. Search below to see what has been published so far."
+            : "No exam schedule has been imported for your faculty. It either has not been published yet or is in a format that cannot be read automatically."}
+        </p>
       )}
 
       <section className="card overflow-hidden">
-        <h2 className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Your exams</h2>
-        {mine.length ? (
-          table(mine)
-        ) : (
-          <p className="px-4 py-6 text-sm text-slate-600">
-            {all.length
-              ? "No exam is booked for your specialization and year yet. Faculties fill in the session calendar as the exam period approaches — search below to see what has been published so far."
-              : "No exam schedule has been imported for your faculty. It either has not been published yet or is in a format that cannot be read automatically."}
-          </p>
-        )}
-      </section>
-
-      <section className="card overflow-hidden">
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-200 px-4 py-3">
-          <h2 className="text-sm font-semibold">Search all exams{faculty?.shortName ? ` at ${faculty.shortName}` : ""}</h2>
+          <h2 className="text-sm font-semibold">🔎 Search all exams{faculty?.shortName ? ` at ${faculty.shortName}` : ""}</h2>
           <form className="ml-auto flex gap-2">
             <input name="q" defaultValue={q} className="field w-56" placeholder="Course, teacher, room…" aria-label="Search exams" />
             <button className="btn-secondary">Search</button>

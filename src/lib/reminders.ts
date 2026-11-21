@@ -30,10 +30,10 @@ export interface ExamReminder {
 }
 
 /** Upcoming exams of the student, nearest first, with where to go and Poli's suggestions. */
-export function examReminders(user: User, at: Date = new Date()): ExamReminder[] {
+export function examReminders(user: User, at: Date = new Date(), days = REMINDER_DAYS): ExamReminder[] {
   const now = nowLocal(at);
   const place = placeResolver(user.facultyId);
-  return examsForUser(user, now.date, addDays(now.date, REMINDER_DAYS))
+  return examsForUser(user, now.date, addDays(now.date, days))
     .map((x) => {
       const daysLeft = daysBetween(now.date, x.date);
       const minutesUntil = daysLeft * 1440 + x.startMin - now.minutes;

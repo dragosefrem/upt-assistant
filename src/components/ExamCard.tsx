@@ -12,7 +12,7 @@ const STAGE_STYLE: Record<ExamReminder["stage"], string> = {
 };
 
 /** One upcoming exam: countdown, when, where to go, and Poli's suggestions. */
-export function ExamCard({ exam, compact = false }: { exam: ExamReminder; compact?: boolean }) {
+export function ExamCard({ exam, compact = false, tips = true }: { exam: ExamReminder; compact?: boolean; tips?: boolean }) {
   const urgent = exam.stage === "now" || exam.stage === "today" || exam.stage === "tomorrow";
   return (
     <article className={`rounded-2xl border bg-white p-4 ${urgent ? "border-red-200 shadow-[0_4px_16px_-6px_rgba(220,38,38,0.25)]" : "border-slate-200"}`}>
@@ -48,7 +48,7 @@ export function ExamCard({ exam, compact = false }: { exam: ExamReminder; compac
           </p>
         </div>
       </div>
-      {exam.tips.length > 0 && (
+      {tips && exam.tips.length > 0 && (
         <div className="mt-3 flex items-start gap-2">
           <Mascot size={28} className="mt-0.5" />
           <div className="min-w-0 flex-1 rounded-2xl rounded-tl-md bg-brand-50 px-3 py-2 text-sm text-slate-800">
