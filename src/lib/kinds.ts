@@ -17,8 +17,19 @@ export function kindStyle(kind: string) {
   return KIND_STYLE[kind] ?? KIND_STYLE.other;
 }
 
+const KIND_ORDER = ["course", "seminar", "lab", "project", "other", "exam", "personal"];
+export function kindOrder(kind: string) {
+  const i = KIND_ORDER.indexOf(kind);
+  return i === -1 ? KIND_ORDER.length : i;
+}
+
 /** The kind's name in the interface language ("Lab" / "Laborator"). */
 export function kindLabel(kind: string, locale: Locale): string {
   const labels = common[locale].kinds as Record<string, string>;
   return labels[kind] ?? labels.other;
+}
+
+/** A timetable activity keeps its goal and calendar link when its weekday or time changes. */
+export function attendanceActivityId(activity: { courseKey: string; kind: string }) {
+  return `goal-${activity.kind}-${activity.courseKey}`;
 }

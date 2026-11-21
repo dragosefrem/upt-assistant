@@ -335,6 +335,17 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     expect(call("get_attendance", { course: "PC" }).by_activity[0]).toMatchObject({ missed: 1, missed_on: ["2026-11-19"] });
   });
 
+  it("can set a goal on an unmarked seminar and read how many more sessions are needed", () => {
+    const activities = () => call("get_attendance", { course: "AM" }).semester_activities;
+    const seminar = activities().find((a: Any) => a.kind === "seminar");
+    expect(seminar).toMatchObject({ minimum: null, still_needed: null });
+    const goal = { activity_id: seminar.activity_id, minimum: 5 };
+    expect(call("set_attendance_goal", goal)).toEqual(goal);
+    expect(activities().find((a: Any) => a.kind === "seminar")).toMatchObject({ attended: 0, minimum: 5, still_needed: 5 });
+    expect(call("set_attendance_goal", { ...goal, minimum: 0 }).minimum).toBeNull();
+    expect(activities().find((a: Any) => a.kind === "seminar").minimum).toBeNull();
+  });
+
   it("answers the lab and glossary questions without an AI key, in the language asked", () => {
     const ro = askLocal("Am laborator săptămâna aceasta?", ctx);
     expect(ro).toContain("Săptămâna 9, impară.");

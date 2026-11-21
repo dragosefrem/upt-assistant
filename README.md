@@ -32,7 +32,9 @@ works in Romanian and English.
 - **Exams and study plan.** Exam dates, rooms, countdowns and reminders; a search across
   the faculty's exams; and a study planner that works backwards from each exam and puts
   study blocks into the student's free time.
-- **Attendance.** Mark each class as attended or missed and see the totals per course.
+- **Attendance.** Set a semester minimum separately for each course’s lectures, labs,
+  seminars and other classes. The Attendance tab shows how many more sessions you need.
+  Mark sessions from the calendar and review individual dates in History.
 - **Contacts and group events.** Link accounts with colleagues (requests are accepted
   by the other person; real calendars then count as busy time), or save a friend as a
   name plus a group. See shared free time over custom dates, book a group event, collect

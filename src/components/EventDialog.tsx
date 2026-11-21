@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { AttendanceStatus } from "@/db/schema";
 import { useLocale, useT } from "@/i18n/client";
 import { campusJourneyHref } from "@/lib/campuspath/links";
-import { kindLabel } from "@/lib/kinds";
+import { attendanceActivityId, kindLabel } from "@/lib/kinds";
 import type { CalEvent } from "@/lib/schedule";
 import { capitalize, dayName, formatDate, formatMinutes, formatTimeSlot, nowLocal, weekday } from "@/lib/time";
 import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
@@ -159,7 +160,9 @@ const ATTENDANCE_OPTIONS = [
 
 /** Attended / Missed toggle for this one occurrence; other dates of the series are untouched. */
 function AttendanceControl({ event }: { event: CalEvent }) {
-  const t = useT().calendar.attendance;
+  const messages = useT();
+  const t = messages.calendar.attendance;
+  const router = useRouter();
   const locale = useLocale();
   const [status, setStatus] = useState<AttendanceStatus | null>(event.attendance);
   const [busy, setBusy] = useState(false);
@@ -180,6 +183,7 @@ function AttendanceControl({ event }: { event: CalEvent }) {
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? t.saveFailed);
       setStatus(next);
       window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+      router.refresh();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -208,6 +212,11 @@ function AttendanceControl({ event }: { event: CalEvent }) {
         ))}
       </div>
       {!markable && <p className="mt-2 text-xs text-slate-500">{t.notYet}</p>}
+      {event.type === "class" && (
+        <a href={`/attendance#${encodeURIComponent(attendanceActivityId(event))}`} className="mt-2 inline-flex py-1 text-sm font-semibold text-brand-700 underline">
+          {messages.attendance.goals.heading}
+        </a>
+      )}
       {error && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
     </div>
   );

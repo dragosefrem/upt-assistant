@@ -6,6 +6,7 @@ import type { Locale } from "@/i18n/config";
 import { attendance as attendanceText } from "@/i18n/messages/attendance";
 import { common } from "@/i18n/messages/common";
 import type { User } from "./auth";
+import { kindOrder } from "./kinds";
 import { currentSemester, eventsBetween, placeResolver, studentWeek, type Place } from "./schedule";
 import { describeWeeks, weekday } from "./time";
 
@@ -102,12 +103,6 @@ export interface SeriesTally extends Tally {
 
 export interface AttendanceSummary extends Tally {
   series: SeriesTally[];
-}
-
-const KIND_ORDER = ["course", "seminar", "lab", "project", "other", "exam", "personal"];
-function kindOrder(kind: string) {
-  const i = KIND_ORDER.indexOf(kind);
-  return i === -1 ? KIND_ORDER.length : i;
 }
 
 function tally(records: Pick<AttendanceRecord, "status">[]): Tally {

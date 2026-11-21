@@ -466,6 +466,20 @@ export const attendance = sqliteTable(
   (t) => [uniqueIndex("attendance_unique").on(t.userId, t.seriesKey, t.date), index("attendance_user_date").on(t.userId, t.date)],
 );
 
+/** One minimum per student, semester, course and teaching activity, across all its time slots. */
+export const attendanceGoals = sqliteTable("attendance_goals", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  semesterId: integer("semester_id").notNull().references(() => semesters.id, { onDelete: "cascade" }),
+  // Same stable key as attendance.courseKey. Keep the goal even if a timetable import removes the class.
+  courseKey: text("course_key").notNull(),
+  kind: text("kind").$type<EntryKind>().notNull(),
+  title: text("title").notNull(),
+  minimum: integer("minimum").notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.userId, t.semesterId, t.courseKey, t.kind] }),
+  check("attendance_goal_positive_integer", sql`typeof(${t.minimum}) = 'integer' and ${t.minimum} > 0`),
+]);
+
 /** A single invitation or accepted contact per unordered pair of accounts. */
 export const contacts = sqliteTable("contacts", {
   firstId: text("first_id").notNull().references(() => users.id, { onDelete: "cascade" }),
