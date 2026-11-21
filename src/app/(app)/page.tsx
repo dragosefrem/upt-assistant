@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { Calendar } from "@/components/Calendar";
+import { ExamCountdown } from "@/components/ExamCountdown";
 import { NextUp } from "@/components/NextUp";
 import { QuickActions } from "@/components/QuickActions";
 import { requireOnboardedUser } from "@/lib/auth";
+import { everydayTip } from "@/lib/examTips";
+import { examReminders } from "@/lib/reminders";
 import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
 import { addDays, mondayOf, nowLocal } from "@/lib/time";
 
@@ -24,6 +27,7 @@ export default async function HomePage() {
       <div className="flex min-w-0 flex-col gap-5">
         <QuickActions name={user.name} hour={Math.floor(minutes / 60)} />
         <NextUp initial={eventsBetween(user, today, addDays(today, 14))} />
+        <ExamCountdown exams={examReminders(user)} tip={everydayTip(today)} />
         {pending.length > 0 && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
             {pending.length === 1 ? `${pending[0].name} runs` : `${pending.length} of your courses run`} in several lab slots and you

@@ -4,6 +4,7 @@ import type { User } from "@/lib/auth";
 import { LocationProvider } from "./LocationProvider";
 import { Mascot } from "./Mascot";
 import { NavLink } from "./NavLink";
+import { NotificationBell } from "./NotificationBell";
 import { PoliChat } from "./PoliChat";
 
 /** Header and page frame shared by the student pages and the admin area. */
@@ -22,6 +23,7 @@ export function AppShell({ user, children }: { user: User; children: React.React
             <NavLink href="/settings" icon="⚙️">Settings</NavLink>
             {user.role === "admin" && <NavLink href="/admin" icon="🛠️">Admin</NavLink>}
           </nav>
+          <NotificationBell />
           <span className="hidden items-center gap-2 text-sm text-slate-700 md:flex">
             <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-800">
               {user.name.trim().charAt(0).toUpperCase() || "?"}

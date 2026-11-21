@@ -1,8 +1,11 @@
 import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { exams, sources } from "@/db/schema";
+import Link from "next/link";
+import { ExamCard } from "@/components/ExamCard";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf } from "@/lib/catalog";
+import { examReminders } from "@/lib/reminders";
 import { examsForUser, placeResolver } from "@/lib/schedule";
 import { formatDate, formatMinutes, nowLocal } from "@/lib/time";
 
@@ -20,6 +23,7 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
   const today = nowLocal().date;
 
   const mine = examsForUser(user);
+  const upcoming = examReminders(user);
   const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
   const all = user.facultyId
     ? db.select().from(exams).where(eq(exams.facultyId, user.facultyId)).orderBy(asc(exams.date), asc(exams.startMin)).all()
@@ -68,6 +72,21 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
           Exam bookings published by {faculty?.shortName ?? "your faculty"} for your specialization and year. They also appear in your calendar.
         </p>
       </div>
+
+      {upcoming.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold tracking-tight">⏳ Coming up</h2>
+            <p className="text-xs text-slate-500">
+              🔔 Turn on reminders from the bell at the top, or{" "}
+              <Link href="/settings" className="font-medium text-brand-600 hover:underline">export to Google Calendar</Link> for alerts on your phone.
+            </p>
+          </div>
+          {upcoming.map((e) => (
+            <ExamCard key={e.id} exam={e} />
+          ))}
+        </section>
+      )}
 
       <section className="card overflow-hidden">
         <h2 className="border-b border-slate-200 px-4 py-3 text-sm font-semibold">Your exams</h2>
