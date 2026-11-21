@@ -21,6 +21,8 @@ export default defineRailway(() => {
       ANTHROPIC_API_KEY: preserve(),
       ANTHROPIC_AUTH_TOKEN: preserve(),
       ANTHROPIC_PROFILE: preserve(),
+      RESEND_API_KEY: preserve(),
+      VERIFICATION_EMAIL_FROM: preserve(),
       SMTP_HOST: preserve(),
       SMTP_PORT: preserve(),
       SMTP_USER: preserve(),

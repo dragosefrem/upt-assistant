@@ -3,14 +3,13 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { after } from "next/server";
-import { eq } from "drizzle-orm";
-import { getDb } from "@/db";
-import { users } from "@/db/schema";
 import { LOCALE_COOKIE } from "@/i18n/config";
 import type { auth } from "@/i18n/messages/auth";
 import { getLocale } from "@/i18n/server";
-import { authenticate, createUser, endSession, hasEmailFormat, loginClientAddress, normalizeEmail, registrationName, startSession } from "@/lib/auth";
-import { requestPasswordReset, resetBaseUrl, resetPassword } from "@/lib/password-reset";
+import { completeRegistration, requestRegistrationLink } from "@/lib/account-verification";
+import { authenticate, endSession, hasEmailFormat, loginClientAddress, normalizeEmail, registrationName, startSession } from "@/lib/auth";
+import { accountEmailBaseUrl } from "@/lib/mail";
+import { requestPasswordReset, resetPassword } from "@/lib/password-reset";
 
 export interface AuthState {
   error?: keyof typeof auth.en.errors;
@@ -21,9 +20,9 @@ export interface AuthState {
   name?: string;
 }
 
-function destination(form: FormData, fallback: string) {
+function inviteCode(form: FormData) {
   const invite = form.get("invite");
-  return typeof invite === "string" && /^[A-Za-z0-9_-]{32}$/.test(invite) ? `/join/${invite}` : fallback;
+  return typeof invite === "string" && /^[A-Za-z0-9_-]{32}$/.test(invite) ? invite : null;
 }
 
 export async function loginAction(_prev: AuthState, form: FormData): Promise<AuthState> {
@@ -38,24 +37,30 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
   await startSession(user.id);
   // The account remembers its language, so it follows the student to a new device.
   if (user.locale) (await cookies()).set(LOCALE_COOKIE, user.locale, { path: "/", maxAge: 365 * 86_400, sameSite: "lax" });
-  redirect(destination(form, user.onboardedAt ? "/" : "/onboarding"));
+  const invite = inviteCode(form);
+  redirect(invite ? `/join/${invite}` : user.onboardedAt ? "/" : "/onboarding");
 }
 
 export async function registerAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   const email = normalizeEmail(String(form.get("email") ?? ""));
+  const incoming = await headers();
+  const result = await requestRegistrationLink({
+    email, baseUrl: accountEmailBaseUrl(incoming), invite: inviteCode(form),
+    locale: await getLocale(), client: loginClientAddress(incoming),
+  });
+  if (result === "sent") return { email, sent: true };
+  return { email, error: result, field: result === "badEmail" || result === "exists" ? "email" : undefined };
+}
+
+export async function completeRegistrationAction(token: string, _prev: AuthState, form: FormData): Promise<AuthState> {
   const { name, error } = registrationName(String(form.get("name") ?? ""));
   const password = String(form.get("password") ?? "");
-  const keep = { email, name };
-  if (error) return { ...keep, error, field: "name" };
-  if (!hasEmailFormat(email)) return { ...keep, error: "badEmail", field: "email" };
-  if (password.length < 8) return { ...keep, error: "shortPassword", field: "password" };
-  const locale = await getLocale();
-  if (getDb().select({ id: users.id }).from(users).where(eq(users.email, email)).get()) {
-    return { ...keep, error: "exists", field: "email" };
-  }
-  const user = createUser({ email, name, password, locale });
-  await startSession(user.id);
-  redirect(destination(form, "/onboarding"));
+  if (error) return { name, error, field: "name" };
+  if (password.length < 8) return { name, error: "shortPassword", field: "password" };
+  const registration = completeRegistration(token, { name, password, locale: await getLocale() });
+  if (!registration) return { name, error: "invalidVerification" };
+  await startSession(registration.user.id);
+  redirect(registration.invite ? `/join/${registration.invite}` : "/onboarding");
 }
 
 export async function logoutAction() {
@@ -67,7 +72,7 @@ export async function logoutAction() {
 export async function forgotPasswordAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   const email = normalizeEmail(String(form.get("email") ?? ""));
   if (!hasEmailFormat(email)) return { email, error: "badEmail", field: "email" };
-  const result = requestPasswordReset(email, resetBaseUrl(await headers()), await getLocale(), after);
+  const result = requestPasswordReset(email, accountEmailBaseUrl(await headers()), await getLocale(), after);
   if (result === "not-configured") return { email, error: "notConfigured" };
   return { sent: true };
 }
