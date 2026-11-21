@@ -4,7 +4,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Mascot } from "@/components/Mascot";
 import { getUser } from "@/lib/auth";
-import { landingStats, roCount } from "@/lib/landing";
 
 export const metadata: Metadata = {
   title: "Tu ai planul. Poli are calendarul.",
@@ -33,6 +32,9 @@ const TIDY = [
   { time: "🔔", title: "Reminder cu 2 ore înainte", where: "și alarmă în calendarul telefonului", tag: "Reminder setat", tone: "bg-brand-100 text-brand-700" },
 ];
 
+/** Questions Poli answers from the student's own timetable. */
+const ASKS = ["📅 Ce am mâine?", "📍 Unde am examenul?", "☕ Când sunt liber joi?", "👯 Când e liberă grupa lui Andrei?", "🧭 Cum ajung la sala următoare?", "🎾 Când pot juca tenis săptămâna asta?"];
+
 const STEPS = [
   { n: "1", title: "Alegi grupa", text: "Facultatea, anul și grupa. Două minute, o singură dată." },
   { n: "2", title: "Poli face calendarul", text: "Cursuri, laboratoare, examene și sălile lor, din orarele publicate de facultate." },
@@ -42,8 +44,6 @@ const STEPS = [
 /** What signed-out visitors see: one short page about UPT Orar, with Poli at work. */
 export default async function WelcomePage() {
   if (await getUser()) redirect("/");
-  const stats = landingStats();
-  const from = [...stats.imported, ...stats.examsOnly];
 
   return (
     <div lang="ro" className={`${serif.variable} flex min-h-full flex-1 flex-col bg-[#fbf8f1] text-[#14213d]`}>
@@ -78,7 +78,7 @@ export default async function WelcomePage() {
             <em className="font-[family-name:var(--font-serif)] text-[1.08em] font-normal italic tracking-normal text-brand-600">Poli are calendarul.</em>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl">
-            Asistentul care îți știe orarul, examenele și sala. Tu nu mai pierzi nimic, iar timpul câștigat e al tău.
+            De la cursuri la planuri cu prietenii: AI-ul care-ți organizează ziua și-ți face loc pentru ce contează.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/register" className="rounded-full bg-[#14213d] px-7 py-3.5 text-base font-semibold text-white shadow-[0_10px_30px_-10px_rgba(20,33,61,0.6)] transition hover:-translate-y-0.5 hover:bg-brand-700">
@@ -88,7 +88,6 @@ export default async function WelcomePage() {
               Am deja cont
             </Link>
           </div>
-          <p className="mt-5 text-sm text-slate-500">Pentru studenții Politehnicii Timișoara · pe telefon și pe calculator</p>
         </section>
 
         {/* Poli at work: the mess goes in, a clear week comes out */}
@@ -147,25 +146,28 @@ export default async function WelcomePage() {
           </div>
         </section>
 
-        {/* Many sources, one calendar */}
+        {/* Just ask Poli */}
         <section className="mx-auto max-w-4xl px-5 pb-16 text-center">
           <h2 className="text-3xl font-semibold tracking-tight sm:text-5xl">
-            11 site-uri de facultate.{" "}
-            <em className="font-[family-name:var(--font-serif)] font-normal italic text-brand-600">Un singur calendar.</em>
+            Întreabă-l pe Poli <em className="font-[family-name:var(--font-serif)] font-normal italic text-brand-600">orice.</em>
           </h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-600">
-            Fiecare facultate își publică orarul altfel. Poli le citește pentru tine, ca tu să nu mai cauți prin fișiere.
-          </p>
-          {stats.classes + stats.exams > 0 && (
-            <p className="mt-4 text-sm text-slate-500">
-              Acum în aplicație:{" "}
-              {stats.classes > 0 && <b className="text-slate-700">{roCount(stats.classes, "oră", "ore")}</b>}
-              {stats.classes > 0 && stats.exams > 0 && " și "}
-              {stats.exams > 0 && <b className="text-slate-700">{roCount(stats.exams, "examen", "examene")}</b>}{" "}
-              {stats.classes + stats.exams === 1 ? "importat" : "importate"}
-              {from.length ? ` de la ${from.join(", ")}` : ""}.
+          <ul className="mt-8 flex flex-wrap justify-center gap-3">
+            {ASKS.map((q, i) => (
+              <li
+                key={q}
+                className="lp-ask rounded-full border border-[#14213d]/10 bg-white px-4 py-2.5 text-base shadow-sm"
+                style={{ "--d": `${i * 0.12}s` } as React.CSSProperties}
+              >
+                {q}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-6 inline-flex items-end gap-2 text-left">
+            <Mascot size={44} chat={false} />
+            <p className="mb-2 rounded-2xl rounded-bl-md bg-brand-600 px-4 py-2.5 text-sm text-white shadow-md">
+              Joi ai liber de la 10:00. Pun cafeaua cu prietenii atunci? ☕
             </p>
-          )}
+          </div>
         </section>
 
         {/* Three steps */}
@@ -186,7 +188,7 @@ export default async function WelcomePage() {
             <div aria-hidden className="pointer-events-none absolute -bottom-24 -right-16 h-64 w-64 rounded-full bg-amber-300/15" />
             <Mascot size={72} wave chat={false} />
             <h2 className="relative text-3xl font-semibold tracking-tight sm:text-5xl">
-              Tu ai grijă de examene.
+              Tu ai grijă de tine.
               <br />
               <em className="font-[family-name:var(--font-serif)] font-normal italic text-amber-300">Poli are grijă de rest.</em>
             </h2>

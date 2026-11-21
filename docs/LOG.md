@@ -39,3 +39,7 @@ Următorul pas: traducerea interfeței aplicației în română.
 ## 21 nov 2026, 15:40
 Gata: sloganul landing page-ului schimbat în „Tu ai planul. Poli are calendarul.” (`src/app/welcome/page.tsx`, inclusiv titlul paginii).
 Decis: sloganul ales de echipă dintre variantele propuse; fraza de sub slogan rămâne deocamdată, până alege echipa una nouă.
+
+## 21 nov 2026, 15:50
+Gata: pe landing page, fraza de sub slogan e „De la cursuri la planuri cu prietenii: AI-ul care-ți organizează ziua și-ți face loc pentru ce contează.” Scoase: rândul „Pentru studenții Politehnicii Timișoara · pe telefon și pe calculator”, secțiunea „11 site-uri de facultate. Un singur calendar.” și rândul cu cifrele importate. În locul lor: „Întreabă-l pe Poli orice.”, cu șase întrebări care apar pe rând și răspunsul lui Poli despre cafeaua cu prietenii. Finalul: „Tu ai grijă de tine. Poli are grijă de rest.”
+Decis: textele alese de echipă. Pagina nu mai afișează cifre, așa că criteriul 3 e scos din `docs/CRITERIA.md`; `landingStats()` rămâne în cod, nefolosit, pentru o eventuală revenire.

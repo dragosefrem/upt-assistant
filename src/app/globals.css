@@ -150,13 +150,16 @@ body {
   42% { opacity: 1; }
   58%, 100% { opacity: 0; transform: scale(1.6); }
 }
+/* The questions pop in one after another, once. */
+.lp-ask { animation: lp-ask 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: var(--d, 0s); }
+@keyframes lp-ask { from { opacity: 0; transform: translateY(10px) scale(0.92); } to { opacity: 1; transform: none; } }
 /* On phones the mess sits above Poli, so it falls straight down into it. */
 @media (max-width: 767px) {
   .lp-chip { --tx: 0px !important; --ty: 140px !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lp-chip, .lp-card, .lp-poli, .lp-label, .lp-ring { animation: none !important; }
+  .lp-chip, .lp-card, .lp-poli, .lp-label, .lp-ring, .lp-ask { animation: none !important; }
   .lp-ring { display: none; }
   .typing-dots span, .animate-wiggle, .animate-pop, .poli-bot, .poli-wave, .poli-ring, .poli-burst, .poli-jump { animation: none !important; }
   .poli-hit { transition: none !important; }
