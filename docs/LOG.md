@@ -47,3 +47,6 @@ Decis: textele alese de echipă. Pagina nu mai afișează cifre, așa că criter
 ## 21 nov 2026, 15:55
 Gata: aplicația se numește acum „Poli” în loc de „UPT Orar”: antetul, titlurile paginilor („… · Poli”), landing page-ul, ecranul de login („← What is Poli?”), clopoțelul, panoul de export, calendarul Google („Poli”), fișierul .ics (`poli.ics`, numele calendarului), demo-ul, README și documentele.
 Decis: identificatorii tehnici rămân neschimbați: UID-urile din .ics (`@upt-orar`) și cheia `uptOrar` din evenimentele Google, ca abonații să primească actualizări, nu evenimente dublate. Un calendar Google sincronizat deja își păstrează vechiul nume până îl redenumește studentul. Numele repo-ului (`upt-assistant`) nu e schimbat.
+
+## 21 nov 2026, 15:50
+Gata: pe landing page, finalul e acum „Tu ai grijă de tine. Poli are grijă de restul.” (corectat din „de rest”).

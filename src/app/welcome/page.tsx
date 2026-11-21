@@ -190,7 +190,7 @@ export default async function WelcomePage() {
             <h2 className="relative text-3xl font-semibold tracking-tight sm:text-5xl">
               Tu ai grijă de tine.
               <br />
-              <em className="font-[family-name:var(--font-serif)] font-normal italic text-amber-300">Poli are grijă de rest.</em>
+              <em className="font-[family-name:var(--font-serif)] font-normal italic text-amber-300">Poli are grijă de restul.</em>
             </h2>
             <Link href="/register" className="relative rounded-full bg-amber-300 px-7 py-3.5 font-semibold text-[#14213d] transition hover:-translate-y-0.5 hover:bg-amber-200">
               Creează-ți contul
