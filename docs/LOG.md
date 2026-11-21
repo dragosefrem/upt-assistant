@@ -30,3 +30,8 @@ Următorul pas: traducerea interfeței aplicației în română; un semn de deru
 Gata: landing page-ul scurtat (`src/app/welcome/page.tsx`): titlul nou „Mereu la timp, pentru tot.”, un exemplu cu „Urmează”, un reminder de examen și Poli, trei carduri (orarul, examenele, Poli), butonul final și subsolul. Scoase: meniul, secțiunile despre calendar, examene, întrebări, facultăți și întrebări frecvente. Pe laptop pagina are acum ~1.150 px în loc de ~3.750.
 Decis: titlu mai sugestiv și pagină scurtă (cerut de echipă). Criteriul 5 (meniul) scos din `docs/CRITERIA.md`, pentru că pagina nu mai are meniu.
 Următorul pas: rămân cele de la intrarea anterioară (traducerea interfeței aplicației în română, fișierele din rădăcina repo-ului).
+
+## 21 nov 2026, 15:45
+Gata: landing page refăcut după modelul wisprflow.ai (`src/app/welcome/page.tsx`, animația în `src/app/globals.css`, clasele `lp-*`). Slogan: „Mereu la timp. Poli te acoperă.”; cuvintele accentuate în italic cu Instrument Serif (are diacritice românești). Animație de 9 s în buclă: fișierele împrăștiate (PDF, Excel, întrebări) zboară spre Poli, Poli sare, apar cardurile zilei organizate („Sala găsită”, „Examen detectat”, „Timp liber găsit”, „Reminder setat”). Apoi „11 site-uri de facultate. Un singur calendar.”, trei pași și finalul „Tu ai grijă de examene. Poli are grijă de rest.”
+Decis: stil Wispr (centrat, fundal crem, butoane rotunde închise, un singur „înainte/după” animat) și pagină scurtă; animația se oprește pentru cine a cerut mișcare redusă.
+Următorul pas: traducerea interfeței aplicației în română.
