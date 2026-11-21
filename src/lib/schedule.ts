@@ -325,7 +325,7 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
       endMin: x.endMin,
       room: x.room,
       teacher: x.teacher,
-      note: x.audience,
+      note: [x.audience, x.endMin === x.startMin ? "End time unpublished" : null].filter(Boolean).join(" · ") || null,
       place: place(x.room),
       examId: x.id,
     });

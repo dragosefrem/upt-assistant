@@ -42,10 +42,13 @@ export function electricalActivities(text: string): string[] {
 }
 
 /** Civil Engineering puts the room and lecturer on a second line below the title. */
+const civilRoom = /^(?:[Ss]al[aă]\s+)?(LG\s*\d+|[A-Z]{1,3}\s?-?\d+[a-z]?|PN|NM|V[Vv]|\d+)\b\s*(.*)$/u;
+export function civilDetail(text: string) { return civilRoom.test(squash(text)); }
+
 export function civilCell(raw: string) {
   const lines = raw.trim().split(/\n+/).map(squash);
   const last = lines.at(-1) ?? "";
-  const detail = /^(?:[Ss]al[aă]\s+)?(LG\s*\d+|[A-Z]{1,3}\s?-?\d+[a-z]?|PN|NM|Vv|\d+)\b\s*(.*)$/u.exec(last);
+  const detail = civilRoom.exec(last);
   if (lines.length < 2 || !detail) return parseCellText(raw);
   const parsed = parseCellText(lines.slice(0, -1).join(" "));
   parsed.room = detail[1];
@@ -66,7 +69,7 @@ export function readPrintedTable(
   columnsFor: (header: Box[], clockRight: number) => PrintedColumn[],
   documentWeeks = "all",
   parse = parseCellText,
-  options: { splitSharedHours?: boolean; splitActivities?: (text: string) => string[] } = {},
+  options: { splitSharedHours?: boolean; splitActivities?: (text: string) => string[]; isDetail?: (text: string) => boolean } = {},
 ): NormalizedTimetable {
   const result: NormalizedTimetable = { groups: [], entries: [], warnings: [] };
   const byX = new Map<number, Array<{ box: Box; time: TimeRange; day: number }>>();
@@ -114,14 +117,15 @@ export function readPrintedTable(
   const dayAt = (y: number) => clocks[0].find((r) => r.box[1] <= y && y < r.box[3])?.day;
   const aligned = new Map<string, Box>();
   const blocks: Box[] = [];
+  const detailCell = (text: string) => roomOnly.test(text) || !!options.isDetail?.(text);
   for (const b of cells.filter((b) => b[1] >= first && indexed.some((c) => c.left < b[2] && c.right > b[0]))
     .sort((a, b) => a[1] - b[1])) {
     const key = b[0] + "|" + b[2];
     const above = aligned.get(key);
     const raw = squash(b[4]);
-    if (above && (continuation.test(raw) || roomOnly.test(raw)) && Math.abs(above[3] - b[1]) < 0.05
+    if (above && (continuation.test(raw) || detailCell(raw)) && Math.abs(above[3] - b[1]) < 0.05
       && dayAt((above[1] + above[3]) / 2) === dayAt((b[1] + b[3]) / 2)
-      && !parseTimeRange(above[4]) && !dayOf(above[4]) && !roomOnly.test(squash(above[4]))) {
+      && !parseTimeRange(above[4]) && !dayOf(above[4]) && !detailCell(squash(above[4]))) {
       above[4] += "\n" + b[4];
       above[3] = b[3];
     } else {
@@ -153,7 +157,7 @@ export function readPrintedTable(
   }
   for (const b of blocks) {
     const raw = squash(b[4]);
-    if (parseTimeRange(raw) || dayOf(raw) || /^[-–—.\s]+$/.test(raw) || roomOnly.test(raw) || continuation.test(raw)) continue;
+    if (parseTimeRange(raw) || dayOf(raw) || /^[-–—.\s]+$/.test(raw) || detailCell(raw) || continuation.test(raw)) continue;
     const adjoiningRoom = cells.find((r) => roomOnly.test(squash(r[4])) && Math.abs(r[0] - b[2]) < 0.05 &&
       Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
     const covered = indexed.filter((c) => Math.min(c.right, adjoiningRoom?.[2] ?? b[2]) - Math.max(c.left, b[0]) > 0.1);

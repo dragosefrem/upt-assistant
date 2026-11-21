@@ -4,7 +4,7 @@ import { exams, sources } from "@/db/schema";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf } from "@/lib/catalog";
 import { examsForUser, placeResolver } from "@/lib/schedule";
-import { formatDate, formatMinutes, nowLocal } from "@/lib/time";
+import { formatDate, formatTimeSlot, nowLocal } from "@/lib/time";
 
 export const metadata = { title: "Exams" };
 
@@ -41,7 +41,7 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
             return (
               <tr key={x.id} className={x.date < today ? "text-slate-400" : ""}>
                 <td className="whitespace-nowrap px-4 py-2.5 font-medium">{formatDate(x.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" })}</td>
-                <td className="whitespace-nowrap px-4 py-2.5 tabular-nums">{formatMinutes(x.startMin)}–{formatMinutes(x.endMin)}</td>
+                <td className="whitespace-nowrap px-4 py-2.5 tabular-nums">{formatTimeSlot(x.startMin, x.endMin)}</td>
                 <td className="px-4 py-2.5">
                   <span className="font-medium">{x.courseName}</span>
                   {x.courseAbbr && x.courseAbbr !== x.courseName && <span className="ml-1.5 text-xs text-slate-500">{x.courseAbbr}</span>}
@@ -104,6 +104,7 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
             <span key={d.id}>
               {i > 0 && ", "}
               <a className="underline hover:text-brand-600" href={d.url} target="_blank" rel="noreferrer">{d.label}</a>
+              {d.status === "partial" && d.message && <span> · {d.message}</span>}
             </span>
           ))}
           {documents[0].lastFetchedAt ? ` · last imported ${formatDate(documents[0].lastFetchedAt.slice(0, 10), { day: "numeric", month: "short", year: "numeric" })}` : ""}

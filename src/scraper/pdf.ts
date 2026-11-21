@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { pageTerm, printedColumns, printedSlugs } from "./adapters/printedFaculties";
-import { civilCell, electricalActivities, electricalCell, readPrintedTable, type Box } from "./printed";
+import { civilCell, civilDetail, electricalActivities, electricalCell, readPrintedTable, type Box } from "./printed";
 import type { DiscoveredSource, NormalizedTimetable, SemesterRef } from "./types";
 
 interface PdfPage { text: string; tables: Box[][] }
@@ -47,7 +47,8 @@ export async function readPdf(body: Buffer, slug: string, source: DiscoveredSour
     const pageTables = page.tables.map((cells) => readPrintedTable(cells, name,
       (header, right) => printedColumns(slug, source, page.text, header, right), documentWeeks,
       slug === printedSlugs.IEE ? electricalCell : slug === printedSlugs.CT ? civilCell : undefined,
-      { splitSharedHours: slug === printedSlugs.MEC, splitActivities: slug === printedSlugs.IEE ? electricalActivities : undefined },
+      { splitSharedHours: slug === printedSlugs.MEC, splitActivities: slug === printedSlugs.IEE ? electricalActivities : undefined,
+        isDetail: slug === printedSlugs.CT ? civilDetail : undefined },
     )).filter((t) => t.entries.length);
     if (!pageTables.length && /\b\d{1,2}\s*[-–_]\s*\d{1,2}\b/.test(page.text) && /\b(?:ora|ore|hour)\b/i.test(page.text)) {
       unreadable = true;

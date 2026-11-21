@@ -4,15 +4,16 @@ import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { acAdapter } from "@/scraper/adapters/ac";
 import { fihAdapter } from "@/scraper/adapters/fih";
-import { etcAdapter } from "@/scraper/adapters/others";
+import { etcAdapter, fscAdapter } from "@/scraper/adapters/others";
 import { pageTerm } from "@/scraper/adapters/printedFaculties";
-import { civilCell, electricalCell, headerColumns, readPrintedTable, type Box } from "@/scraper/printed";
+import { civilCell, civilDetail, electricalActivities, electricalCell, headerColumns, readPrintedTable, type Box } from "@/scraper/printed";
 import { extractSpecializations, parseProgrammeLabel } from "@/scraper/catalog";
 import { parseCellText } from "@/scraper/cellText";
+import { distanceTimetable } from "@/scraper/distance";
 import { classifyLink, detectAcademicYear, detectSemester, downloadUrl, extractLinks, matchesSemester } from "@/scraper/discover";
 import { parseExamCell, parseRoomGridExams } from "@/scraper/exams";
 import { Grid, loadHtmlTables, loadWorkbook } from "@/scraper/grid";
-import { acronym, parseStudyYear, parseTimeRange } from "@/scraper/text";
+import { acronym, activityTime, parseStudyYear, parseTimeRange } from "@/scraper/text";
 import { parseSlotNote, parseTimetable } from "@/scraper/timetable";
 import type { DiscoveredSource } from "@/scraper/types";
 
@@ -20,6 +21,107 @@ import type { DiscoveredSource } from "@/scraper/types";
 const fixture = (name: string) => fs.readFileSync(path.join(__dirname, "fixtures", name));
 
 const hm = (h: number, m = 0) => h * 60 + m;
+
+describe("published timetable corrections", () => {
+  it("keeps week lists, range intersections and a lecture's explicit end time", () => {
+    expect(parseCellText("TI (p) B027B, s. impară")).toMatchObject({ room: "B027B", weeks: "odd" });
+    expect(parseCellText("MT (s) s. 1-7 s. para").weeks).toBe("1-7&even");
+    expect(parseCellText("Sapt. 8-14: para Notiuni de stiinta si tehnica (s)").weeks).toBe("8-14&even");
+    expect(parseCellText("Etică (s) săpt. 4 , 8, 12, 14 (17.00-18.00)").weeks).toBe("4,8,12,14");
+    expect(activityTime("TI (c) B027B I. Filip (12-13.30)", { startMin: 720, endMin: 840 })).toEqual({ startMin: 720, endMin: 810 });
+  });
+
+  it("ignores a black-on-black Excel divider and preserves a narrow legible column", async () => {
+    const workbook = new ExcelJS.Workbook(), sheet = workbook.addWorksheet("Master An I");
+    for (const [column, width] of [[1, 20], [2, 0.43], [3, 0.43]]) sheet.getColumn(column).width = width;
+    for (const address of ["A1", "B1", "C1"]) sheet.getCell(address).value = "AES";
+    sheet.getCell("B1").fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF000000" } };
+    sheet.getCell("B1").font = { color: { argb: "FF000000" } };
+    const [grid] = await loadWorkbook(Buffer.from(await workbook.xlsx.writeBuffer()));
+    expect(grid.cells.map((c) => [c.col, c.text])).toEqual([[1, "AES"], [2, "AES"]]);
+  });
+
+  it("keeps the first-week AC change and the room for each supplementary lab", async () => {
+    const grids = await loadWorkbook(fixture("ac-cti-2026-27-sem1.xlsx"));
+    const year = parseTimetable(grids.find((g) => g.name === "An 1")!);
+    const moved = year.entries.filter((e) => e.rawText.includes("se tine luni"));
+    expect(moved).toEqual(expect.arrayContaining([
+      expect.objectContaining({ day: 1, startMin: 960, endMin: 1200, room: "M304 - MEC", weeks: "1" }),
+      expect.objectContaining({ room: "A117", weeks: "!1" }),
+    ]));
+    expect(year.entries.filter((e) => e.rawText.includes("grupe suplimentare")).map((e) => e.room)).toEqual(["B528b", "B418a", "B528a"]);
+    expect(year.entries.find((e) => e.rawText.includes("A3 Chimie"))).toMatchObject({ room: "A3 Chimie", publishedOptional: true });
+  });
+
+  it("splits the two activities and the language groups printed in an FSC cell", async () => {
+    const grids = await loadWorkbook(fixture("fsc-crp-2026-27-sem1.xlsx"));
+    const source: DiscoveredSource = { url: "https://sc.upt.ro/ORAR_CRP_sem1.xlsx", label: "Comunicare și relații publice",
+      context: "", kind: "timetable", format: "xlsx", academicYear: "2026-2027", semester: 1 };
+    const table = fscAdapter.parseGrid!(grids[1], source)!;
+    expect(table.entries.filter((e) => e.kind === "seminar" && /lexic specializat/i.test(e.courseName))
+      .map((e) => [e.weeks, e.groups.map((i) => table.groups[i].name)])).toEqual([["odd", ["1 franceză"]], ["even", ["2 germană"]]]);
+    const master = new Grid("TINT II");
+    master.add({ row: 1, col: 1, rowSpan: 1, colSpan: 5, text: "Programul de studii univ. de masterat: Traducere" });
+    for (let i = 0; i < 4; i++) master.add({ row: i + 2, col: 2, rowSpan: 1, colSpan: 1, text: (8 + 2 * i) + "-" + (10 + 2 * i) });
+    master.add({ row: 2, col: 3, rowSpan: 1, colSpan: 3, text: "Subtitrare (c) A208" });
+    expect(parseTimetable(master).groups.map((g) => g.name)).toEqual([""]);
+  });
+
+  it("reads the intermediate MEC hour where one full-cohort lecture gives way to another", () => {
+    const cells: Box[] = [[1, 0, 2, 1, "Grupa 1"], [0, 1, 1, 3, "08_10"], [0, 3, 1, 5, "10_12"],
+      [0, 5, 1, 9, "12_14"], [1, 1, 2, 4, "Chimie - curs"], [1, 4, 2, 8, "Știința materialelor (c)"], [1, 8, 2, 9, "Fizică (c)"]];
+    const group = { spec: { name: "Bioinginerie", degree: "bachelor" as const }, year: 1, name: "1", series: "" };
+    const table = readPrintedTable(cells, "IA", () => [{ left: 1, right: 2, group }], "all", undefined, { splitSharedHours: true });
+    expect(table.entries.map((e) => [e.startMin, e.endMin])).toEqual([[480, 660], [660, 780], [780, 840]]);
+    expect(electricalActivities("Sala405, RM (L) s. pare\nBH (L) s. impare").map(electricalCell))
+      .toMatchObject([{ name: "RM", weeks: "even", room: "405" }, { name: "BH", weeks: "odd" }]);
+  });
+
+  it("imports dated ID meetings, subgroup rooms and exam sittings from the public agenda", () => {
+    const meeting = { shortname: "S1-ID-INFO1-IPC", fullname: "Introducere în programarea calculatoarelor",
+      eventname: "Curs_IPC_Info ID_Anul 1", date: "2026-11-14 16:30:00",
+      description: "FIZIC Grupa 1+2 (sala B019- Electro) Grupa 3+4 ( C402-C403- sediul DeL)" };
+    const { table, exams } = distanceTimetable([meeting, { ...meeting, date: "2026-12-12 10:00:00", description: "ONLINE" },
+      { ...meeting, date: "2026-11-14 00:00:00", description: "Cursul se va recupera Online la o alta data." },
+      { ...meeting, date: "2027-01-16 08:00:00", description: "Sala A105", eventname: "ED_IPC_INFO1_P1" },
+      { ...meeting, shortname: "S1-ID-TST1-IPC" }], "RIA", { academicYear: "2026-2027", number: 1 });
+    expect(table.groups.map((g) => g.name)).toEqual(["1", "2", "3", "4"]);
+    expect(table.entries).toMatchObject([
+      { day: 6, weeks: "2026-11-14", startMin: 990, endMin: 990, room: "B019- Electro", groups: [0, 1] },
+      { room: "C402-C403", groups: [2, 3] }, { weeks: "2026-12-12", room: "online", groups: [0, 1, 2, 3] },
+    ]);
+    expect(exams).toMatchObject([{ date: "2027-01-16", year: 1, specs: [{ name: "Informatică", language: "RO, ID" }] }]);
+  });
+
+  it("reads the separate room and teacher row below a Civil Engineering class", () => {
+    const cells: Box[] = [[0, 1, 1, 3, "14-16"], [0, 3, 1, 5, "16-18"], [0, 5, 1, 7, "18-20"],
+      [1, 1, 2, 2, "C-ții din lemn s8-13"], [1, 2, 2, 3, "A105 Nunes"]];
+    const group = { spec: { name: "Inginerie civilă", degree: "bachelor" as const }, year: 3, name: "131 a", series: "" };
+    const table = readPrintedTable(cells, "III", () => [{ left: 1, right: 2, group }], "all", civilCell, { isDetail: civilDetail });
+    expect(table.entries).toMatchObject([{ courseName: "C-ții din lemn", room: "A105", teacher: "Nunes", weeks: "8-13" }]);
+  });
+
+  it("keeps assigned Electronics slots and offers the separate elective labs to eligible groups", () => {
+    const grid = new Grid("Master");
+    const put = (row: number, col: number, text: string, colSpan = 1) => grid.add({ row, col, text, colSpan, rowSpan: 1 });
+    put(1, 3, "1 ETcTI MA", 2); put(1, 6, "Optionale MA an 1 sem 1");
+    put(2, 3, "1 ID 33"); put(2, 4, "1 ESI 31"); put(2, 6, "MSS");
+    put(3, 3, "sg.1.1"); put(3, 4, "sg.1.1"); put(3, 6, "2sg.");
+    for (let i = 0; i < 4; i++) put(4 + i, 2, (8 + 2 * i) + "-" + (10 + 2 * i));
+    put(4, 3, "MSS(c) Dep Mate"); put(5, 3, "MSS(l) Dep Mate");
+    put(4, 6, "MSS(c) Dep Mate"); put(5, 6, "MSS(l) Dep Mate"); put(6, 6, "MSS(l) Dep Mate");
+    const s: DiscoveredSource = { url: "https://etc.upt.ro/", kind: "timetable", label: "Master an I", context: "",
+      format: "gsheet", academicYear: "2026-2027", semester: 1 };
+    const table = etcAdapter.normalize!(parseTimetable(grid), s, grid)!;
+    const forProgramme = (code: string) => table.entries.filter((e) => e.groups.some((i) => table.groups[i].spec.code === code));
+    expect(forProgramme("ID")).toHaveLength(2);
+    expect(forProgramme("ID").every((e) => !e.publishedOptional && !e.isSlotOption)).toBe(true);
+    expect(forProgramme("ESI")).toHaveLength(3);
+    expect(forProgramme("ESI").filter((e) => e.kind === "lab")).toMatchObject([
+      { isSlotOption: true, publishedOptional: true }, { isSlotOption: true, publishedOptional: true },
+    ]);
+  });
+});
 
 describe("text helpers", () => {
   it("parses the hour formats used across faculties", () => {

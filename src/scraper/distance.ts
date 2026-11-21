@@ -3,7 +3,7 @@ import * as cheerio from "cheerio";
 import { weekday } from "@/lib/time";
 import { fetchText } from "./http";
 import { norm, squash } from "./text";
-import type { DiscoveredSource, NormalizedGroup, NormalizedTimetable, SemesterRef } from "./types";
+import type { DiscoveredSource, NormalizedExam, NormalizedGroup, NormalizedTimetable, SemesterRef } from "./types";
 
 const programmes: Record<string, { prefix: string; name: string; mode: "ID" | "IFR" }> = {
   RIA: { prefix: "INFO", name: "Informatică", mode: "ID" },
@@ -12,13 +12,14 @@ const programmes: Record<string, { prefix: string; name: string; mode: "ID" | "I
   MEC: { prefix: "TCM", name: "Tehnologia construcţiilor de maşini", mode: "IFR" },
 };
 
-export function distanceSource(faculty: string, semester: SemesterRef): DiscoveredSource | null {
+export function distanceSource(faculty: string, semester: SemesterRef, kind: "timetable" | "exams"): DiscoveredSource | null {
   const programme = programmes[faculty];
   if (!programme) return null;
   const term = semester.academicYear + "-" + semester.number;
-  return { reader: "distance", format: "html", kind: "timetable", academicYear: semester.academicYear, semester: semester.number,
-    label: programme.name + " (" + programme.mode + ")",
-    url: "https://elearning.upt.ro/ro/calendar-cvupt/?term=" + term + "#" + programme.prefix.toLowerCase(),
+  const exam = kind === "exams";
+  return { reader: "distance", format: "html", kind, academicYear: semester.academicYear, semester: semester.number,
+    label: programme.name + " (" + programme.mode + ")" + (exam ? " · Examene" : ""),
+    url: "https://elearning.upt.ro/ro/calendar-cvupt/?term=" + term + (exam ? "&view=exams" : "") + "#" + programme.prefix.toLowerCase(),
     context: "Calendar CVUPT" };
 }
 
@@ -62,7 +63,7 @@ function location(text: string) {
 export function distanceTimetable(calendar: Meeting[], faculty: string, semester: SemesterRef) {
   const programme = programmes[faculty];
   const spec = { name: programme.name, degree: "bachelor" as const, language: "RO, " + programme.mode };
-  const meetings = calendar.flatMap((meeting) => {
+  const records = calendar.flatMap((meeting) => {
     const code = /^S(1|2|12)-ID-([A-Z]+)([1-6])-(.+)$/i.exec(meeting.shortname);
     if (!code || (code[1] !== "12" && +code[1] !== semester.number) || code[2] !== programme.prefix) return [];
     const stamp = /^(\d{4}-\d{2}-\d{2}) ([01]\d|2[0-3]):([0-5]\d):\d{2}$/.exec(meeting.date);
@@ -78,8 +79,33 @@ export function distanceTimetable(calendar: Meeting[], faculty: string, semester
       : [{ groups, room: location(detail) ?? location(meeting.eventname) }];
     return audiences.map((audience) => ({ ...audience, date: stamp[1], minute: +stamp[2] * 60 + +stamp[3],
       year: +code[3], title: squash(meeting.fullname), abbr: code[4].replace(/^O-/, ""), label: squash(meeting.eventname),
+      exam: /^(?:examen|ex|ed)(?=[\s_-]|$)/i.test(meeting.eventname.trim()),
       optional: /restanta|optional|facultativ/.test(norm(meeting.fullname)) || /^LS2[FG]$/i.test(code[4]) }));
   });
+  const meetings = records.filter((m) => !m.exam);
+  const assessments = records.filter((m) => m.exam);
+  const examWarnings: string[] = [];
+  const bookings = new Map<string, NormalizedExam>();
+  for (const m of assessments) {
+    const sitting = /(?:prezentarea\s*|\bp|_p)([123])\b/i.exec(m.label)?.[1];
+    if (sitting && sitting !== "1" && assessments.some((other) => other.year === m.year && other.abbr === m.abbr &&
+      other.date > m.date && /(?:prezentarea\s*|\bp|_p)1\b/i.test(other.label))) {
+      examWarnings.push("The " + m.date + " repeat sitting for " + m.title + " precedes the published first sitting for this term.");
+      continue;
+    }
+    // The special session and the third attempt can be published for the very
+    // same sitting. Retain both labels on one calendar event for that cohort.
+    const key = JSON.stringify([m.year, m.title, m.abbr, m.date, m.minute, m.room, m.groups]);
+    const previous = bookings.get(key);
+    if (previous) {
+      if (!previous.rawText.split(" / ").includes(m.label)) {
+        previous.rawText += " / " + m.label;
+        previous.audience = previous.rawText;
+      }
+    } else bookings.set(key, { date: m.date, startMin: m.minute, endMin: m.minute, courseName: m.title, courseAbbr: m.abbr,
+      room: m.room, teacher: null, audience: m.label, rawText: m.label, year: m.year, specs: [spec] });
+  }
+  const exams = [...bookings.values()];
   // A class without a group qualifier is shared by all published groups of that year.
   const groups: NormalizedGroup[] = [];
   for (const year of new Set(meetings.map((m) => m.year))) {
@@ -92,5 +118,5 @@ export function distanceTimetable(calendar: Meeting[], faculty: string, semester
     teacher: null, rawText: m.label, isSlotOption: false, publishedOptional: m.optional,
     groups: groups.flatMap((g, i) => g.year === m.year && (!m.groups.length || m.groups.includes(g.name)) ? [i] : []),
   })) };
-  return { table, hash: createHash("sha1").update(JSON.stringify(table)).digest("hex") };
+  return { table, exams, examWarnings, hash: createHash("sha1").update(JSON.stringify([table, exams, examWarnings])).digest("hex") };
 }

@@ -46,7 +46,7 @@ const ROOM_CODE =
 const TEACHER =
   /(?<![\p{L}])((?:\p{Lu}\.\s?){1,3}-?\s?\p{Lu}[\p{L}'’-]+(?:\s\p{Lu}[\p{L}'’-]+)?)/u;
 
-const weekWord = String.raw`(?:s[aă]pt(?:[aă]m[aâ]n(?:ile|a|ă|i))?\.?|weeks?|s\.)`;
+const weekWord = String.raw`(?:s[aă]pt(?:[aă]m[aâ]n(?:ile|a|ă|i))?\.?|weeks?|s\.|s(?=\s*\d{1,2}\s*[-–÷]))`;
 const parityWord = String.raw`(?:imp(?:ar[aăe]?)?|par[aăe]?|[pi](?=\.))`;
 const weekNumber = String.raw`\d{1,2}(?:\s*[-–÷]\s*\d{1,2})?`;
 const numberedWeeks = new RegExp(String.raw`(?<![\p{L}\d.])(${weekWord})\s*[:.]?\s*(${weekNumber}(?:\s*[,/]\s*${weekNumber})*)(?!\d|[.:]\d|\s*[-–÷]\s*\d)`, "giu");

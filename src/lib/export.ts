@@ -61,7 +61,7 @@ export function exportItems(user: User): ExportItem[] {
       items.push({
         uid: `entry-${e.entryId}`,
         title: `${e.title}${KIND_LABEL[e.kind] ? ` (${KIND_LABEL[e.kind]})` : ""}`,
-        description: [e.teacher, describeWeeks(e.weeks), e.note].filter(Boolean).join(" · "),
+        description: [e.teacher, describeWeeks(e.weeks), e.endMin === e.startMin ? "End time unpublished" : null, e.note].filter(Boolean).join(" · "),
         location: where(e.room),
         date: r.first,
         startMin: e.startMin,
@@ -75,7 +75,7 @@ export function exportItems(user: User): ExportItem[] {
     items.push({
       uid: `exam-${x.id}`,
       title: `Exam: ${x.courseName}`,
-      description: [x.teacher, x.audience].filter(Boolean).join(" · "),
+      description: [x.teacher, x.audience, x.endMin === x.startMin ? "End time unpublished" : null].filter(Boolean).join(" · "),
       location: where(x.room),
       date: x.date,
       startMin: x.startMin,

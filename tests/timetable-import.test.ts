@@ -60,3 +60,30 @@ it("keeps saved groups and exports when the timetable moves from a shared domain
     .toEqual(["2026-09-28", "2026-10-12", "2026-10-26", "2026-11-09"]);
   vi.unstubAllEnvs();
 });
+
+it("retains the profile for a corrected cohort and exports a start-only meeting on its published date", () => {
+  vi.stubEnv("DATABASE_PATH", ":memory:");
+  const db = getDb(), semester = currentSemester()!;
+  const faculty = db.insert(faculties).values({ name: "RIA", slug: "test-ria" }).returning().get();
+  const spec = db.insert(specializations).values({ facultyId: faculty.id, degree: "bachelor", code: "INFO",
+    name: "Informatică", language: "RO, ID", slug: "informatica-id" }).returning().get();
+  const source = db.insert(sources).values({ facultyId: faculty.id, url: "https://faculty.example/calendar",
+    label: "Calendar CVUPT", format: "html", kind: "timetable" }).returning().get();
+  const stale = db.insert(groups).values({ specializationId: spec.id, year: 1, name: "1 (2)" }).returning().get();
+  const user = db.insert(users).values({ id: "distance-test", name: "Student", email: "distance@example.test", passwordHash: "",
+    feedToken: "distance-test", facultyId: faculty.id, specializationId: spec.id, year: 1, groupId: stale.id }).returning().get();
+  const importer = new Importer(db, faculty.id, semester.id);
+  importer.importTimetable(source.id, [{ groups: [{ year: 1, spec, series: "", name: "1" }], warnings: [],
+    entries: [{ sheet: "INFO", day: 6, startMin: 990, endMin: 990, weeks: "2026-11-14", courseName: "Programare",
+      courseAbbr: "IPC", kind: "course", rawText: "Curs_IPC", groups: [0], teacher: null, room: "online", isSlotOption: false }] }]);
+  importer.prune();
+  const updated = db.select().from(users).where(eq(users.id, user.id)).get()!;
+  expect(updated.groupId).not.toBe(stale.id);
+  expect(eventsBetween(updated, semester.startDate, semester.endDate)).toMatchObject([
+    { date: "2026-11-14", startMin: 990, endMin: 990 },
+  ]);
+  const ics = toICS(exportItems(updated)).split("BEGIN:VEVENT")[1];
+  expect(ics).toContain("DTSTART;TZID=Europe/Bucharest:20261114T163000");
+  expect(ics).not.toMatch(/DTEND|RRULE/);
+  vi.unstubAllEnvs();
+});

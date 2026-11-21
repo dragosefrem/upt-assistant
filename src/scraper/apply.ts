@@ -282,7 +282,7 @@ export class Importer {
         .all();
       const keep: string[] = [];
       for (const e of list) {
-        const abbr = e.courseAbbr?.toLowerCase();
+        const abbr = e.courseName === e.courseAbbr ? e.courseAbbr.toLowerCase() : null;
         const full =
           known.find((c) => abbr && c.abbreviation?.toLowerCase() === abbr && c.year === e.year) ??
           known.find((c) => abbr && c.abbreviation?.toLowerCase() === abbr);

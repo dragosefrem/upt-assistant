@@ -102,8 +102,9 @@ own groups throughout. A programme whose timetable is unavailable can still be s
 
 The importer checks the academic term printed on PDF pages and records conflicting
 pages in the import log and Settings. Students can read the original while the
-calendar uses the pages that match its semester. RIA publishes its distance-learning
-Informatics timetable separately in Campus Virtual.
+calendar uses the pages that match its semester. The public Campus Virtual calendar
+supplies dated classes and assessments for Informatică, TST and CRP distance learning
+and TCM reduced-attendance programmes. These events show the published start time.
 
 - **Optional courses.** Published elective sections and courses marked optional by an
   administrator start unticked. From year 3, students can also choose their other courses.

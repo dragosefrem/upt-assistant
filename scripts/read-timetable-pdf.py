@@ -27,12 +27,15 @@ def extract(page):
         # An outer frame may enclose several individually bordered activities.
         # pdfplumber returns its text again as a single, overlapping cell.
         def encloses_activities(frame):
-            left, top, right, bottom, _ = frame
+            left, top, right, bottom, text = frame
             inside = (other for other in cells if other is not frame and
                       left <= other[0] and top <= other[1] and
                       right >= other[2] and bottom >= other[3] and
                       other[2] - other[0] > 1 and other[3] - other[1] > 1)
-            return next(inside, None) is not None and next(inside, None) is not None
+            first = next(inside, None)
+            return first is not None and (
+                " ".join(first[4].split()) == " ".join(text.split()) or next(inside, None) is not None
+            )
 
         result.append([cell for cell in cells if not encloses_activities(cell)])
     return {"text": page.extract_text() or "", "tables": result}

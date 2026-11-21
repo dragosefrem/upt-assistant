@@ -4,7 +4,8 @@ import { classifyLink, detectAcademicYear, detectSemester, extractLinks } from "
 import type { FacultyAdapter, SpecRef } from "../types";
 import { genericNormalize } from "./generic";
 import { hasKindMarker, parseCellText } from "../cellText";
-import { parseTimetable } from "../timetable";
+import { parseTimetable, type ParsedTimetable } from "../timetable";
+import type { Grid } from "../grid";
 
 /** Facultatea de Electronică, Telecomunicații și Tehnologii Informaționale. */
 const ETC_DOMAIN: SpecRef = {
@@ -18,6 +19,28 @@ const ETC_MASTERS: Record<string, string> = {
   EB: "Electronică biomedicală", IRT: "Ingineria rețelelor de telecomunicații",
   CN: "Communications Networks Engineering", TM: "Tehnologii multimedia", ID: "Ingineria datelor",
 };
+
+function masterElectives(parsed: ParsedTimetable, grid: Grid) {
+  // The right-hand table lists electives for the whole intake. A programme
+  // that already assigns this subject supplies its own lecture and lab times.
+  const labChoices = new Set(grid.cells.filter((c) => c.row === 3 && /^([2-9]|\d{2})\s*sg\.?$/i.test(c.text))
+    .map((c) => norm(grid.textAt(2, c.col))));
+  const fixed = new Map<string, Set<number>>();
+  for (const e of parsed.entries.filter((e) => !e.publishedOptional)) {
+    const key = norm(e.courseAbbr ?? e.courseName) + "|" + e.kind;
+    const audience = fixed.get(key) ?? new Set<number>();
+    e.groups.forEach((i) => audience.add(i));
+    fixed.set(key, audience);
+  }
+  return parsed.entries.flatMap((entry) => {
+    if (!entry.publishedOptional) return [entry];
+    const subject = norm(entry.courseAbbr ?? entry.courseName);
+    const assigned = fixed.get(subject + "|" + entry.kind);
+    const groups = entry.groups.filter((i) => !assigned?.has(i));
+    return groups.length ? [{ ...entry, groups,
+      isSlotOption: entry.isSlotOption || (entry.kind === "lab" && labChoices.has(subject)) }] : [];
+  });
+}
 
 export const etcAdapter: FacultyAdapter = {
   slug: "facultatea-de-electronica-telecomunicatii-si-tehnologii-informationale",
@@ -49,6 +72,7 @@ export const etcAdapter: FacultyAdapter = {
         ...g, name: g.name.replace(/ \(\d+\)$/, ""),
         track: master ? grid.at(2, g.col)?.text ?? null : tracks.filter((c) => c.col <= g.col).at(-1)?.text ?? null,
       })) };
+      if (master) parsed = { ...parsed, entries: masterElectives(parsed, grid) };
     }
     return genericNormalize(parsed, source, {
       degree: master ? "master" : "bachelor",
@@ -83,7 +107,7 @@ export const mptAdapter: FacultyAdapter = {
   parseGrid(grid, source) {
     const parsed = parseTimetable(grid, { splitActivities(text) {
       // e.g. "MCS, s. impară: curs, s. pară: seminar, M105, C. Albulescu".
-      const match = /^(.*?),\s*(s\.\s*(?:im)?par[aăe]?)\s*:\s*(curs|seminar|lab|proiect),\s*(s\.\s*(?:im)?par[aăe]?)\s*:\s*(curs|seminar|lab|proiect)(,.*)$/is.exec(text);
+      const match = /^(.*?),\s*(s\.\s*(?:im)?par[aăe]?)\s*:\s*(curs|seminar|lab|proiect),\s*(s\.\s*(?:im)?par[aăe]?)\s*:\s*(curs|seminar|lab|proiect)(,.*)$/i.exec(squash(text));
       return match ? [match[1] + ", " + match[3] + match[6] + ", " + match[2],
         match[1] + ", " + match[5] + match[6] + ", " + match[4]] : [text];
     } });

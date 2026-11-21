@@ -146,8 +146,6 @@ async function discover(
       await scan(post.url, post.label);
     }
   }
-  const distance = page === "timetable" && distanceSource(faculty.shortName ?? "", semester);
-  if (distance) found.set(distance.url, distance);
   return [...found.values()];
 }
 
@@ -212,24 +210,29 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
 
         for (const page of ["timetable", "exams"] as const) {
           if (page === "timetable" ? !options.timetables : !options.exams) continue;
-          let found: DiscoveredSource[];
+          let found: DiscoveredSource[] = [];
+          let pageRead = true;
           try {
             found = await discover(faculty, semester, page, log);
           } catch (err) {
             failed = true;
+            pageRead = false;
             warn(`${name}: could not read the ${page} page — ${(err as Error).message}`);
-            continue;
           }
-          const kind = page === "timetable" ? "timetable" : "exams";
-          found = found.filter((s) => s.kind === kind);
+          const kind = page;
+          found = found.filter((source) => source.kind === kind);
+          // A separate Campus Virtual feed cannot confirm that a faculty withdrew its
+          // regular timetables. Retire those only after finding faculty publications.
+          let complete = pageRead && found.length > 0;
+          if (pageRead && !found.length && page === "timetable") {
+            failed = true;
+            warn(`${name}: no published timetable found on the faculty page for the selected semester.`);
+          }
+          const distance = distanceSource(name, semester, page);
+          if (distance) found.push(distance);
           stats.sourcesFound += found.length;
           if (page === "timetable" || found.length) log.add(`${name}: ${found.length} ${kind} document(s) for this semester.`);
 
-          let complete = found.length > 0;
-          if (!found.length && page === "timetable") {
-            failed = true;
-            warn(`${name}: no published timetable found for the selected semester.`);
-          }
 
           for (const source of found) {
             const meta = {
@@ -246,7 +249,7 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
                   .insert(sources)
                   .values({ facultyId: faculty.id, url: source.url, ...meta })
                   .onConflictDoUpdate({ target: [sources.facultyId, sources.url], set: meta })
-                  .returning({ id: sources.id })
+                  .returning({ id: sources.id, itemCount: sources.itemCount })
                   .get();
             const finish = (status: string, message: string | null, itemCount = 0, contentHash?: string) => {
               if (!row) return;
@@ -256,9 +259,9 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
                 .run();
             };
 
-            const parseable = source.format === "xlsx" || source.format === "gsheet" ||
-              (kind === "timetable" && (source.format === "pdf" || source.reader === "distance" || (source.format === "html" && adapter.parseHtml)));
-            if (!parseable || (kind === "exams" && !adapter.parseExams)) {
+            const parseable = source.reader === "distance" || source.format === "xlsx" || source.format === "gsheet" ||
+              (kind === "timetable" && (source.format === "pdf" || (source.format === "html" && adapter.parseHtml)));
+            if (!parseable || (kind === "exams" && !adapter.parseExams && source.reader !== "distance")) {
               stats.sourcesUnsupported++;
               complete = false;
               failed = true;
@@ -275,6 +278,23 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
 
             try {
               const importer = new Importer(db, faculty.id, semester.id);
+              if (source.reader === "distance") {
+                distanceCalendar ??= loadDistanceCalendar(semester.startDate, semester.examEnd ?? semester.endDate);
+                const result = distanceTimetable(await distanceCalendar, name, semester);
+                const issues = kind === "exams" ? result.examWarnings : [];
+                const count = kind === "exams"
+                  ? (row ? importer.importExams(row.id, source.label, result.exams) : result.exams.length)
+                  : (row ? importer.importTimetable(row.id, [result.table]).entries : result.table.entries.length);
+                if (kind === "exams") stats.exams += count;
+                else stats.entries += count;
+                for (const issue of issues) warn(name + ": " + issue);
+                if (issues.length) failed = true;
+                const message = `${count} dated ${kind === "exams" ? "assessments" : "activities"}. ${issues.join(" ")}`.trim();
+                finish(issues.length ? "partial" : "imported", message, count, result.hash);
+                stats.sourcesImported++;
+                log.add(`${name}: "${source.label}" → ${message}`);
+                continue;
+              }
               if (kind === "exams") {
                 const { grids, hash } = await loadGrids(source);
                 const list = adapter.parseExams!(grids, source);
@@ -292,12 +312,7 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
               let unreadable = false;
               let excludedPages = 0;
               let hash: string;
-              if (source.reader === "distance") {
-                distanceCalendar ??= loadDistanceCalendar(semester.startDate, semester.examEnd ?? semester.endDate);
-                const result = distanceTimetable(await distanceCalendar, name, semester);
-                tables.push(result.table);
-                hash = result.hash;
-              } else if (source.format === "pdf" || source.format === "html") {
+              if (source.format === "pdf" || source.format === "html") {
                 const { body } = await fetchUrl(downloadUrl(source));
                 hash = createHash("sha1").update(body).digest("hex");
                 if (source.format === "pdf") {
@@ -337,7 +352,7 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
               if (issues.length) failed = true;
               if (unreadable) complete = false;
               const total = tables.reduce((n, t) => n + t.entries.length, 0);
-              if (!total && source.reader !== "distance") {
+              if (!total) {
                 // An explicitly dated replacement withdraws its old classes. Keep
                 // the original document available and report the faculty's dates.
                 if (excludedPages && !unreadable) {
@@ -367,7 +382,9 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
               failed = true;
               complete = false;
               stats.sourcesFailed++;
-              finish("failed", (err as Error).message);
+              const existing = row?.itemCount ?? 0;
+              const message = (err as Error).message + (existing ? ` Keeping ${existing} previously imported items.` : "");
+              finish("failed", message, existing);
               warn(`${name}: "${source.label}" failed — ${(err as Error).message}`);
             }
           }
