@@ -6,11 +6,17 @@ The production configuration defines one `web` service in Amsterdam. Its `upt-da
 
 From the repository root, install the locked dependencies with `npm ci` and sign in with `railway login`. The commands below use Railway CLI 5.75.0. You can also run the CLI with `npx @railway/cli@5.75.0`. Link the checkout to the existing project with `railway link --project happy-elegance --environment production`.
 
-Railway needs GitHub access to `dragosefrem/upt-assistant` for the release. For later infrastructure updates, preview edits to `.railway/railway.ts` with `railway config plan --environment production` and apply the reviewed configuration with `railway config apply --environment production`. [Railway infrastructure as code](https://docs.railway.com/infrastructure-as-code)
+For later infrastructure updates, preview edits to `.railway/railway.ts` with `railway config plan --environment production` and apply the reviewed configuration with `railway config apply --environment production`. [Railway infrastructure as code](https://docs.railway.com/infrastructure-as-code)
+
+## Automatic deployments from `main`
+
+`web` uses Railway's GitHub integration. Once the connection is live, each push to `dragosefrem/upt-assistant` on `main`, including a merged pull request, triggers a production build. The Railway GitHub App needs access to the repository, and at least one Railway project member must have a connected GitHub account with contributor access. [Railway GitHub autodeploys](https://docs.railway.com/deployments/github-autodeploys)
+
+To activate the connection before the first release, review the pending `web` and `upt-data` changes in the `happy-elegance` production dashboard. Hold **Option** on macOS or **Alt** on Windows or Linux while clicking **Deploy** to save the configuration without building the current branch tip. In **web → Settings → Source**, check that the trigger branch is `main` and enable automatic deployments if Railway shows **Enable**. This setup is needed once. [Railway staged changes](https://docs.railway.com/deployments/staged-changes)
 
 ## First release
 
-1. Once the integration changes and deployment files reach GitHub's `main`, open the `production` dashboard in `happy-elegance`. Review and deploy the pending changes for `web` and `upt-data` together. Railway builds the root Dockerfile and checks `/api/health`. The check opens the mounted database and applies migrations and seed data on first use.
+1. Merge the integration changes and deployment files into GitHub's `main`. Under **web → Deployments**, verify that Railway is building the pushed commit SHA. Railway builds the root Dockerfile and checks `/api/health` before switching traffic. The check opens the mounted database and applies migrations and seed data on first use.
 2. Register the administrator before adding a public domain. The first registration receives this role. With a Railway SSH key registered, run the following and keep the tunnel open while visiting `http://localhost:8080/register`. [Railway SSH port forwarding](https://docs.railway.com/cli/ssh#forward-a-port-with-ssh--l)
 
    ```sh
