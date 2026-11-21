@@ -9,6 +9,18 @@ const en = {
     title: "Language · Limbă",
     hint: "The app, the calendar e-mail and your calendar subscription use this language.",
   },
+  contactPrivacy: {
+    title: "Contact privacy",
+    hint: "Choose what accepted contacts see in your current status and weekly schedule.",
+    details: {
+      label: "Activity details",
+      hint: "Share classes, exams, rooms and events you attend together. Personal events appear as Busy.",
+    },
+    availability: {
+      label: "Busy or free only",
+      hint: "Keep activity names and rooms private. Contacts can still find a time to meet.",
+    },
+  },
   study: {
     title: "Where you study",
     hint: "Changing your group resets your optional-course choices and the classes you hid or moved.",
@@ -168,6 +180,18 @@ const ro: typeof en = {
   language: {
     title: "Limbă · Language",
     hint: "Aplicația, e-mailul cu calendarul și abonamentul la calendar folosesc limba aleasă.",
+  },
+  contactPrivacy: {
+    title: "Confidențialitate pentru contacte",
+    hint: "Alege ce văd contactele acceptate în starea ta curentă și în orarul săptămânal.",
+    details: {
+      label: "Detalii despre activitate",
+      hint: "Arată cursurile, examenele, sălile și întâlnirile la care participați împreună. Evenimentele personale apar ca „Ocupat”.",
+    },
+    availability: {
+      label: "Doar ocupat sau liber",
+      hint: "Numele activităților și sălile rămân private. Contactele pot găsi în continuare un interval liber pentru o întâlnire.",
+    },
   },
   study: {
     title: "Unde studiezi",

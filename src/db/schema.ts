@@ -278,6 +278,7 @@ export const users = sqliteTable("users", {
   year: integer("year"),
   groupId: integer("group_id").references(() => groups.id, { onDelete: "set null" }),
   onboardedAt: text("onboarded_at"),
+  shareActivityDetails: integer("share_activity_details", { mode: "boolean" }).notNull().default(true),
   googleRefreshToken: text("google_refresh_token"),
   googleCalendarId: text("google_calendar_id"),
   googleSyncedAt: text("google_synced_at"),

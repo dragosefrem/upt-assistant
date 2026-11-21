@@ -53,6 +53,10 @@ const describePerson = (p: Person) => ({
   availability_from: p.kind === "account" ? "their own calendar (linked account)" : "their group's published timetable",
 });
 
+const sharingNotice = (ctx: ToolContext) => ctx.user.shareActivityDetails
+  ? "The other person will see the student's classes, exams, rooms and busy times."
+  : "The other person will see only when the student is busy or free.";
+
 function failure(error: unknown) {
   if (error instanceof InvitationError) return { error: error.message };
   throw error;
@@ -163,7 +167,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
   {
     name: "contact_schedule",
     description:
-      "What one contact has on a day or over a few days: \"what does Mihai have on Monday?\", \"when does Ana finish tomorrow?\". For a linked account it is their real calendar, with classes and exams by name and everything else as busy time (their private events are never named); for a saved person or a group it is the group's published timetable.",
+      "Check a contact's calendar for a day or a few days. Linked accounts share busy time and may also share class and exam names. For a saved person or a group, use the group's published timetable.",
     input_schema: {
       type: "object",
       properties: {
@@ -201,7 +205,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
       const email = str(input.email);
       if (!email || !isEmail(email)) return { error: "A valid e-mail address is needed." };
       if (input.confirmed !== true) return {
-        needs_confirmation: "Ask whether to send this contact request. If they accept, both students can see each other's classes, exams and busy times. Call again with confirmed: true only after a yes.",
+        needs_confirmation: `Ask whether to send this contact request and explain what acceptance shares. ${sharingNotice(ctx)} Call again with confirmed: true only after a yes.`,
         recipient: email,
       };
       try {
@@ -215,7 +219,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
   },
   {
     name: "answer_contact_request",
-    description: "Accept or decline an incoming contact request by name or e-mail. Accepting shares both timetables. Show the sender, ask first and pass confirmed: true only after a yes. Declining is one step.",
+    description: "Accept or decline an incoming contact request by name or e-mail. Accepting shares calendar availability according to each person's settings. Show the sender, ask first and pass confirmed: true only after a yes. Declining is one step.",
     input_schema: {
       type: "object",
       properties: { person: { type: "string", description: "Name or e-mail of the sender." }, accept: { type: "boolean" }, confirmed: { type: "boolean" } },
@@ -229,7 +233,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
       if (!hits.length) return { error: "No waiting request from that person.", waiting: incoming.map((c) => c.name) };
       if (hits.length > 1) return { error: "Several requests match; ask which one.", candidates: hits.map((c) => `${c.name} (${c.email})`) };
       if (input.accept && input.confirmed !== true) return {
-        needs_confirmation: "Ask whether to accept and share classes, exams and busy times with this person. Call again with confirmed: true only after a yes.",
+        needs_confirmation: `Ask whether to accept and explain what acceptance shares. ${sharingNotice(ctx)} Call again with confirmed: true only after a yes.`,
         sender: { name: hits[0].name, email: hits[0].email },
       };
       answerContact(ctx.user.id, hits[0].id, input.accept);

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { restoreHiddenClass } from "@/app/(app)/settings/actions";
+import { restoreHiddenClass, setContactSharing } from "@/app/(app)/settings/actions";
 import { saveCoursesAction } from "@/app/onboarding/actions";
 import { getDb } from "@/db";
 import { courses, entries, faculties, semesters, userOverrides, users } from "@/db/schema";
@@ -18,6 +18,28 @@ beforeAll(() => {
     id: "student", name: "Test Student", email: "s@example.com", passwordHash: "unused", feedToken: "s",
     onboardedAt: "2026-11-21T12:00:00Z",
   }).returning().get();
+});
+
+it("persists an explicit sharing choice for the signed-in account", async () => {
+  const db = getDb();
+  const other = db.insert(users).values({
+    id: "colleague", name: "Colleague", email: "colleague@example.com", passwordHash: "unused", feedToken: "colleague",
+  }).returning().get();
+  const sharesDetails = (id: string) => db.select().from(users).where(eq(users.id, id)).get()!.shareActivityDetails;
+  vi.mocked(requireOnboardedUser).mockResolvedValue(student);
+  const form = new FormData();
+  form.set("userId", other.id);
+  form.set("sharing", "availability");
+  await setContactSharing(form);
+  await setContactSharing(form);
+  expect(sharesDetails(student.id)).toBe(false);
+  expect(sharesDetails(other.id)).toBe(true);
+  form.set("sharing", "unexpected");
+  await setContactSharing(form);
+  expect(sharesDetails(student.id)).toBe(false);
+  form.set("sharing", "details");
+  await setContactSharing(form);
+  expect(sharesDetails(student.id)).toBe(true);
 });
 
 describe("course choices", () => {

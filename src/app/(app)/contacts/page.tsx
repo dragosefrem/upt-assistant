@@ -1,3 +1,4 @@
+import { SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { InvitationForm } from "@/components/InvitationForm";
 import { InvitationRefresh } from "@/components/InvitationRefresh";
@@ -7,6 +8,7 @@ import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
+import { currentContactStatuses, type ContactStatus } from "@/lib/contact-schedule";
 import { contactList, lookupContact } from "@/lib/contacts";
 import { myGroupEvents } from "@/lib/group-events";
 import { listSavedContacts } from "@/lib/saved-contacts";
@@ -20,12 +22,30 @@ export async function generateMetadata() {
 
 type Contact = ReturnType<typeof contactList>[number];
 
-function ContactRow({ person, userId, t }: { person: Contact; userId: string; t: Messages }) {
+function StatusLine({ status, t }: { status: ContactStatus; t: Messages }) {
+  const label = status.state === "activity" ? t.common.kinds[status.kind]
+    : status.state === "free" ? t.contacts.page.list.free : t.contacts.schedule.busy;
+  const color = status.state === "activity" ? "bg-brand-50 text-brand-700"
+    : status.state === "free" ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-800";
+  return (
+    <p className="my-1 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+      <span className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${color}`}>
+        <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />{label}
+      </span>
+      {status.state === "activity" && <span className="min-w-0 break-words text-slate-700">
+        {status.title}{status.room && <span className="text-slate-600"> · {status.room}</span>}
+      </span>}
+    </p>
+  );
+}
+
+function ContactRow({ person, userId, t, status }: { person: Contact; userId: string; t: Messages; status?: ContactStatus }) {
   const page = t.contacts.page;
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 py-3">
-      <div className="min-w-0">
+      <div className={person.accepted ? "min-w-0 flex-[1_1_12rem]" : "min-w-0"}>
         <p className="break-words text-sm font-semibold">{person.name}</p>
+        {status && <StatusLine status={status} t={t} />}
         <p className="break-all text-xs text-slate-600">{person.email}</p>
       </div>
       <div className="flex flex-wrap items-center gap-1">
@@ -77,7 +97,9 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
   const incoming = people.filter((p) => !p.accepted && p.requestedBy !== user.id);
   const sent = people.filter((p) => !p.accepted && p.requestedBy === user.id);
   const events = myGroupEvents(user.id);
-  const today = nowLocal().date;
+  const now = nowLocal();
+  const today = now.date;
+  const statuses = currentContactStatuses(user.id, locale, now);
   const future = events.filter((e) => e.date >= today);
   const needsReply = (event: (typeof events)[number]) => event.response === "pending" && event.status !== "expired";
   const invitations = future.filter(needsReply);
@@ -90,7 +112,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
       <header className="page-heading flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1>{page.title}</h1>
-          <p className="mt-1 text-sm text-slate-600">{page.intro}</p>
+          <p className="mt-1 text-sm text-slate-600">{user.shareActivityDetails ? page.sharingDetails : page.sharingAvailability}</p>
         </div>
         <Link className="btn-primary" href="/contacts/plan">{page.planEvent}</Link>
       </header>
@@ -111,6 +133,19 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
       )}
       <div className="grid items-start gap-5 md:grid-cols-2">
         <div className="space-y-5">
+          <section className="card p-5" aria-labelledby="your-contacts">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+              <h2 id="your-contacts" className="text-lg font-semibold">{page.list.heading}</h2>
+              <Link href="/settings#contact-privacy" className="inline-flex min-h-8 items-center gap-1.5 rounded text-sm font-medium text-brand-700 hover:underline">
+                <SlidersHorizontal aria-hidden="true" size={15} />{page.list.sharing}
+              </Link>
+            </div>
+            {contacts.length ? <>
+              <p className="text-xs text-slate-600">{page.list.asOf(formatMinutes(now.minutes))}</p>
+              <ul className="mt-1 divide-y divide-slate-100">{contacts.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} status={statuses.get(p.id)} />)}</ul>
+            </>
+              : <p className="mt-2 text-sm text-slate-600">{page.list.empty}</p>}
+          </section>
           <section className="card p-5">
             <h2 className="text-lg font-semibold">{page.find.heading}</h2>
             <form action="/contacts" noValidate className="mt-3">
@@ -133,11 +168,6 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
             <summary className="font-semibold">{page.requests.sent}</summary>
             <ul className="mt-2 divide-y divide-slate-100">{sent.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>
           </details>}
-          <section className="card p-5">
-            <h2 className="text-lg font-semibold">{page.list.heading}</h2>
-            {contacts.length ? <ul className="mt-1 divide-y divide-slate-100">{contacts.map((p) => <ContactRow key={p.id} person={p} userId={user.id} t={t} />)}</ul>
-              : <p className="mt-2 text-sm text-slate-600">{page.list.empty}</p>}
-          </section>
         </div>
         <div className="space-y-5">
           <section className="card p-5">
