@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Assistant } from "./Assistant";
-import { ASK_ASSISTANT } from "./Mascot";
-
-const BURST = ["💙", "✨", "⭐", "💛", "✨", "💙", "🎉"];
+import { ASK_ASSISTANT, MASCOT_HAPPY_SRC } from "./Mascot";
+import { burstFrom, OPEN_CHAT } from "./poliFx";
 
 /**
  * Poli as the chat button: a floating robot in the corner that opens the assistant.
@@ -20,27 +19,7 @@ export function PoliChat() {
   const boopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const burst = useCallback(() => {
-    const el = button.current;
-    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const r = el.getBoundingClientRect();
-    const cx = r.left + r.width / 2;
-    const cy = r.top + r.height / 2;
-    BURST.forEach((emoji, i) => {
-      // Fan the bits out above Poli, from left to upper right.
-      const angle = ((-160 + (i * 140) / (BURST.length - 1)) * Math.PI) / 180;
-      const dist = 70 + Math.random() * 30;
-      const bit = document.createElement("span");
-      bit.className = "poli-burst";
-      bit.textContent = emoji;
-      bit.style.left = `${cx - 9}px`;
-      bit.style.top = `${cy - 12}px`;
-      bit.style.setProperty("--dx", `${Math.cos(angle) * dist}px`);
-      bit.style.setProperty("--dy", `${Math.sin(angle) * dist}px`);
-      bit.style.setProperty("--r", `${(Math.random() - 0.5) * 60}deg`);
-      bit.style.animationDelay = `${i * 30}ms`;
-      document.body.appendChild(bit);
-      setTimeout(() => bit.remove(), 1200);
-    });
+    if (button.current) burstFrom(button.current);
   }, []);
 
   const press = () => {
@@ -64,6 +43,10 @@ export function PoliChat() {
       if (e.key === "Escape" && !document.querySelector("[role=dialog]")) setOpen(false);
     };
     window.addEventListener(ASK_ASSISTANT, onAsk);
+    // Any other Poli on the page was pressed.
+    window.addEventListener(OPEN_CHAT, onAsk);
+    // Load the happy face early so the first jump does not flicker.
+    new Image().src = MASCOT_HAPPY_SRC;
     window.addEventListener("keydown", onKey);
     // Poli blinks now and then and says hello once.
     const blinker = setInterval(() => {
@@ -74,6 +57,7 @@ export function PoliChat() {
     const bye = setTimeout(() => setHello(false), 6500);
     return () => {
       window.removeEventListener(ASK_ASSISTANT, onAsk);
+      window.removeEventListener(OPEN_CHAT, onAsk);
       window.removeEventListener("keydown", onKey);
       clearInterval(blinker);
       clearTimeout(hi);

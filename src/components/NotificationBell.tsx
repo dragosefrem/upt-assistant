@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import type { ExamReminder } from "@/lib/reminders";
 import { formatDate, formatMinutes } from "@/lib/time";
 import { Mascot } from "./Mascot";
+import { OPEN_CHAT } from "./poliFx";
 
 /** Minutes before an exam at which Poli reminds the student: a week, a day, 2 hours, 30 minutes. */
 const MILESTONES = [7 * 1440, 1440, 120, 30];
@@ -84,7 +85,16 @@ export function NotificationBell() {
     /* eslint-enable react-hooks/set-state-in-effect */
     void load();
     const refresh = setInterval(load, 5 * 60_000);
-    return () => clearInterval(refresh);
+    // Pressing a Poli opens the chat; the reminder list and toast step aside.
+    const onChat = () => {
+      setOpen(false);
+      setToast(null);
+    };
+    window.addEventListener(OPEN_CHAT, onChat);
+    return () => {
+      clearInterval(refresh);
+      window.removeEventListener(OPEN_CHAT, onChat);
+    };
   }, [load]);
 
   // Check the milestones every 30 seconds and remind once per exam and milestone.

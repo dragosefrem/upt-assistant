@@ -13,10 +13,12 @@ export function AppShell({ user, children }: { user: User; children: React.React
     <LocationProvider>
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
         <div className="mx-auto flex h-14 w-full max-w-[1500px] items-center gap-1 px-4">
-          <Link href="/" className="mr-1 flex shrink-0 items-center gap-2 font-semibold tracking-tight text-slate-900 sm:mr-3">
+          <div className="mr-1 flex shrink-0 items-center gap-2 sm:mr-3">
             <Mascot size={34} />
-            <span className="hidden sm:inline">UPT <span className="text-brand-600">Orar</span></span>
-          </Link>
+            <Link href="/" className="hidden font-semibold tracking-tight text-slate-900 sm:inline">
+              UPT <span className="text-brand-600">Orar</span>
+            </Link>
+          </div>
           <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-sm sm:gap-1">
             <NavLink href="/" icon="📅">Calendar</NavLink>
             <NavLink href="/exams" icon="📝">Exams</NavLink>

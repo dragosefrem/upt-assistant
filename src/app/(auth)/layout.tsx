@@ -9,7 +9,7 @@ export default async function AuthLayout({ children }: LayoutProps<"/">) {
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white shadow-[0_8px_30px_-8px_rgba(31,72,196,0.35)]">
-            <Mascot size={72} wave />
+            <Mascot size={72} wave chat={false} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight">Hi, I&apos;m Poli! 👋</h1>
           <p className="mt-1 text-sm text-slate-600">Your timetable, exams and study buddy at Politehnica Timișoara.</p>
