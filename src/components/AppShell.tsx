@@ -3,6 +3,7 @@ import { getT } from "@/i18n/server";
 import type { User } from "@/lib/auth";
 import { incomingContactCount } from "@/lib/contacts";
 import { groupInviteCount } from "@/lib/group-events";
+import { MainContent } from "./AppShell/MainContent";
 import { LocationProvider } from "./LocationProvider";
 import { Mascot } from "./Mascot";
 import { NavLink } from "./NavLink";
@@ -36,7 +37,7 @@ export async function AppShell({ user, children }: { user: User; children: React
           <UserMenu name={user.name} email={user.email} admin={user.role === "admin"} />
         </div>
       </header>
-      <main id="student-content" tabIndex={-1} className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col px-3 pb-8 pt-5 sm:px-4 sm:pb-32">{children}</main>
+      <MainContent id="student-content" tabIndex={-1} className="mx-auto flex w-full max-w-[1500px] flex-1 flex-col px-3 pb-8 pt-5 sm:px-4 sm:pb-32">{children}</MainContent>
       <PoliChat />
     </LocationProvider>
   );
