@@ -74,7 +74,7 @@ export function BookingForm({ slots, range, contactIds, asOf }: {
         <p className="grow text-slate-600">{t.hint}</p>
         <button type="button" className="text-sm font-medium text-brand-700 hover:underline" onClick={() => router.refresh()}>{t.refresh}</button>
       </div>
-      <AvailabilityCharts days={days} selectedDay={day} selectedSlot={selected} asOf={asOf} hours={hours}
+      <AvailabilityCharts shared={contactIds.length > 0} days={days} selectedDay={day} selectedSlot={selected} asOf={asOf} hours={hours}
         onSelect={(date, slot) => setChoice({ date, start: slot?.startMin })} />
       <section className="card space-y-4 p-4 sm:p-5" aria-labelledby="booking-day">
         <h2 id="booking-day" aria-live="polite" className="text-lg font-semibold tracking-tight">{t.openingsFor(heading)}</h2>

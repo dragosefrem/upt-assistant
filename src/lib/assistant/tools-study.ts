@@ -1,4 +1,6 @@
 import "server-only";
+import { examReminders, REMINDER_DAYS } from "../reminders";
+import { everydayTip } from "../examTips";
 import { guide } from "@/i18n/messages/guide";
 import { isLocale } from "@/i18n/config";
 import { attendanceRecords, markAttendance, summarizeAttendance } from "../attendance";
@@ -264,6 +266,15 @@ export const STUDY_TOOLS: AssistantTool[] = [
     },
   },
   {
+    name: "exam_reminders",
+    description: "The student's bell: upcoming exam countdowns, rooms, directions, preparation tips and the daily tip.",
+    input_schema: { type: "object", properties: {} },
+    run(_input, { user, locale }) {
+      const lang = locale ?? user.locale ?? "en";
+      return { reminders: examReminders(user, new Date(), REMINDER_DAYS, lang), daily_tip: everydayTip(nowLocal().date, lang) };
+    },
+  },
+  {
     name: "get_attendance",
     description:
       "The student's attendance record: how many classes they marked as attended or missed, overall and per activity (course + lecture/lab/seminar), with the dates missed. Use it for \"how many labs have I missed?\" or \"what's my attendance at Physics?\". Only occurrences the student marked are counted.",
@@ -326,11 +337,25 @@ export const STUDY_TOOLS: AssistantTool[] = [
     name: "first_week_guide",
     description:
       "The checklist for a new student's first week (check the group, find the rooms, which labs run this week, pick lab slots, put the timetable on the phone, add colleagues, read each course's rules). Use it when a student says they are new, asks where to start, or what they should do first. Walk them through it conversationally, a few steps at a time, and offer to do the steps you can do yourself.",
-    input_schema: { type: "object", properties: {} },
-    run(_input, ctx) {
+    input_schema: { type: "object", properties: {
+      step: { type: "string", description: "To tick or untick a step on this device, use its id from this checklist." },
+      done: { type: "boolean", description: "Whether the named step is complete." },
+    } },
+    run(input, ctx) {
       const locale = ctx.locale ?? ctx.user.locale ?? "ro";
+      const steps = guide[locale].steps;
+      if (input.step !== undefined || input.done !== undefined) {
+        const step = steps.find(s => s.id === input.step);
+        if (!step || typeof input.done !== "boolean") return { error: "Choose a checklist step ID and whether it is done." };
+        if (!ctx.checklist) return { error: "Open chat on the device that holds the checklist to change a tick." };
+        const checked = new Set(ctx.checklist);
+        if (input.done) checked.add(step.id);
+        else checked.delete(step.id);
+        ctx.checklist = [...checked];
+        (ctx.checklistEdits ??= []).push({ step: step.id, done: input.done });
+      }
       return {
-        steps: guide[locale].steps.map((s) => ({ step: s.title, why: s.body, page: s.href, question_poli_can_answer: s.ask })),
+        steps: steps.map(s => ({ id: s.id, step: s.title, done: ctx.checklist?.includes(s.id), why: s.body, page: s.href, question_poli_can_answer: s.ask })),
         note: "The same checklist, with a glossary and how to read the timetable, is on the Guide page (open_page guide).",
       };
     },

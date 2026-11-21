@@ -23,6 +23,7 @@ import {
 import type { Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import type { User } from "./auth";
+import { campusRoomCode } from "./campuspath/known-room";
 import { sharedEventsFor } from "./group-events";
 import { isPublicHoliday } from "./holidays";
 import { addDays, dayName, daysBetween, describeWeeks, formatMinutes, mondayOf, occursInWeek, weekday } from "./time";
@@ -46,6 +47,7 @@ export interface CalEvent {
   examId?: number;
   personalId?: number;
   groupEventId?: string;
+  campusRoom?: string;
   moved?: boolean;
   /** For a class moved for one week only: the date it would normally be on. */
   originalDate?: string;
@@ -108,18 +110,17 @@ export function placeResolver(facultyId: number | null) {
     }
   });
   return (room: string | null): Place | null => {
-    if (room) {
-      const hit = compiled.find((c) => c.re.test(room.trim()));
-      if (hit) {
-        if (hit.building.code === "ONLINE") return null;
-        return {
-          name: hit.building.name,
-          address: hit.building.address,
-          lat: hit.building.lat,
-          lng: hit.building.lng,
-          approximate: /approx/i.test(hit.building.notes ?? ""),
-        };
-      }
+    if (!room?.trim()) return null;
+    const hit = compiled.find((c) => c.re.test(room.trim()));
+    if (hit) {
+      if (hit.building.code === "ONLINE") return null;
+      return {
+        name: hit.building.name,
+        address: hit.building.address,
+        lat: hit.building.lat,
+        lng: hit.building.lng,
+        approximate: /approx/i.test(hit.building.notes ?? ""),
+      };
     }
     // An unrecognised room is most likely in the student's own faculty building.
     if (faculty?.lat != null && faculty.lng != null) {
@@ -453,7 +454,7 @@ export function eventsBetween(
 
   for (const e of sharedEventsFor(user.id, from, to)) {
     events.push({
-      id: `g:${e.id}`, groupEventId: e.id, type: "shared", kind: "shared", title: e.title,
+      id: `g:${e.id}`, groupEventId: e.id, campusRoom: campusRoomCode(e.location), type: "shared", kind: "shared", title: e.title,
       date: e.date, startMin: e.startMin, endMin: e.endMin, room: e.location,
       abbr: null, teacher: null, note: null, place: null,
       seriesKey: `g:${e.id}`, courseKey: `g:${e.id}`, attendance: null,
@@ -645,3 +646,20 @@ export function findGroups(
   return scored.slice(0, limit);
 }
 
+
+/** Individual hidden classes offered for restoration in Settings and by Poli. */
+export function hiddenClasses(userId: string, semesterId?: number) {
+  return semesterId ? getDb()
+    .select({ id: entries.id, name: courses.name, kind: entries.kind, day: entries.day, time: entries.startMin,
+      movedDay: userOverrides.day, movedTime: userOverrides.startMin })
+    .from(userOverrides)
+    .innerJoin(entries, eq(entries.id, userOverrides.entryId))
+    .innerJoin(courses, eq(courses.id, entries.courseId))
+    .where(and(eq(userOverrides.userId, userId), eq(userOverrides.hidden, true), eq(entries.semesterId, semesterId)))
+    .orderBy(entries.day, entries.startMin).all() : [];
+}
+
+export function unhideClass(userId: string, entryId: number) {
+  const ownClass = and(eq(userOverrides.userId, userId), eq(userOverrides.entryId, entryId), eq(userOverrides.hidden, true));
+  return getDb().update(userOverrides).set({ hidden: false, updatedAt: new Date().toISOString() }).where(ownClass).run().changes > 0;
+}

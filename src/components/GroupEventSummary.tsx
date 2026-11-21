@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { campusRoomCode } from "@/lib/campuspath/known-room";
+import { campusJourneyHref } from "@/lib/campuspath/links";
 import type { EventStatus, Rsvp } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { contacts } from "@/i18n/messages/contacts";
@@ -21,8 +24,10 @@ type Summary = {
   endMin: number; deadline: number; status: EventStatus; going: number;
 };
 
-export async function GroupEventSummary({ event }: { event: Summary }) {
-  const t = (await getT()).contacts.event;
+export async function GroupEventSummary({ event, showDirections = false }: { event: Summary; showDirections?: boolean }) {
+  const messages = await getT();
+  const t = messages.contacts.event;
+  const room = showDirections ? campusRoomCode(event.location) : undefined;
   const locale = await getLocale();
   const cutoff = nowLocal(new Date(event.deadline));
   const day = (date: string) => capitalize(formatDate(date, { weekday: "short", day: "numeric", month: "short" }, locale));
@@ -34,7 +39,11 @@ export async function GroupEventSummary({ event }: { event: Summary }) {
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 border-y border-slate-200 py-4 text-sm">
         <dt className="text-slate-500">{t.when}</dt>
         <dd>{day(event.date)} · {t.campusTime(`${formatMinutes(event.startMin)}–${formatMinutes(event.endMin)}`)}</dd>
-        {event.location && <><dt className="text-slate-500">{t.where}</dt><dd className="break-words">{event.location}</dd></>}
+        {event.location && <><dt className="text-slate-500">{t.where}</dt><dd className="break-words">{event.location}
+          {room && <> · <Link className="font-medium text-brand-700 hover:underline" href={campusJourneyHref({
+            to: room, course: event.title, date: event.date, at: formatMinutes(event.startMin),
+          })}>{messages.campus.rooms.showWay}</Link></>}
+        </dd></>}
         <dt className="text-slate-500">{t.replyBy}</dt><dd>{day(cutoff.date)} · {t.campusTime(formatMinutes(cutoff.minutes))}</dd>
       </dl>
       {event.status === "expired" && <p className="text-sm text-slate-600">{t.expiredNote}</p>}

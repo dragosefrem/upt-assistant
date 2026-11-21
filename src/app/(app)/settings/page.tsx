@@ -1,18 +1,17 @@
-import { and, eq } from "drizzle-orm";
+import { facultyDocuments } from "@/lib/faculty-documents";
+import { importDiagnostic } from "@/i18n/messages/import-diagnostics";
 import { saveProfileAction } from "@/app/onboarding/actions";
 import { CourseChoicesForm } from "@/components/CourseChoicesForm";
 import { ExportPanel } from "@/components/ExportPanel";
 import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { ProfilePicker } from "@/components/ProfilePicker";
-import { getDb } from "@/db";
-import { courses, entries, sources, timetablePdfs, userOverrides } from "@/db/schema";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf, pickerData } from "@/lib/catalog";
 import { googleConfigured } from "@/lib/google";
 import { kindLabel } from "@/lib/kinds";
 import { mailConfigured } from "@/lib/mail";
-import { courseChoices, currentSemester } from "@/lib/schedule";
+import { courseChoices, currentSemester, hiddenClasses } from "@/lib/schedule";
 import { dayName, formatMinutes } from "@/lib/time";
 import { restoreHiddenClass } from "./actions";
 
@@ -29,22 +28,9 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const params = await searchParams;
   const semester = currentSemester();
   const choices = semester ? courseChoices(user, semester) : [];
-  const hidden = semester ? getDb()
-    .select({ id: entries.id, name: courses.name, kind: entries.kind, day: entries.day, time: entries.startMin,
-      movedDay: userOverrides.day, movedTime: userOverrides.startMin })
-    .from(userOverrides)
-    .innerJoin(entries, eq(entries.id, userOverrides.entryId))
-    .innerJoin(courses, eq(courses.id, entries.courseId))
-    .where(and(eq(userOverrides.userId, user.id), eq(userOverrides.hidden, true), eq(entries.semesterId, semester.id)))
-    .orderBy(entries.day, entries.startMin).all() : [];
+  const hidden = hiddenClasses(user.id, semester?.id);
   const faculty = facultyOf(user.facultyId);
-  const documents = user.facultyId && semester
-    ? getDb().select({ id: sources.id, label: sources.label, url: sources.url, status: sources.status,
-        format: sources.format, message: sources.message, pdfId: timetablePdfs.sourceId }).from(sources)
-      .leftJoin(timetablePdfs, eq(timetablePdfs.sourceId, sources.id))
-      .where(and(eq(sources.facultyId, user.facultyId), eq(sources.kind, "timetable"),
-        eq(sources.academicYear, semester.academicYear), eq(sources.semester, semester.number))).all()
-    : [];
+  const documents = facultyDocuments(user.facultyId, "timetable", semester);
 
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
@@ -121,7 +107,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
                 <li key={d.id} className="flex items-center justify-between gap-3 py-2">
                   <div className="min-w-0">
                     <a className="text-brand-700 hover:underline" href={d.pdfId ? `/api/timetables/${d.pdfId}` : d.url} target="_blank" rel="noreferrer">{d.label}</a>
-                    {d.status === "partial" && <p className="text-xs text-amber-800">{d.message}</p>}
+                    {d.status === "partial" && <p className="text-xs text-amber-800">{importDiagnostic(d.message, locale)}</p>}
                   </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${d.status === "imported" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
                     {d.status === "unsupported" ? d.format.toUpperCase() : (s.documents.status[d.status] ?? d.status)}

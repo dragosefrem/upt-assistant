@@ -1,14 +1,18 @@
 const en = {
   notFound: { title: "Page not found", line: "This address doesn’t lead to a page in Poli." },
-  title: "Your student timetable",
-  nav: { signIn: "Sign in", openApp: "Open my calendar" },
+  title: "You make the plans. Poli keeps the calendar.",
+  nav: { signIn: "Sign in", openApp: "Open my calendar", sample: "See a sample week" },
   hero: {
-    audience: "Politehnica Timișoara",
-    headline: "Your group’s",
-    accent: "timetable.",
-    sub: "Find your next class, its room and the free time in between. Labs that meet every other week appear on the right dates.",
+    audience: "Your timetable assistant at UPT",
+    headline: "You make the plans.",
+    accent: "Poli keeps the calendar.",
+    sub: "From classes to plans with friends, Poli knows your timetable and helps you find time together.",
     cta: "Create an account",
-    note: "Free for UPT students. Choose your group when you sign up.",
+  },
+  stage: {
+    title: "From faculty files to your timetable",
+    before: "From your faculty",
+    files: ["timetable_sem1.pdf", "Lab groups.xlsx", "Exam dates.pdf"],
   },
   preview: {
     title: "Sample timetable",
@@ -17,29 +21,45 @@ const en = {
     days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     shortDays: ["Mon", "Tue", "Wed", "Thu", "Fri"],
     courses: { maths: "Mathematical Analysis", coding: "Programming", physics: "Physics", logic: "Digital Logic", english: "English" },
-    room: (code: string) => `Room ${code}`,
+    room: (code: string) => "Room " + code,
+    free: "Free time",
   },
-  features: {
-    heading: "Between classes",
-    campus: { title: "Find your classroom", body: "Look up a classroom and explore its building in the UPT virtual tour." },
-    contacts: { title: "Meet up with classmates", body: "Compare calendars, find a free hour and invite your group." },
-    poli: { title: "Ask Poli", body: "Ask when your next lab is or where you need to be. Poli checks your timetable and answers in English or Romanian." },
+  ask: {
+    heading: "Ask Poli",
+    accent: "anything.",
+    example: "Example from this timetable",
+    prompts: [
+      { question: "When am I free on Monday?", answer: "Your Programming lab ends at 12:00. Your English exam starts at 14:00, so you have two hours free." },
+      { question: "Where’s my English exam?", answer: "Room D1, on Monday at 14:00. In your own calendar you can open the exam to get directions." },
+      { question: "When is my next physics lab?", answer: "Wednesday, 12:00–14:00 in B305. You have a two-hour break after Digital Logic." },
+    ],
   },
+  stepsTitle: "Getting started",
+  steps: [
+    { title: "Choose your group", text: "Select your faculty, programme and group to see the timetable published for you." },
+    { title: "Complete your timetable", text: "Your fixed classes are already there. Pick your electives and lab times." },
+    { title: "Set exam reminders", text: "Add exams to your phone’s calendar for reminders 24 hours and 2 hours before each exam." },
+  ],
+  closing: { line: "You take care of yourself.", accent: "Poli takes care of the rest." },
   guide: { title: "New to UPT?", action: "Open the student guide" },
-  source: "Timetables come from the schedules published by UPT faculties. Check faculty announcements for last-minute changes.",
+  source: "Based on timetables published by the faculties of Politehnica Timișoara.",
 };
 
 const ro: typeof en = {
   notFound: { title: "Pagina nu a fost găsită", line: "Nu există o pagină la această adresă în Poli." },
-  title: "Orarul tău de student",
-  nav: { signIn: "Intră în cont", openApp: "Deschide calendarul" },
+  title: "Tu ai planul. Poli are calendarul.",
+  nav: { signIn: "Intră în cont", openApp: "Deschide calendarul", sample: "Vezi un exemplu de orar" },
   hero: {
-    audience: "Politehnica Timișoara",
-    headline: "Orarul",
-    accent: "grupei tale.",
-    sub: "Vezi când ai ore, în ce sală și când ai pauză. Laboratoarele din două în două săptămâni apar în zilele în care se țin.",
-    cta: "Creează un cont",
-    note: "Gratuit pentru studenții UPT. Alegi facultatea, anul și grupa.",
+    audience: "Asistentul tău de orar la UPT",
+    headline: "Tu ai planul.",
+    accent: "Poli are calendarul.",
+    sub: "De la cursuri la planuri cu prietenii: AI-ul care-ți organizează ziua și-ți face loc pentru ce contează.",
+    cta: "Creează-ți contul",
+  },
+  stage: {
+    title: "Din orarele facultății în calendarul tău",
+    before: "De la facultate",
+    files: ["orar_sem1.pdf", "Grupe de laborator.xlsx", "Programare examene.pdf"],
   },
   preview: {
     title: "Exemplu de orar",
@@ -48,16 +68,28 @@ const ro: typeof en = {
     days: ["Luni", "Marți", "Miercuri", "Joi", "Vineri"],
     shortDays: ["Lun", "Mar", "Mie", "Joi", "Vin"],
     courses: { maths: "Analiză matematică", coding: "Programare", physics: "Fizică", logic: "Logică digitală", english: "Engleză" },
-    room: (code: string) => `Sala ${code}`,
+    room: (code: string) => "Sala " + code,
+    free: "Pauză",
   },
-  features: {
-    heading: "Între cursuri",
-    campus: { title: "Găsește sala", body: "Caută o sală și explorează clădirea în turul virtual al UPT." },
-    contacts: { title: "Întâlnește-te cu colegii", body: "Compară orarele, găsește o oră liberă și invită-ți colegii." },
-    poli: { title: "Întreabă-l pe Poli", body: "Află când ai următorul laborator sau în ce sală trebuie să ajungi. Poli verifică orarul și răspunde în română sau engleză." },
+  ask: {
+    heading: "Întreabă-l pe Poli",
+    accent: "orice.",
+    example: "Exemplu din acest orar",
+    prompts: [
+      { question: "Când am pauză luni?", answer: "Termini laboratorul de programare la 12:00 și ai examenul la engleză la 14:00. Ai două ore libere." },
+      { question: "Unde am examenul la engleză?", answer: "În sala D1, luni la 14:00. În calendarul tău poți deschide examenul ca să vezi cum ajungi." },
+      { question: "Când am laboratorul de fizică?", answer: "Miercuri, de la 12:00 la 14:00, în B305. Ai două ore de pauză după cursul de logică digitală." },
+    ],
   },
+  stepsTitle: "Cum începi",
+  steps: [
+    { title: "Alegi grupa", text: "Selectezi facultatea, programul de studii și grupa ca să vezi orarul publicat pentru tine." },
+    { title: "Îți completezi orarul", text: "Cursurile cu oră fixă sunt deja în calendar. Tu alegi opționalele și orele de laborator." },
+    { title: "Activezi alertele pentru examene", text: "Adaugă examenele în calendarul telefonului ca să primești alerte cu o zi și cu două ore înainte." },
+  ],
+  closing: { line: "Tu ai grijă de tine.", accent: "Poli are grijă de restul." },
   guide: { title: "Ești la început la UPT?", action: "Deschide ghidul studentului" },
-  source: "Orarul se bazează pe programele publicate de facultățile UPT. Pentru schimbări de ultim moment, verifică anunțurile facultății.",
+  source: "Orarul se bazează pe programele publicate de facultățile Universității Politehnica Timișoara.",
 };
 
 export const landing = { en, ro };

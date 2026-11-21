@@ -86,6 +86,8 @@ export function Calendar({
   initialWeek,
   today,
   hasGroup,
+  programme,
+  year,
 }: {
   initialEvents: CalEvent[];
   initialHolidays: PublicHoliday[];
@@ -94,6 +96,8 @@ export function Calendar({
   initialWeek: number | null;
   today: string;
   hasGroup: boolean;
+  programme?: { name: string; facultyUrl: string | null } | null;
+  year?: number | null;
 }) {
   const messages = useT();
   const t = messages.calendar;
@@ -280,10 +284,16 @@ export function Calendar({
         </div>
       )}
 
-      {view !== "month" && !visible.length && !loading && !error && loaded.from === range.from && loaded.to === range.to && (
-        <p className="border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          {hasGroup ? t.grid.emptyWithGroup : t.grid.emptyNoGroup}
-        </p>
+      {!hasGroup ? (
+        <aside className="space-y-2 border-b border-slate-200 bg-brand-50/50 px-4 py-3 text-sm">
+          <p>{programme && year ? t.grid.unpublished(programme.name, year) : t.grid.emptyNoGroup}</p>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 font-medium text-brand-700">
+            {programme?.facultyUrl && <a href={programme.facultyUrl} target="_blank" rel="noreferrer" className="underline">{t.grid.facultyTimetable}</a>}
+            <Link href="/settings#profile" className="underline">{messages.onboarding.courses.changeGroup}</Link>
+          </div>
+        </aside>
+      ) : view !== "month" && !visible.length && !loading && !error && loaded.from === range.from && loaded.to === range.to && (
+        <p className="border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">{t.grid.emptyWithGroup}</p>
       )}
 
       {view === "month" ? (

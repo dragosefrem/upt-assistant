@@ -183,3 +183,7 @@ export async function syncToGoogle(user: User, locale: Locale = user.locale ?? "
   db.update(users).set({ googleSyncedAt: new Date().toISOString() }).where(eq(users.id, user.id)).run();
   return { events: items.length, calendarId };
 }
+
+export function disconnectGoogle(userId: string) {
+  getDb().update(users).set({ googleRefreshToken: null, googleCalendarId: null, googleSyncedAt: null }).where(eq(users.id, userId)).run();
+}

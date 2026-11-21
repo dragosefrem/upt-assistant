@@ -1,38 +1,8 @@
 import { useLocale, useT } from "@/i18n/client";
-import type { DateRange } from "@/lib/planning-range";
+import { hourViews, type AvailabilityDay, type CampusTime } from "@/lib/planning-range";
+export { availabilityDays, hourViews } from "@/lib/planning-range";
 import type { FreeSlot } from "@/lib/schedule";
-import { addDays, dayName, daysBetween, formatDate, formatDateRange, formatMinutes, weekday } from "@/lib/time";
-
-export interface AvailabilityDay {
-  date: string;
-  slots: FreeSlot[];
-  freeMinutes: number;
-}
-
-/** Hour filters; the label is `contacts.availability.hours[id]`. */
-export const hourViews = [
-  { id: "full", startMin: 0, endMin: 1440 },
-  { id: "daytime", startMin: 480, endMin: 1080 },
-  { id: "evening", startMin: 1080, endMin: 1440 },
-] as const;
-
-type CampusTime = { date: string; minutes: number };
-
-export function availabilityDays(range: DateRange, slots: FreeSlot[], asOf: CampusTime, hours: typeof hourViews[number] = hourViews[0]): AvailabilityDay[] {
-  const days = Array.from({ length: daysBetween(range.from, range.to) + 1 }, (_, i): AvailabilityDay => ({
-    date: addDays(range.from, i), slots: [], freeMinutes: 0,
-  }));
-  const nextQuarter = Math.ceil((asOf.minutes + 1) / 15) * 15;
-  for (const slot of slots) {
-    const startMin = Math.max(hours.startMin, slot.startMin, slot.date === asOf.date ? nextQuarter : 0);
-    const endMin = Math.min(hours.endMin, slot.endMin);
-    if (startMin >= endMin) continue;
-    const day = days[daysBetween(range.from, slot.date)];
-    day.slots.push({ date: slot.date, startMin, endMin });
-    day.freeMinutes += endMin - startMin;
-  }
-  return days;
-}
+import { dayName, daysBetween, formatDate, formatDateRange, formatMinutes, weekday } from "@/lib/time";
 
 function shade(fraction: number): string {
   if (fraction === 0) return "bg-slate-100 text-slate-600";
@@ -48,6 +18,7 @@ const elapsedPattern = {
 export const windowLabel = (slot: FreeSlot) => `${formatMinutes(slot.startMin)}–${formatMinutes(slot.endMin)}`;
 
 interface ChartProps {
+  shared: boolean;
   days: AvailabilityDay[];
   selectedDay: AvailabilityDay;
   selectedSlot?: FreeSlot;
@@ -56,7 +27,7 @@ interface ChartProps {
   onSelect: (date: string, slot?: FreeSlot) => void;
 }
 
-export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hours, onSelect }: ChartProps) {
+export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hours, onSelect, shared }: ChartProps) {
   const t = useT().contacts.availability;
   const locale = useLocale();
   const duration = (minutes: number) => t.duration(Math.floor(minutes / 60), minutes % 60);
@@ -89,7 +60,7 @@ export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hour
         })}
       </div>
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-24 text-xs text-slate-600 sm:pr-0">
-        <span>{t.sharedFree}</span>
+        <span>{shared ? t.sharedFree : t.yourFree}</span>
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
           {duration(0)}
           <span className="flex gap-0.5" aria-hidden="true">{[0, 0.25, 0.5, 0.75, 1].map((part) => <span key={part} className={`h-3 w-3 rounded-sm sm:w-4 ${shade(part)}`} />)}</span>
@@ -143,7 +114,7 @@ export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hour
         </div>)}
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-slate-600">
-        <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-teal-600" />{t.freeTogether}</span>
+        <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-teal-600" />{shared ? t.freeTogether : t.yourFree}</span>
         <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-slate-200" />{t.busy}</span>
         <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm bg-brand-600" />{t.selected}</span>
         {elapsedWidth > 0 && week.some((day) => day.date === today) && <span className="inline-flex items-center gap-1"><i aria-hidden="true" className="h-2.5 w-2.5 rounded-sm" style={elapsedPattern} />{t.past}</span>}

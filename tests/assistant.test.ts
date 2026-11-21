@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb } from "@/db";
 import { chatMessages, contacts, courses, entries, entryGroups, faculties, groups, personalEvents, semesters, specializations, users } from "@/db/schema";
 import { acceptPreview } from "@/lib/assistant/accept";
@@ -113,6 +113,9 @@ describe("assistant tools", () => {
       .values({ id: "u1", email: "student@example.com", name: "Student", passwordHash: "x", feedToken: "t", facultyId: faculty.id, specializationId: spec.id, year: 3, groupId: mine.id })
       .returning()
       .get();
+  });
+
+  beforeEach(() => {
     ctx = { user, location: null, changed: false };
   });
 

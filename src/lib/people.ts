@@ -13,7 +13,7 @@ import { describeGroup, eventsBetween, groupBusy, overlaps } from "./schedule";
  * - an **account** contact accepted the student's request (or the other way round), so
  *   their real calendar counts: classes after their own choices, exams, personal events
  *   and group events they said yes to;
- * - a **saved** contact is only a name and a group ("Mindy is in TI 3.2"), so the
+ * - a **saved** contact is only a name and a group ("Andreea is in TI 3.2"), so the
  *   group's published timetable stands in for them.
  *
  * What an account contact is doing is shared the same way as on their schedule page:
@@ -111,7 +111,7 @@ export function availabilityAt(people: Person[], date: string, startMin: number,
 
 /** The student's own clashes with a slot, so "are we all free?" includes them. */
 export function ownBusyAt(user: User, date: string, startMin: number, endMin: number): BusyTime[] {
-  return eventsBetween(user, date, date)
-    .filter((e) => overlaps(e, { startMin, endMin }))
-    .map((e) => ({ date: e.date, startMin: e.startMin, endMin: e.endMin, what: e.title }));
+  const events = eventsBetween(user, date, date).map(e => ({ date: e.date, startMin: e.startMin, endMin: e.endMin, what: e.title }));
+  const pending = tentativeTimesFor(user.id, date, date).map(e => ({ ...e, what: null }));
+  return [...events, ...pending].filter(e => overlaps(e, { startMin, endMin }));
 }

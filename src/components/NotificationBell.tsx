@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 import { useLocale, useT } from "@/i18n/client";
 import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
+import { campusJourneyHref } from "@/lib/campuspath/links";
 import type { ExamReminder } from "@/lib/reminders";
 import { capitalize, formatDate, formatMinutes } from "@/lib/time";
 import { Mascot } from "./Mascot";
@@ -51,7 +52,8 @@ function message(r: ExamReminder, minutesLeft: number, t: Messages["exams"]["bel
  * Google Calendar and .ics exports carry reminders 1 day and 2 hours before each exam.)
  */
 export function NotificationBell() {
-  const t = useT().exams.bell;
+  const messages = useT();
+  const t = messages.exams.bell;
   const locale = useLocale();
   const [reminders, setReminders] = useState<ExamReminder[]>([]);
   const [tip, setTip] = useState<string | null>(null);
@@ -254,6 +256,12 @@ export function NotificationBell() {
                           {r.place ? ` · ${r.place.name}` : ""}
                         </p>
                         <p className="mt-1 text-xs text-slate-500">💡 {r.tips[0]}</p>
+                        {r.room && r.place && (
+                          <Link href={campusJourneyHref({ to: r.room, building: r.place.name, course: r.course, date: r.date, at: formatMinutes(r.startMin) })}
+                            onClick={() => setOpen(false)} className="mr-3 mt-1 inline-block text-xs font-semibold text-brand-700 hover:underline">
+                            {messages.campus.rooms.showWay}
+                          </Link>
+                        )}
                         {r.mapsUrl && (
                           <a href={r.mapsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-medium text-brand-600 hover:underline">
                             {t.openMap}

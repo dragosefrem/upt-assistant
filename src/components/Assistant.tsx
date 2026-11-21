@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { readChecklist, updateChecklist } from "@/lib/guide-checklist";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setLocaleAction } from "@/app/actions/locale";
@@ -408,7 +409,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         const res = await fetch("/api/assistant", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message, spoken, location: positionRef.current }),
+          body: JSON.stringify({ message, spoken, location: positionRef.current, checklist: readChecklist() }),
         });
         if (!res.ok || !res.body) throw new Error(res.status === 401 ? tr.errors.sessionExpired : tr.errors.unavailable);
         const reader = res.body.getReader();
@@ -430,7 +431,11 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             } else if (chunk.type === "done") {
               setEngine(chunk.engine);
               if (chunk.notice) setNotice(chunk.notice);
-              if (chunk.changed) window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+              if (Array.isArray(chunk.checklistEdits)) chunk.checklistEdits.forEach(updateChecklist);
+              if (chunk.changed) {
+                window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+                router.refresh();
+              }
               const choices = Array.isArray(chunk.choices) && chunk.choices.length ? (chunk.choices as AssistantChoice[]) : undefined;
               const preview = chunk.preview as DayPreview | undefined;
               if (choices) offered = choices;
@@ -543,6 +548,17 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   const last = messages.at(-1);
   const lastChoices = !busy && last?.role === "assistant" && !last.pending ? last.choices : undefined;
 
+  const questionButton = (s: { emoji: string; text: string }) => (
+    <button
+      key={s.text}
+      className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:text-brand-700 hover:shadow-sm"
+      onClick={() => send(s.text)}
+    >
+      <span aria-hidden className="text-base">{s.emoji}</span>
+      {s.text}
+    </button>
+  );
+
   return (
     <section className="card flex h-full min-h-0 flex-col overflow-hidden shadow-[0_24px_60px_-12px_rgba(20,36,87,0.35)]">
       <header className="flex items-center gap-2 border-b border-slate-200 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
@@ -587,16 +603,11 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
               <p className="mt-0.5 text-xs">{tr.empty.hint}</p>
             </div>
             <div className="grid w-full gap-2">
-              {tr.suggestions.map((s) => (
-                <button
-                  key={s.text}
-                  className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:text-brand-700 hover:shadow-sm"
-                  onClick={() => send(s.text)}
-                >
-                  <span aria-hidden className="text-base">{s.emoji}</span>
-                  {s.text}
-                </button>
-              ))}
+              {tr.suggestions.map(questionButton)}
+              {(engine === "gemini" || engine === "claude") && <details className="text-left">
+                <summary className="py-1 text-sm font-medium text-brand-700">{tr.moreExamples}</summary>
+                <div className="mt-1 grid gap-2">{tr.advancedSuggestions.map(questionButton)}</div>
+              </details>}
             </div>
           </div>
         )}
@@ -637,8 +648,9 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             )}
             {m.links && m.links.length > 0 && (
               <div className="flex flex-wrap gap-2 pl-8">
-                {m.links.map((l) => (
-                  <Link
+                {m.links.map((l) => {
+                  const Destination = l.href.startsWith("/api/") ? "a" : Link;
+                  return <Destination
                     key={l.href}
                     href={l.href}
                     onClick={onClose}
@@ -646,8 +658,8 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
                   >
                     <span className="truncate">{l.label}</span>
                     <span aria-hidden>→</span>
-                  </Link>
-                ))}
+                  </Destination>;
+                })}
               </div>
             )}
           </div>

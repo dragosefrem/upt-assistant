@@ -1,9 +1,11 @@
+import { importDiagnostic } from "@/i18n/messages/import-diagnostics";
 import { asc, desc, eq, sql } from "drizzle-orm";
 import { ScrapePanel } from "@/components/ScrapePanel";
 import { getDb } from "@/db";
 import { courses, faculties, scrapeRuns, semesters, sources, users } from "@/db/schema";
 import { getLocale, getT } from "@/i18n/server";
 import { requireAdmin } from "@/lib/auth";
+import { geminiConfigured } from "@/lib/assistant/gemini";
 import { claudeConfigured } from "@/lib/assistant/claude";
 import { googleConfigured } from "@/lib/google";
 import { formatDate } from "@/lib/time";
@@ -18,6 +20,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const admin = await requireAdmin();
   const t = (await getT()).admin;
   const locale = await getLocale();
+  const assistant = geminiConfigured() ? t.integrations.geminiConfigured : claudeConfigured() ? t.integrations.claudeConnected : null;
   const day = (date: string) => formatDate(date, { day: "numeric", month: "short", year: "numeric" }, locale);
   const params = await searchParams;
   const db = getDb();
@@ -137,7 +140,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
               <li key={source.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2">
                 <span className="w-14 shrink-0 font-medium">{faculty}</span>
                 <a className="min-w-0 flex-1 truncate text-brand-700 hover:underline" href={source.url} target="_blank" rel="noreferrer">{source.label}</a>
-                <span className="text-xs text-slate-500">{t.sources.kind[source.kind] ?? source.kind} · {source.message}</span>
+                <span className="text-xs text-slate-500">{t.sources.kind[source.kind] ?? source.kind} · {importDiagnostic(source.message, locale)}</span>
                 <span className={`rounded-full px-2 py-0.5 text-xs ${source.status === "imported" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>{t.sources.status[source.status] ?? source.status}</span>
               </li>
             ))}
@@ -210,11 +213,11 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           <ul className="mt-3 space-y-3 text-sm">
             <li>
               <span className="font-medium">{t.integrations.assistant}</span>
-              {claudeConfigured() ? (
-                <span className="text-emerald-700">{t.integrations.claudeConnected}</span>
+              {assistant ? (
+                <span className="text-emerald-700">{assistant}</span>
               ) : (
                 <span className="text-slate-600">
-                  {t.integrations.keywordBefore}<code className="rounded bg-slate-100 px-1">ANTHROPIC_API_KEY</code>{t.integrations.keywordAfter}
+                  {t.integrations.keywordBefore}<code className="rounded bg-slate-100 px-1">GEMINI_API_KEY</code>{t.integrations.or}<code className="rounded bg-slate-100 px-1">ANTHROPIC_API_KEY</code>{t.integrations.keywordAfter}
                 </span>
               )}
             </li>

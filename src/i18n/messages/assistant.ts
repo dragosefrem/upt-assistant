@@ -31,6 +31,9 @@ const en = {
     { emoji: "⏭️", text: "What's next?" },
     { emoji: "🧪", text: "Do I have lab this week?" },
     { emoji: "🧭", text: "How do I get to my next class?" },
+  ],
+  moreExamples: "More questions",
+  advancedSuggestions: [
     { emoji: "🤝", text: "Which of my contacts are free tomorrow at 14:00?" },
     { emoji: "🔁", text: "I missed a lab. Which other groups have it this week?" },
     { emoji: "📚", text: "Make me a study plan for the exam session" },
@@ -208,6 +211,9 @@ const ro: typeof en = {
     { emoji: "⏭️", text: "Ce urmează?" },
     { emoji: "🧪", text: "Am laborator săptămâna aceasta?" },
     { emoji: "🧭", text: "Cum ajung la ora următoare?" },
+  ],
+  moreExamples: "Alte întrebări",
+  advancedSuggestions: [
     { emoji: "🤝", text: "Care dintre contactele mele sunt libere mâine la 14:00?" },
     { emoji: "🔁", text: "Am lipsit de la un laborator. Ce alte grupe îl au săptămâna aceasta?" },
     { emoji: "📚", text: "Fă-mi un plan de învățat pentru sesiune" },

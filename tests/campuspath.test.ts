@@ -17,6 +17,7 @@ import {
   stepEnd,
 } from "@/lib/campuspath/links";
 import { leaveBy, mapsDirectionsUrl, mapsEmbedUrl } from "@/lib/campuspath/maps";
+import { campusRoomCode } from "@/lib/campuspath/known-room";
 import { groupRooms } from "@/lib/campuspath/rooms";
 import { campuspathConfig, DEFAULT_PORT } from "@/lib/campuspath/service";
 import type { Checkpoint, Classroom, Route, Step } from "@/lib/campuspath/types";
@@ -76,6 +77,14 @@ const route: Route = {
 };
 
 describe("campus addresses", () => {
+  it("offers indoor directions only for an exact room code in a meeting location", () => {
+    expect(campusRoomCode("Sala b 419")).toBe("B419");
+    expect(campusRoomCode("Room B419")).toBe("B419");
+    for (const location of [null, "", "Library café", "Online", "Coffee near B419"]) {
+      expect(campusRoomCode(location)).toBeUndefined();
+    }
+  });
+
   it("builds and reads route addresses, dropping what is out of bounds", () => {
     expect(campusHref({ from: "355", to: "B527", dest: "room:electro-b527" })).toBe("/campus?from=355&to=B527&dest=room%3Aelectro-b527");
     expect(campusHref({})).toBe("/campus");
