@@ -5,8 +5,8 @@ import { resetTarget } from "@/lib/password-reset";
 import { resetPasswordAction } from "../../actions";
 
 export async function generateMetadata() {
-  // The link carries a secret: keep it out of search engines and out of referrers.
-  return { title: (await getT()).auth.reset.title, robots: { index: false }, referrer: "no-referrer" as const };
+  // Keep the token path private while allowing a same-origin form POST before hydration.
+  return { title: (await getT()).auth.reset.title, robots: { index: false }, referrer: "strict-origin" as const };
 }
 
 export default async function ResetPasswordPage({ params }: PageProps<"/reset/[token]">) {
