@@ -24,6 +24,7 @@ import type { Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import type { User } from "./auth";
 import { sharedEventsFor } from "./group-events";
+import { isPublicHoliday } from "./holidays";
 import { addDays, dayName, daysBetween, describeWeeks, formatMinutes, mondayOf, occursInWeek, weekday } from "./time";
 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
@@ -83,7 +84,7 @@ export function currentSemester(): Semester | null {
   return row ? withTeachingWeeks(row) : null;
 }
 
-/** 1-based teaching week containing `date`, or null during holidays and sessions. */
+/** 1-based teaching week, including its public days off. Whole-week breaks and sessions return null. */
 export function teachingWeek(semester: Semester, date: string): number | null {
   const index = semester.weeks.indexOf(mondayOf(date));
   return index === -1 ? null : index + 1;
@@ -263,10 +264,10 @@ export function studentWeek(user: Pick<User, "id" | "groupId" | "year">, semeste
   return out.sort((a, b) => a.day - b.day || a.startMin - b.startMin);
 }
 
-/** The timetable every member of a group shares (no optional courses, no slot picks). */
-export function groupWeek(groupId: number, semester: Semester): WeekEntry[] {
+/** The published timetable shared by a group. Lookups can also include its electives and alternative lab slots. */
+export function groupWeek(groupId: number, semester: Semester, { includeOptions = false } = {}): WeekEntry[] {
   return loadGroup(groupId, semester.id)
-    .rows.filter(({ entry, course }) => !entry.isSlotOption && !entry.publishedOptional && !course.isOptional)
+    .rows.filter(({ entry, course }) => includeOptions || (!entry.isSlotOption && !entry.publishedOptional && !course.isOptional))
     .map(({ entry, course }) => ({
       entryId: entry.id,
       entryKey: entry.key,
@@ -324,16 +325,19 @@ export function eventsBetween(
   const t = common[locale].time;
   const place = placeResolver(user.facultyId);
   const events: CalEvent[] = [];
+  const once = occurrenceMoves(user.id);
+  const movedHere = [...once.values()].filter((o) => o.newDate >= from && o.newDate <= to && !isPublicHoliday(o.newDate));
 
   // Every term the range touches, up to the end of its exam session (dated meetings can fall there).
-  const terms = user.groupId
-    ? getDb().select().from(semesters).all().map(withTeachingWeeks)
-        .filter((s) => s.startDate <= to && (s.examEnd && s.examEnd > s.endDate ? s.examEnd : s.endDate) >= from)
-    : [];
+  const terms = user.groupId ? getDb().select().from(semesters).all().map(withTeachingWeeks) : [];
   for (const semester of terms) {
+    const termEnd = semester.examEnd && semester.examEnd > semester.endDate ? semester.examEnd : semester.endDate;
+    const first = from > semester.startDate ? from : semester.startDate;
+    const last = to < termEnd ? to : termEnd;
+    if (first > last && !movedHere.some((o) => o.date >= semester.startDate && o.date <= termEnd)) continue;
     const week = studentWeek(user, semester);
-    const once = occurrenceMoves(user.id);
-    for (let date = from; date <= to; date = addDays(date, 1)) {
+    for (let date = first; date <= last; date = addDays(date, 1)) {
+      if (isPublicHoliday(date)) continue;
       // Weekly classes need a teaching week. A dated meeting can also fall in a break or the session.
       const n = date >= semester.startDate && date <= semester.endDate ? teachingWeek(semester, date) : null;
       const monday = mondayOf(date);
@@ -366,9 +370,9 @@ export function eventsBetween(
       }
     }
     const byEntry = new Map(week.map((e) => [e.entryId, e]));
-    for (const o of once.values()) {
+    for (const o of movedHere) {
       const e = byEntry.get(o.entryId);
-      if (!e || o.newDate < from || o.newDate > to) continue;
+      if (!e) continue;
       const room = o.room ?? e.room;
       events.push({
         id: `e:${e.entryId}:${o.date}`,
@@ -571,6 +575,7 @@ export function groupBusy(groupId: number, from: string, to: string) {
   const week = groupWeek(groupId, semester);
   const busy: Array<{ date: string; startMin: number; endMin: number; title: string }> = [];
   for (let date = from; date <= to; date = addDays(date, 1)) {
+    if (isPublicHoliday(date)) continue;
     const n = teachingWeek(semester, date);
     const monday = mondayOf(date);
     for (const e of week) {

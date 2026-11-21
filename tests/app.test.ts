@@ -1,10 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { haversineMeters, planTrip } from "@/lib/directions";
 import { toICS, type ExportItem } from "@/lib/export";
+import { holidaysBetween, orthodoxEaster } from "@/lib/holidays";
 import { freeSlots } from "@/lib/schedule";
 import { addDays, daysBetween, mondayOf, nowLocal, weekMatches, weekday } from "@/lib/time";
 
 describe("time helpers", () => {
+  it("computes Romania’s fixed and Orthodox holidays for the requested year", () => {
+    expect(orthodoxEaster(2027)).toBe("2027-05-02");
+    const dates = holidaysBetween("2027-01-01", "2027-12-31");
+    expect(dates.map((h) => h.date.slice(5))).toEqual([
+      "01-01", "01-02", "01-06", "01-07", "01-24", "04-30", "05-01", "05-02", "05-03",
+      "06-01", "06-20", "06-21", "08-15", "11-30", "12-01", "12-25", "12-26",
+    ]);
+    expect(dates.find((h) => h.date === "2027-06-20")?.name).toBe("Orthodox Pentecost Sunday");
+    expect(holidaysBetween("2026-06-01", "2026-06-01", "ro")).toEqual([{ date: "2026-06-01", name: "Ziua Copilului / A doua zi de Rusalii" }]);
+    expect(holidaysBetween("2026-12-26", "2027-01-02").map((h) => h.date)).toEqual(["2026-12-26", "2027-01-01", "2027-01-02"]);
+  });
+
   it("does calendar arithmetic on ISO dates", () => {
     expect(weekday("2026-11-20")).toBe(5); // a Friday
     expect(mondayOf("2026-11-20")).toBe("2026-11-16");

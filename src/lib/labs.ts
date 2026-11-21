@@ -2,11 +2,15 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { entries, entryGroups, groups, specializations, type EntryKind } from "@/db/schema";
+import type { Locale } from "@/i18n/config";
 import type { User } from "./auth";
+import { holidaysBetween, isPublicHoliday, type PublicHoliday } from "./holidays";
 import {
   courseChoices,
   currentSemester,
   eventsBetween,
+  groupWeek,
+  occurrenceMoves,
   overlaps,
   studentWeek,
   teachingWeek,
@@ -82,6 +86,7 @@ export interface SkippedActivity {
 }
 
 export interface PracticalWeek extends WeekInfo {
+  holidays: PublicHoliday[];
   /** Labs, seminars and projects that take place in this week, in calendar order. */
   running: CalEvent[];
   /** Ones in the student's timetable that do not take place this week. */
@@ -91,16 +96,20 @@ export interface PracticalWeek extends WeekInfo {
 }
 
 /** The next date on or after `from` on which a weekly entry takes place, within the semester. */
-export function nextOccurrence(e: Pick<WeekEntry, "day" | "weeks">, semester: Semester, from: string): string | null {
-  if (isDatedMeeting(e.weeks)) {
-    const date = addDays(mondayOf(e.weeks), e.day - 1);
-    return date >= from ? date : null;
+export function nextOccurrence(
+  e: Pick<WeekEntry, "day" | "weeks">, semester: Semester, from: string,
+  moves: Array<{ date: string; newDate: string }> = [],
+): string | null {
+  const dated = isDatedMeeting(e.weeks);
+  const mondays = dated ? [mondayOf(e.weeks)] : semester.weeks;
+  let next: string | null = null;
+  for (const [i, monday] of mondays.entries()) {
+    const original = addDays(monday, e.day - 1);
+    if (!dated && (original < semester.startDate || original > semester.endDate || !occursInWeek(e.weeks, i + 1, monday))) continue;
+    const date = moves.find((move) => move.date === original)?.newDate ?? original;
+    if (date >= from && (!next || date < next) && !isPublicHoliday(date)) next = date;
   }
-  for (const [i, monday] of semester.weeks.entries()) {
-    const date = addDays(monday, e.day - 1);
-    if (date >= from && date <= semester.endDate && occursInWeek(e.weeks, i + 1, monday)) return date;
-  }
-  return null;
+  return next;
 }
 
 /**
@@ -112,16 +121,18 @@ export function practicalsInWeek(
   user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">,
   date: string,
   kinds: EntryKind[] = PRACTICAL_KINDS,
+  locale: Locale = "en",
 ): PracticalWeek {
   const semester = currentSemester();
   const info = weekInfo(date, semester);
   const wanted = new Set<string>(kinds);
-  if (!semester || !user.groupId) return { ...info, running: [], skipped: [], unchosen: [] };
+  const holidays = holidaysBetween(info.monday, info.sunday, locale);
+  if (!semester || !user.groupId) return { ...info, holidays, running: [], skipped: [], unchosen: [] };
 
-  const running = eventsBetween(user, info.monday, info.sunday).filter((e) => e.type === "class" && wanted.has(e.kind));
+  const running = eventsBetween(user, info.monday, info.sunday, locale).filter((e) => e.type === "class" && wanted.has(e.kind));
   const runningIds = new Set(running.map((e) => e.entryId));
-  const today = nowLocal().date;
-  const after = info.sunday >= today ? addDays(info.sunday, 1) : today;
+  const after = addDays(info.sunday, 1);
+  const moves = [...occurrenceMoves(user.id).values()];
   const skipped = studentWeek(user, semester)
     .filter((e) => wanted.has(e.kind) && !runningIds.has(e.entryId))
     .map((e) => ({
@@ -134,12 +145,12 @@ export function practicalsInWeek(
       endMin: e.endMin,
       room: e.room,
       weeks: e.weeks,
-      next: nextOccurrence(e, semester, after),
+      next: nextOccurrence(e, semester, after, moves.filter((move) => move.entryId === e.entryId)),
     }));
   const unchosen = courseChoices(user, semester)
     .filter((c) => c.enrolled && c.slots.length > 0 && !c.chosenSlotId && c.slots.some((s) => wanted.has(s.kind)))
     .map((c) => ({ courseId: c.courseId, name: c.name, abbr: c.abbr }));
-  return { ...info, running, skipped, unchosen };
+  return { ...info, holidays, running, skipped, unchosen };
 }
 
 /* ───────────────────────────── Make-up sessions ───────────────────────────── */
@@ -173,6 +184,7 @@ export interface MakeupResult {
 export type MakeupOutcome =
   | { ok: true; result: MakeupResult }
   | { ok: false; reason: "no-semester" | "no-group" | "not-found" }
+  | { ok: false; reason: "not-scheduled"; course: string; kind: EntryKind; missedOn: string; previous: string | null; next: string | null }
   | { ok: false; reason: "ambiguous"; candidates: Array<{ title: string; abbr: string | null; kind: EntryKind }> };
 
 /**
@@ -182,7 +194,7 @@ export type MakeupOutcome =
  */
 export function makeupSessions(
   user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">,
-  query: { course: string; kind?: EntryKind; from: string; to: string },
+  query: { course: string; kind?: EntryKind; missedOn?: string; from: string; to: string },
   limit = 12,
 ): MakeupOutcome {
   const semester = currentSemester();
@@ -190,7 +202,7 @@ export function makeupSessions(
   if (!user.groupId) return { ok: false, reason: "no-group" };
 
   // Match against everything the group has, so a hidden or skipped lab can still be made up.
-  const everything = studentWeek({ id: "", groupId: user.groupId, year: user.year }, semester);
+  const everything = groupWeek(user.groupId, semester, { includeOptions: true });
   let mine = everything.filter((e) => courseMatches(e, query.course) && (query.kind ? e.kind === query.kind : PRACTICAL_KINDS.includes(e.kind)));
   if (!query.kind && mine.some((e) => e.kind === "lab")) mine = mine.filter((e) => e.kind === "lab");
   if (!mine.length) return { ok: false, reason: "not-found" };
@@ -200,6 +212,25 @@ export function makeupSessions(
   }
   const [{ courseId, kind, title, abbr }] = mine;
   const mineIds = new Set(mine.map((e) => e.entryId));
+  const sameActivity = (e: CalEvent) => e.type === "class" && e.courseId === courseId && e.kind === kind;
+  if (query.missedOn) {
+    const missedOn = query.missedOn;
+    if (!eventsBetween(user, missedOn, missedOn).some(sameActivity)) {
+      const end = semester.examEnd ?? semester.endDate;
+      const dates = eventsBetween(user, semester.startDate, end).filter(sameActivity).map((e) => e.date);
+      // A one-off move can put the nearest real session outside the published term.
+      const outsideTerm = new Set([...occurrenceMoves(user.id).values()]
+        .filter((move) => mineIds.has(move.entryId) && (move.newDate < semester.startDate || move.newDate > end))
+        .map((move) => move.newDate));
+      for (const date of outsideTerm) if (eventsBetween(user, date, date).some(sameActivity)) dates.push(date);
+      dates.sort();
+      return {
+        ok: false, reason: "not-scheduled", course: title, kind, missedOn,
+        previous: dates.filter((d) => d < missedOn).at(-1) ?? null,
+        next: dates.find((d) => d > missedOn) ?? null,
+      };
+    }
+  }
 
   const db = getDb();
   const others = db
@@ -227,9 +258,9 @@ export function makeupSessions(
     e.day === weekday(date) && occursInWeek(e.weeks, date >= semester.startDate && date <= semester.endDate ? teachingWeek(semester, date) : null, mondayOf(date));
 
   const sessions: MakeupSession[] = [];
-  const own: MakeupResult["own"] = [];
+  const own = myEvents.filter(sameActivity).map(({ date, startMin, endMin, room }) => ({ date, startMin, endMin, room }));
   for (let date = from; date <= query.to; date = addDays(date, 1)) {
-    for (const e of mine) if (occursOn(e, date)) own.push({ date, startMin: e.startMin, endMin: e.endMin, room: e.room });
+    if (isPublicHoliday(date)) continue;
     for (const e of others) {
       if (!occursOn(e, date)) continue;
       if (date === now.date && e.startMin <= now.minutes) continue;

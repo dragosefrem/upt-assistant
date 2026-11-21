@@ -2,6 +2,15 @@
 const en = {
   appName: "UPT Orar",
   tagline: "Your timetable, exams and study buddy at Politehnica Timișoara.",
+  holidays: {
+    newYear: "New Year’s Day", newYearSecond: "Second day of the New Year",
+    epiphany: "Epiphany", john: "Saint John the Baptist", union: "Union of the Romanian Principalities",
+    labour: "Labour Day", children: "Children’s Day", dormition: "Dormition of the Mother of God",
+    andrew: "Saint Andrew’s Day", national: "National Day of Romania",
+    christmas: "Christmas Day", christmasSecond: "Second day of Christmas",
+    goodFriday: "Orthodox Good Friday", easter: "Orthodox Easter Sunday", easterMonday: "Orthodox Easter Monday",
+    pentecost: "Orthodox Pentecost Sunday", pentecostMonday: "Orthodox Pentecost Monday",
+  },
   nav: {
     calendar: "Calendar",
     exams: "Exams",
@@ -84,6 +93,15 @@ const en = {
 const ro: typeof en = {
   appName: "UPT Orar",
   tagline: "Orarul, examenele și asistentul tău la Politehnica Timișoara.",
+  holidays: {
+    newYear: "Anul Nou", newYearSecond: "A doua zi de Anul Nou",
+    epiphany: "Boboteaza", john: "Sfântul Ioan Botezătorul", union: "Ziua Unirii Principatelor Române",
+    labour: "Ziua Muncii", children: "Ziua Copilului", dormition: "Adormirea Maicii Domnului",
+    andrew: "Sfântul Andrei", national: "Ziua Națională a României",
+    christmas: "Crăciunul", christmasSecond: "A doua zi de Crăciun",
+    goodFriday: "Vinerea Mare", easter: "Duminica Paștelui", easterMonday: "A doua zi de Paște",
+    pentecost: "Duminica Rusaliilor", pentecostMonday: "A doua zi de Rusalii",
+  },
   nav: {
     calendar: "Calendar",
     exams: "Examene",

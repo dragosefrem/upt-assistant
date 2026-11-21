@@ -7,6 +7,7 @@ import { common } from "@/i18n/messages/common";
 import { settings } from "@/i18n/messages/settings";
 import type { User } from "./auth";
 import { sharedEventsFor } from "./group-events";
+import { isPublicHoliday } from "./holidays";
 import { kindLabel } from "./kinds";
 import { currentSemester, examsForUser, occurrenceMoves, placeResolver, studentWeek, type Semester } from "./schedule";
 import { TIME_ZONE, addDays, describeWeeks, formatDate, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
@@ -41,16 +42,16 @@ const LABELLED_KINDS = new Set(["course", "seminar", "lab", "project"]);
 function recurring(semester: Semester, day: number, weeks: string): { first: string; until: string; exdates: string[] } | null {
   if (isDatedMeeting(weeks)) {
     const first = addDays(mondayOf(weeks), day - 1);
-    return { first, until: first, exdates: [] };
+    return isPublicHoliday(first) ? null : { first, until: first, exdates: [] };
   }
   const dates = semester.weeks
     .map((monday, i) => ({ date: addDays(monday, day - 1), week: i + 1 }))
     .filter((d) => weekMatches(weeks, d.week) && d.date >= semester.startDate && d.date <= semester.endDate)
     .map((d) => d.date);
-  if (!dates.length) return null;
+  const wanted = new Set(dates.filter((date) => !isPublicHoliday(date)));
+  if (!wanted.size) return null;
   const first = dates[0];
   const until = dates[dates.length - 1];
-  const wanted = new Set(dates);
   const exdates: string[] = [];
   for (let d = first; d <= until; d = addDays(d, 7)) if (!wanted.has(d)) exdates.push(d);
   return { first, until, exdates };
@@ -76,22 +77,24 @@ export function exportItems(user: User, locale: Locale = user.locale ?? "en"): E
     const once = [...occurrenceMoves(user.id).values()];
     for (const e of studentWeek(user, semester)) {
       const r = recurring(semester, e.day, e.weeks);
-      if (!r) continue;
       const title = `${e.title}${LABELLED_KINDS.has(e.kind) ? ` (${kindLabel(e.kind, locale)})` : ""}`;
       const moves = once.filter((o) => o.entryId === e.entryId);
-      items.push({
-        uid: `entry-${e.entryId}`,
-        title,
-        description: [e.teacher, describeWeeks(e.weeks, locale), e.endMin === e.startMin ? time.endTimeUnpublished : null, e.note].filter(Boolean).join(" · "),
-        location: where(e.room),
-        date: r.first,
-        startMin: e.startMin,
-        endMin: e.endMin,
-        until: r.first === r.until ? undefined : r.until,
-        // Weeks moved to another time are left out of the series and exported on their own.
-        exdates: [...r.exdates, ...moves.map((o) => o.date)].sort(),
-      });
+      if (r && (r.first !== r.until || !moves.some((o) => o.date === r.first))) {
+        items.push({
+          uid: `entry-${e.entryId}`,
+          title,
+          description: [e.teacher, describeWeeks(e.weeks, locale), e.endMin === e.startMin ? time.endTimeUnpublished : null, e.note].filter(Boolean).join(" · "),
+          location: where(e.room),
+          date: r.first,
+          startMin: e.startMin,
+          endMin: e.endMin,
+          until: r.first === r.until ? undefined : r.until,
+          // Weeks moved to another time are left out of the series and exported on their own.
+          exdates: [...new Set([...r.exdates, ...moves.map((o) => o.date)])].sort(),
+        });
+      }
       for (const o of moves) {
+        if (isPublicHoliday(o.newDate)) continue;
         items.push({
           uid: `entry-${e.entryId}-${o.date}`,
           title,
