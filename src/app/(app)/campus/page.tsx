@@ -25,7 +25,7 @@ export default async function CampusRoute({ searchParams }: PageProps<"/campus">
   return (
     <CampusPage
       // A new address (a link from elsewhere in the app) starts the page over.
-      key={[link.from, link.to, link.dest, link.building, link.at, link.course].join("|")}
+      key={[locale, link.from, link.to, link.dest, link.building, link.at, link.date, link.course].join("|")}
       initial={link}
       rooms={rooms}
       hasSemester={!!semester}

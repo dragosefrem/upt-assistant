@@ -43,13 +43,12 @@ export function GetThere({
   const distance = position ? metresBetween({ lat: position.lat, lon: position.lng }, entrance.pin) : null;
   const here = distance !== null && distance < HERE_METRES;
   const trip = useMemo(
-    () => (origin ? planTrip(origin, { name: entrance.name, address: null, lat: target.lat, lng: target.lng, approximate: false }, locale) : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- the target is fixed per entrance
-    [origin, entrance.index, locale],
+    () => (origin ? planTrip(origin, { name: entrance.name, address: null, lat: target.lat, lng: target.lng, approximate: false }, locale, true) : null),
+    [origin, entrance.name, target.lat, target.lng, locale],
   );
   const minutesFor = (m: TravelMode) => trip?.options.find((o) => o.mode === TRIP_MODE[m])?.minutes ?? null;
   const minutes = minutesFor(mode);
-  const leave = at && trip ? leaveBy(at, (minutes ?? trip.leaveMinutesBefore - 5) + 5) : null;
+  const leave = at && minutes !== null ? leaveBy(at, minutes + 5) : null;
   const mapsLink = mapsDirectionsUrl({ origin, destination: target, mode });
   // The building's name on the campus map, else the tour's area; not when it repeats the entrance's name.
   const where = [entrance.pin.name, entrance.area].find((v) => v && v !== entrance.name) ?? "";

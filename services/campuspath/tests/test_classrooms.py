@@ -121,6 +121,13 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(self.tour.plan("D1", 355)["destination"]["name"], "D1 · AMF Alexandru Rogojan")
         self.assertEqual(self.tour.plan("D001A", 355)["destination"]["index"], "room:electro-d001a")
 
+    def test_spm_timetable_numbers_with_the_building_last(self):
+        for query in ("106 SPM", "sala 106 spm"):
+            self.assertEqual(self.tour.plan(query, "auto")["destination"]["code"], "SPM106")
+        with self.assertRaises(RouteQuestion) as choice:
+            self.tour.plan("106 /115 SPM", "auto")
+        self.assertEqual({room["code"] for room in choice.exception.options}, {"SPM106", "SPM115"})
+
     def test_floors_borrow_the_checkpoint_outside_a_photographed_room(self):
         outside = [(3, 741, ("", 4), "Proiectare 3D Et.4")]
         anchor = lambda zone, found=outside: Classrooms.anchor(zone, {}, found, self.tour)

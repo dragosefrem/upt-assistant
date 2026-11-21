@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useT } from "@/i18n/client";
+import { useLocale, useT } from "@/i18n/client";
 import { routeEntrance, routeGoal, type CampusLink } from "@/lib/campuspath/links";
 import type { Route } from "@/lib/campuspath/types";
+import { formatDate } from "@/lib/time";
 import { reveal, routeFloor } from "./format";
 import { GetThere } from "./GetThere";
 import { RouteView, type RouteKind } from "./RouteView";
@@ -25,7 +26,7 @@ export function Journey({
 }: {
   route: Route;
   kind: RouteKind;
-  context: Pick<CampusLink, "building" | "at" | "course">;
+  context: Pick<CampusLink, "building" | "at" | "date" | "course">;
   mapsKey: string | null;
   onRetry: () => void;
   onShare: () => void;
@@ -34,6 +35,7 @@ export function Journey({
   onStartElsewhere: () => void;
 }) {
   const t = useT().campus;
+  const locale = useLocale();
   const inside = useRef<HTMLElement>(null);
   const [insideVisible, setInsideVisible] = useState(true);
   const entrance = kind === "yours" ? routeEntrance(route) : null;
@@ -83,6 +85,7 @@ export function Journey({
         {context.course ? (
           <p className="mt-2 inline-flex rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-800">
             📚 {t.journey.forClass(context.course, context.at ?? null)}
+            {context.date && ` · ${formatDate(context.date, { weekday: "short", day: "numeric", month: "short" }, locale)}`}
           </p>
         ) : (
           context.at && <p className="mt-2 inline-flex rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-800">🕘 {t.journey.atTime(context.at)}</p>
@@ -133,7 +136,7 @@ export function Journey({
       </section>
 
       {entrance && !insideVisible && (
-        <div className="fixed inset-x-3 bottom-4 z-30 mr-[6.5rem] lg:hidden">
+        <div className="fixed inset-x-3 bottom-4 z-30 sm:mr-[6.5rem] lg:hidden">
           <button type="button" onClick={goInside} className="btn-primary w-full py-3 shadow-lg shadow-brand-900/20">
             {t.journey.nextInside} ↓
           </button>

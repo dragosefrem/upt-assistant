@@ -81,6 +81,18 @@ describe("Poli's suggestions in Romanian", () => {
 describe("travel suggestions in Romanian", () => {
   const electro = { name: "Corp Electro", address: null, lat: 45.7475, lng: 21.2262, approximate: false };
 
+  it("gives the campus mode switch its own estimate for every mode", () => {
+    const nearby = { lat: 45.751, lng: 21.2262 };
+    const usual = planTrip(nearby, electro);
+    expect(usual.options.map((o) => o.mode)).toEqual(["walk"]);
+    const campus = planTrip(nearby, electro, "en", true);
+    expect(campus.options.map(({ mode, minutes }) => [mode, minutes])).toEqual([
+      ["walk", 6], ["bike", 4], ["transit", 10], ["drive", 6],
+    ]);
+    expect(campus.summary).toBe(usual.summary);
+    expect(campus.leaveMinutesBefore).toBe(11);
+  });
+
   it("labels the options and uses a decimal comma", () => {
     const far = planTrip({ lat: 45.79, lng: 21.3 }, electro, "ro");
     expect(far.options.map((o) => o.label)).toContain("Transport în comun");

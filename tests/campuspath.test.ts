@@ -94,6 +94,10 @@ describe("campus addresses", () => {
     expect(href).toBe("/campus?to=A315&building=Cl%C4%83direa+Electro&at=10%3A00&course=Big+Data");
     expect(parseCampusLink(new URL(href, "http://x").searchParams)).toEqual({ to: "A315", building: "Clădirea Electro", at: "10:00", course: "Big Data" });
     expect(campusJourneyHref({ to: "A315", at: "25:00", building: null })).toBe("/campus?to=A315");
+    const futureClass = { to: "A315", at: "10:00", date: "2026-11-23", course: "Big Data" };
+    expect(parseCampusLink(new URL(campusJourneyHref(futureClass), "http://x").searchParams)).toEqual(futureClass);
+    expect(parseCampusLink({ to: "A315", date: "2026-02-30" })).toEqual({ to: "A315" });
+    expect(sharedHref(futureClass)).toBe("/campus?to=A315");
     expect(sharedHref({ to: "A315", building: "Electro", at: "10:00", course: "Big Data", dest: "room:electro-a315" })).toBe(
       "/campus?to=A315&dest=room%3Aelectro-a315",
     );

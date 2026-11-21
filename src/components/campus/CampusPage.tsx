@@ -35,7 +35,7 @@ interface PlanInput {
 }
 
 /** Where the journey is for, from a link: the building, the class and its time. */
-type Context = Pick<CampusLink, "building" | "at" | "course">;
+type Context = Pick<CampusLink, "building" | "at" | "date" | "course">;
 
 const START_KEY = "upt.campus.start";
 
@@ -85,7 +85,7 @@ export function CampusPage({
   /** A starting place a link named in words, sent as `from` until a checkpoint is chosen. */
   const [startText, setStartText] = useState<string | null>(null);
   const [result, setResult] = useState<{ route: Route; kind: RouteKind; id: number } | null>(null);
-  const [context, setContext] = useState<Context>({ building: initial.building, at: initial.at, course: initial.course });
+  const [context, setContext] = useState<Context>({ building: initial.building, at: initial.at, date: initial.date, course: initial.course });
   const [question, setQuestion] = useState<Question | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -142,6 +142,8 @@ export function CampusPage({
       const mine = ++generation.current;
       const from = input.auto ? null : override !== undefined ? override : start;
       pending.current = input;
+      retry.current = { input, from };
+      setResult(null);
       setQuestion(null);
       setError(null);
       setFormError(null);
@@ -156,7 +158,6 @@ export function CampusPage({
       try {
         const route = await campusApi.plan(body);
         if (mine !== generation.current) return;
-        retry.current = { input, from };
         showRoute(route, "yours");
         // The planner names the starting point it used, in the current language. An entrance it
         // chose itself is not the student's choice, so it is not remembered.
@@ -189,11 +190,11 @@ export function CampusPage({
 
   const loadExample = useCallback(async () => {
     const mine = ++generation.current;
+    retry.current = "example";
     setBusy("example");
     try {
       const route = await campusApi.example();
       if (mine !== generation.current) return;
-      retry.current = "example";
       showRoute(route, "example");
     } catch (e) {
       if (mine === generation.current) failWith(e);
@@ -309,7 +310,6 @@ export function CampusPage({
     setError(null);
     const last = retry.current;
     if (last && last !== "example") void plan(last.input, last.from, true);
-    else if (pending.current && !last) void plan(pending.current, undefined, true);
     else void loadExample();
   };
 

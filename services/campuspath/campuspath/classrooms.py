@@ -27,6 +27,9 @@ def fold(value):
 
 def tokens(value):
     text = fold(value).replace("–", "-").replace("‑", "-").replace("−", "-")
+    # Some faculty timetables put the building last, including shared rooms such as "106/115 SPM".
+    text = re.sub(r"\b(\d{3}[a-z]?(?:\s*/\s*\d{3}[a-z]?)*)\s+spm\b",
+                  lambda m: " ".join("spm" + room.strip() for room in m[1].split("/")), text)
     text = re.sub(r"\b" + PREFIX + r"[ -]+(?=\d)", r"\1", text)
     text = re.sub(r"(\d)\s+([abcd])\b", r"\1\2", text)
     text = re.sub(r"(?<=\d)\s*([-/])\s*(?=\d)", r"\1", text)

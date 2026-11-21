@@ -4,6 +4,7 @@
  * API routes, the assistant and the tests all share them.
  */
 import { isLocale, type Locale } from "@/i18n/config";
+import { localInstant } from "@/lib/time";
 import type { CampusPlace, Checkpoint, Classroom, Route, VideoState } from "./types";
 
 /* ───────────── Addresses ───────────── */
@@ -21,6 +22,8 @@ export interface CampusLink {
   building?: string;
   /** When the class starts, "HH:MM": the page says when to leave. */
   at?: string;
+  /** Campus date of a class opened from the calendar. */
+  date?: string;
   /** The class the walk is for, shown in the header. */
   course?: string;
 }
@@ -46,6 +49,7 @@ export function campusHref(link: CampusLink): string {
   if (link.lang) params.set("lang", link.lang);
   if (link.building?.trim()) params.set("building", link.building.trim().slice(0, LONGEST.building));
   if (link.at && CLOCK.test(link.at)) params.set("at", link.at);
+  if (link.date && localInstant(`${link.date}T12:00`) !== null) params.set("date", link.date);
   if (link.course?.trim()) params.set("course", link.course.trim().slice(0, LONGEST.course));
   const query = params.toString();
   return query ? `${CAMPUS_PATH}?${query}` : CAMPUS_PATH;
@@ -56,8 +60,8 @@ export function campusHref(link: CampusLink): string {
  * calendar): `/campus?to=A315&building=…&at=10:00&course=…`. With no `from`, the page starts at
  * the building entrance nearest the room and shows the way there on a map first.
  */
-export function campusJourneyHref(input: { to: string; building?: string | null; at?: string | null; course?: string | null }): string {
-  return campusHref({ to: input.to, building: input.building ?? undefined, at: input.at ?? undefined, course: input.course ?? undefined });
+export function campusJourneyHref(input: { to: string; building?: string | null; at?: string | null; date?: string; course?: string | null }): string {
+  return campusHref({ to: input.to, building: input.building ?? undefined, at: input.at ?? undefined, date: input.date, course: input.course ?? undefined });
 }
 
 /** The address a QR code or a copied link carries: only the fields the service accepts. */
@@ -85,9 +89,11 @@ export function parseCampusLink(input: SearchInput): CampusLink {
   if (isLocale(lang)) link.lang = lang;
   const building = first(input, "building")?.trim();
   const at = first(input, "at")?.trim();
+  const date = first(input, "date")?.trim();
   const course = first(input, "course")?.trim();
   if (building && building.length <= LONGEST.building) link.building = building;
   if (at && CLOCK.test(at)) link.at = at;
+  if (date && localInstant(`${date}T12:00`) !== null) link.date = date;
   if (course && course.length <= LONGEST.course) link.course = course;
   return link;
 }

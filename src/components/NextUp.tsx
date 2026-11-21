@@ -67,7 +67,7 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
         </p>
         {e.room && e.place && (
           <Link
-            href={campusJourneyHref({ to: e.room, building: e.place.name, course: e.title, at: e.date === now.date ? formatMinutes(e.startMin) : null })}
+            href={campusJourneyHref({ to: e.room, building: e.place.name, course: e.title, at: formatMinutes(e.startMin), date: e.date })}
             className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
           >
             <span aria-hidden>🧭</span>

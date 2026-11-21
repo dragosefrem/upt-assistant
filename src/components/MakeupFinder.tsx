@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
 import { campusJourneyHref } from "@/lib/campuspath/links";
 import { kindLabel } from "@/lib/kinds";
-import { capitalize, formatDate, formatTimeSlot } from "@/lib/time";
+import { capitalize, formatDate, formatMinutes, formatTimeSlot } from "@/lib/time";
 import { Modal } from "./Modal";
 
 interface Session {
@@ -62,7 +62,7 @@ export function MakeupFinder({ course, kind, onClose }: { course: string; kind: 
               </div>
               <p className="mt-1 text-sm text-slate-600">
                 {s.room && (
-                  <Link href={campusJourneyHref({ to: s.room, course })} className="font-medium text-brand-700 hover:underline">{s.room}</Link>
+                  <Link href={campusJourneyHref({ to: s.room, course, date: s.date, at: formatMinutes(s.startMin) })} className="font-medium text-brand-700 hover:underline">{s.room}</Link>
                 )}
                 {s.room && s.groups.length > 0 && " · "}
                 {s.groups.length > 0 && t.groups(s.groups.join(", "))}

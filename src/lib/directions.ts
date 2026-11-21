@@ -47,7 +47,7 @@ function mapsUrl(from: LatLng, to: LatLng, mode: "walking" | "bicycling" | "tran
 }
 
 /** Labels and the summary are written in `locale` (English by default, as the assistant model reads them). */
-export function planTrip(from: LatLng, place: Place, locale: Locale = "en"): Directions {
+export function planTrip(from: LatLng, place: Place, locale: Locale = "en", showAllModes = false): Directions {
   const t = calendar[locale].directions;
   const straight = haversineMeters(from, place);
   // Streets are not straight lines; 1.3 is a common urban detour factor.
@@ -57,12 +57,14 @@ export function planTrip(from: LatLng, place: Place, locale: Locale = "en"): Dir
   const transit = Math.round(route / 300) + 8; // ~18 km/h + waiting
   const drive = Math.round(route / 420) + 5; // ~25 km/h in town + parking
 
-  const options: TravelOption[] = [];
-  if (route <= 4000) options.push({ mode: "walk", label: t.walk, minutes: walk, mapsUrl: mapsUrl(from, place, "walking") });
-  if (route > 800 && route <= 12_000) options.push({ mode: "bike", label: t.bike, minutes: bike, mapsUrl: mapsUrl(from, place, "bicycling") });
-  if (route > 1200) options.push({ mode: "transit", label: t.transit, minutes: transit, mapsUrl: mapsUrl(from, place, "transit") });
-  if (route > 2500) options.push({ mode: "drive", label: t.drive, minutes: drive, mapsUrl: mapsUrl(from, place, "driving") });
-  if (!options.length) options.push({ mode: "walk", label: t.walk, minutes: walk, mapsUrl: mapsUrl(from, place, "walking") });
+  const allModes: TravelOption[] = [
+    { mode: "walk", label: t.walk, minutes: walk, mapsUrl: mapsUrl(from, place, "walking") },
+    { mode: "bike", label: t.bike, minutes: bike, mapsUrl: mapsUrl(from, place, "bicycling") },
+    { mode: "transit", label: t.transit, minutes: transit, mapsUrl: mapsUrl(from, place, "transit") },
+    { mode: "drive", label: t.drive, minutes: drive, mapsUrl: mapsUrl(from, place, "driving") },
+  ];
+  const suitable = { walk: route <= 4000, bike: route > 800 && route <= 12_000, transit: route > 1200, drive: route > 2500 };
+  const options = allModes.filter((option) => suitable[option.mode]);
 
   const best = [...options].sort((a, b) => a.minutes - b.minutes)[0];
   const recommended = route <= 1500 ? options[0] : best;
@@ -78,7 +80,7 @@ export function planTrip(from: LatLng, place: Place, locale: Locale = "en"): Dir
     approximate: place.approximate,
     distanceMeters: Math.round(route),
     summary,
-    options,
+    options: showAllModes ? allModes : options,
     // A few minutes' margin to find the room.
     leaveMinutesBefore: straight < 80 ? 0 : recommended.minutes + 5,
   };
