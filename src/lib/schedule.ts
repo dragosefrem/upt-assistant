@@ -29,7 +29,7 @@ import { sharedEventsFor } from "./group-events";
 import { isPublicHoliday } from "./holidays";
 import { calendarSlices, editorInterval } from "./calendar-timing";
 import { applyGoogleSchedule, googleHiddenClasses, resetGoogleClass } from "./google-schedule";
-import { addDays, dayName, daysBetween, describeWeeks, formatMinutes, mondayOf, occursInWeek, weekday } from "./time";
+import { addDays, dayName, daysBetween, describeWeeks, formatMinutes, isDatedMeeting, mondayOf, occursInWeek, weekday } from "./time";
 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
 export interface CalEvent {
@@ -59,6 +59,8 @@ export interface CalEvent {
   moved?: boolean;
   /** For a class moved for one week only: the date it would normally be on. */
   originalDate?: string;
+  /** The entry repeats and can be rescheduled as a series. */
+  recurring?: boolean;
   /**
    * Identifies the recurring series this occurrence belongs to, built from stable keys
    * so it survives re-scrapes.
@@ -378,6 +380,7 @@ function originalEvents(
             e.moved ? t.movedByYou : null, e.note].filter(Boolean).join(" · ") || null,
           place: place(e.room),
           entryId: e.entryId,
+          recurring: semester.isCurrent && !isDatedMeeting(e.weeks),
           courseId: e.courseId,
           moved: e.moved,
           seriesKey: `e:${e.entryKey}`,
@@ -465,6 +468,7 @@ function originalEvents(
         note: p.description || (p.day ? t.everyWeek : null),
         place: null,
         personalId: p.id,
+        recurring: !!p.day || !!timing?.recurrence?.length,
         seriesKey: `p:${p.id}`,
         courseKey: `p:${p.id}`,
         attendance: null,

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Check, ChevronRight } from "lucide-react";
 import { readChecklist, updateChecklist } from "@/lib/guide-checklist";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -8,6 +9,10 @@ import { setLocaleAction } from "@/app/actions/locale";
 import { useLocale, useT } from "@/i18n/client";
 import { DATE_LOCALE, isLocale } from "@/i18n/config";
 import type { AssistantChoice, AssistantLink, DayPreview } from "@/lib/assistant/choices";
+import type { ReplyCard } from "@/lib/assistant/reply-card";
+import { optionIndex } from "@/lib/assistant/selection";
+import { PreviewActions, type TimeEdit } from "./AssistantTimeEditor";
+import { AssistantReplyCard } from "./AssistantReplyCard";
 import { SCHEDULE_CHANGED } from "./Calendar";
 import { DayPreviewCard } from "./DayPreview";
 import { useLocation } from "./LocationProvider";
@@ -25,6 +30,7 @@ interface Message {
   preview?: DayPreview;
   /** Buttons that open a page of the app. */
   links?: AssistantLink[];
+  card?: ReplyCard;
   /** The stored message's id, which accepting a preview refers to. */
   dbId?: number;
 }
@@ -63,44 +69,23 @@ function DateBadge({ date, locale }: { date: string; locale: string }) {
 }
 
 function Choices({ choices, locale, label, onPick }: { choices: AssistantChoice[]; locale: string; label: string; onPick: (c: AssistantChoice) => void }) {
-  const slots = choices.filter((c) => c.date);
-  const answers = choices.filter((c) => !c.date);
   return (
-    <div className="space-y-2" role="group" aria-label={label}>
-      {slots.length > 0 && (
-        <div className="grid gap-2">
-          {slots.map((c, i) => (
-            <button
-              key={`s${i}`}
-              type="button"
-              onClick={() => onPick(c)}
-              className="flex items-center gap-3 rounded-xl border border-brand-200 bg-white px-3 py-2 text-left shadow-sm transition hover:border-brand-500 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-500"
-            >
-              <DateBadge date={c.date!} locale={locale} />
-              <span className="min-w-0">
-                <span className="block text-sm font-medium text-slate-900">{c.label}</span>
-                {c.start && !c.label.includes(c.start) && (
-                  <span className="block text-xs text-slate-500">{c.end ? `${c.start}–${c.end}` : c.start}</span>
-                )}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-      {answers.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {answers.map((c, i) => (
-            <button
-              key={`a${i}`}
-              type="button"
-              onClick={() => onPick(c)}
-              className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:border-brand-500 hover:text-brand-700 focus-visible:outline-2 focus-visible:outline-brand-500"
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-      )}
+    <div className="flex flex-wrap gap-1.5 pl-8" role="group" aria-label={label}>
+      {choices.map((choice, i) => (
+        <button key={i} type="button" onClick={() => onPick(choice)}
+          className={`flex min-h-10 items-center gap-2 border text-left focus-visible:outline-2 focus-visible:outline-brand-500 ${choice.date
+            ? "w-full rounded-xl border-brand-200 bg-white px-2.5 py-2 shadow-sm hover:bg-brand-50"
+            : "rounded-full border-brand-200 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-800 hover:border-brand-500"}`}>
+          {choice.date && <DateBadge date={choice.date} locale={locale} />}
+          <span className="min-w-0 flex-1 break-words">
+            <span className={choice.date ? "block text-sm font-semibold text-slate-900" : ""}>{choice.label}</span>
+            {choice.date && choice.start && !choice.label.includes(choice.start) && <span className="block text-xs tabular-nums text-slate-600">
+              {choice.start}{choice.end && `–${choice.end}`}
+            </span>}
+          </span>
+          <ChevronRight size={14} aria-hidden className="shrink-0 text-brand-600" />
+        </button>
+      ))}
     </div>
   );
 }
@@ -187,6 +172,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   }, [engine]);
   const serverVoice = engine === "gemini";
   const scroller = useRef<HTMLDivElement>(null);
+  const historyReady = useRef<Promise<void> | null>(null);
   // Bumped whenever speech is started or cancelled, so a finished utterance only runs
   // its follow-up (re-opening the mic) if nothing interrupted it.
   const speechToken = useRef(0);
@@ -203,6 +189,22 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
     positionRef.current = position;
   }, [position]);
 
+  const loadHistory = useCallback(() => {
+    historyReady.current ??= fetch("/api/assistant")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!data) return;
+        setEngine(data.engine);
+        const history = data.messages.map((m: Omit<Message, "id"> & { id: number }) => ({
+          ...m, id: String(m.id), dbId: m.id,
+        }));
+        // A student may already have typed while history was loading.
+        setMessages((current) => [...history, ...current]);
+      })
+      .catch(() => {});
+    return historyReady.current;
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- feature detection must wait for the browser
     setVoiceSupported(!!recognitionCtor() || recorderSupported());
@@ -212,20 +214,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
     };
     loadVoices();
     synth?.addEventListener("voiceschanged", loadVoices);
-    fetch("/api/assistant")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (!data) return;
-        setEngine(data.engine);
-        setMessages(
-          data.messages.map((m: { id: number; role: Message["role"]; content: string; choices?: AssistantChoice[]; preview?: DayPreview; links?: AssistantLink[] }) => ({
-            ...m,
-            id: String(m.id),
-            dbId: m.id,
-          })),
-        );
-      })
-      .catch(() => {});
+    void loadHistory();
     const token = speechToken;
     return () => {
       token.current++;
@@ -234,7 +223,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       synth?.removeEventListener("voiceschanged", loadVoices);
       synth?.cancel();
     };
-  }, []);
+  }, [loadHistory]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -394,11 +383,12 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   }, [lang, stopSpeaking, record, tr]);
 
   const send = useCallback(
-    async (text: string, spoken = false) => {
+    async (text: string, spoken = false, choiceMessageId?: number) => {
       const message = text.trim();
       if (!message || busy) return;
       const replyId = `a-${Date.now()}`;
-      setMessages((m) => [...m, { id: `u-${Date.now()}`, role: "user", content: message }, { id: replyId, role: "assistant", content: "", pending: true }]);
+      const userId = `u-${Date.now()}`;
+      setMessages((m) => [...m, { id: userId, role: "user", content: message }, { id: replyId, role: "assistant", content: "", pending: true }]);
       setInput("");
       setBusy(true);
       setNotice(null);
@@ -406,12 +396,17 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       let reply = "";
       let offered: AssistantChoice[] = [];
       try {
+        await loadHistory();
         const res = await fetch("/api/assistant", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message, spoken, location: positionRef.current, checklist: readChecklist() }),
+          body: JSON.stringify({ message, spoken, choiceMessageId, location: positionRef.current, checklist: readChecklist() }),
         });
-        if (!res.ok || !res.body) throw new Error(res.status === 401 ? tr.errors.sessionExpired : tr.errors.unavailable);
+        if (!res.ok || !res.body) {
+          const error = await res.json().catch(() => ({}));
+          if (res.status === 409) setMessages((list) => list.filter((m) => m.id !== userId));
+          throw new Error(error.error ?? (res.status === 401 ? tr.errors.sessionExpired : tr.errors.unavailable));
+        }
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
@@ -439,9 +434,11 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
               const choices = Array.isArray(chunk.choices) && chunk.choices.length ? (chunk.choices as AssistantChoice[]) : undefined;
               const preview = chunk.preview as DayPreview | undefined;
               if (choices) offered = choices;
+              if (chunk.card?.type === "move") offered = [{ label: tr.cards.moveEvent, reply: "" }];
+              if (chunk.acceptedId) setMessages((list) => list.map((x) => x.dbId === chunk.acceptedId && x.preview ? { ...x, preview: { ...x.preview, status: "accepted" } } : x));
               if (preview) offered = [{ label: tr.preview.accept, reply: "Yes" }];
               const links = Array.isArray(chunk.links) && chunk.links.length ? (chunk.links as AssistantLink[]) : undefined;
-              setMessages((m) => m.map((x) => (x.id === replyId ? { ...x, choices, preview, links, dbId: chunk.messageId } : x)));
+              setMessages((m) => m.map((x) => (x.id === replyId ? { ...x, choices, preview, links, card: chunk.card, dbId: chunk.messageId } : x)));
               // Things Poli did to the app itself: switch the language, open a page.
               if (isLocale(chunk.locale) && chunk.locale !== locale) {
                 void setLocaleAction(chunk.locale).then(() => router.refresh());
@@ -461,7 +458,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         setActivity(null);
       }
     },
-    [busy, speak, say, listen, tr, locale, router],
+    [busy, speak, say, listen, tr, locale, router, loadHistory],
   );
 
   useEffect(() => {
@@ -500,10 +497,34 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
     rec.abort();
   };
 
-  const pick = (choice: AssistantChoice) => {
+  const pick = (choice: AssistantChoice, messageId?: number) => {
     cancelListening();
     stopSpeaking();
-    void send(choice.reply);
+    void send(choice.reply, false, messageId);
+  };
+
+  const review = async (m: Message, edit: TimeEdit) => {
+    if (!m.dbId || busy) return;
+    cancelListening();
+    stopSpeaking();
+    setBusy(true);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/assistant/preview", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: m.dbId, ...edit }),
+      });
+      const data = await response.json();
+      if (!response.ok) { setNotice(data.error ?? tr.errors.cannotSave); return; }
+      setMessages((list) => [...list,
+        { id: `pick-${data.id}`, role: "user", content: data.selection },
+        { id: String(data.id), dbId: data.id, role: "assistant", content: data.reply, preview: data.preview },
+      ]);
+      if (speak) say(data.reply);
+    } catch {
+      setNotice(tr.errors.serverUnreachable);
+    } finally {
+      setBusy(false);
+    }
   };
 
   /** Saves the previewed change exactly as shown, without another AI round trip. */
@@ -530,7 +551,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         { id: `u-${now}`, role: "user", content: "✓ Accepted" },
         { id: `a-${now}`, role: "assistant", content: data.reply },
       ]);
-      if (data.changed) window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+      if (data.changed) { window.dispatchEvent(new Event(SCHEDULE_CHANGED)); router.refresh(); }
       if (speak) say(data.reply);
     } catch {
       setNotice(tr.errors.serverUnreachable);
@@ -540,13 +561,23 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   };
 
   const clear = async () => {
+    if (busy) return;
     stopSpeaking();
-    setMessages([]);
-    await fetch("/api/assistant", { method: "DELETE" }).catch(() => {});
+    setBusy(true);
+    setNotice(null);
+    try {
+      await loadHistory();
+      const response = await fetch("/api/assistant", { method: "DELETE" });
+      if (!response.ok) throw new Error();
+      setMessages([]);
+    } catch {
+      setNotice(tr.errors.serverUnreachable);
+    } finally {
+      setBusy(false);
+    }
   };
 
   const last = messages.at(-1);
-  const lastChoices = !busy && last?.role === "assistant" && !last.pending ? last.choices : undefined;
 
   const questionButton = (s: { emoji: string; text: string }) => (
     <button
@@ -588,7 +619,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         >
           {speak ? tr.speech.on : tr.speech.off}
         </button>
-        <button className="btn-ghost px-2 text-xs" onClick={clear} title={tr.clearTitle}>{tr.clear}</button>
+        <button className="btn-ghost px-2 text-xs" disabled={busy} onClick={clear} title={tr.clearTitle}>{tr.clear}</button>
         {onClose && (
           <button className="btn-ghost px-2" onClick={onClose} aria-label={tr.close} title={tr.close}>✕</button>
         )}
@@ -611,60 +642,72 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             </div>
           </div>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className="space-y-2">
-            <div className={`flex animate-pop items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              {m.role === "assistant" && <Mascot size={26} className="mb-0.5" />}
-              <div className={`max-w-[85%] whitespace-pre-wrap break-words px-3.5 py-2 text-sm leading-relaxed ${m.role === "user" ? "rounded-2xl rounded-br-md bg-brand-600 text-white" : "rounded-2xl rounded-bl-md bg-brand-50 text-slate-900"}`}>
-                {m.pending ? (
-                  <span className="flex items-center gap-2 text-slate-500">
-                    <span className="typing-dots text-brand-500" aria-hidden><span /><span /><span /></span>
-                    {activity ?? tr.thinking}
-                  </span>
-                ) : (
-                  <Linkified text={m.role === "user" && m.content === "✓ Accepted" ? tr.preview.accepted : m.content} mapLabel={tr.openMap} />
-                )}
-                {m.role === "assistant" && !m.pending && (
-                  <button className="ml-2 align-middle text-xs opacity-50 hover:opacity-100" onClick={() => say(m.content)} title={tr.speech.readAloud} aria-label={tr.speech.readAloud}>🔊</button>
-                )}
-              </div>
+        {messages.map((m, i) => {
+          const next = messages[i + 1];
+          const picked = next?.role === "user" && m.choices && (m.choices.find((c) => c.reply === next.content) ?? m.choices[optionIndex(next.content) ?? -1]);
+          return (
+            <div key={m.id} className="space-y-2">
+              {!m.preview?.textIsTranscript && <div className={`flex animate-pop gap-2 ${m.card ? "items-start" : "items-end"} ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+                {m.role === "assistant" && <Mascot size={26} className="mb-0.5" />}
+                <div className={`min-w-0 space-y-2 ${m.card ? "flex-1" : "max-w-[85%]"}`}>
+                  {!m.card?.textIsTranscript && (
+                    <div className={`whitespace-pre-wrap break-words px-3.5 py-2 text-sm leading-relaxed ${m.role === "user" ? "rounded-2xl rounded-br-md bg-brand-600 text-white" : "rounded-2xl rounded-bl-md bg-brand-50 text-slate-900"}`}>
+                      {m.pending ? (
+                        <span className="flex items-center gap-2 text-slate-500">
+                          <span className="typing-dots text-brand-500" aria-hidden><span /><span /><span /></span>
+                          {activity ?? tr.thinking}
+                        </span>
+                      ) : (
+                        <Linkified text={m.role === "user" && m.content === "✓ Accepted" ? tr.preview.accepted : m.content} mapLabel={tr.openMap} />
+                      )}
+                      {m.role === "assistant" && !m.pending && !m.card && (
+                        <button className="ml-2 align-middle text-xs opacity-50 hover:opacity-100" onClick={() => say(m.content)} title={tr.speech.readAloud} aria-label={tr.speech.readAloud}>🔊</button>
+                      )}
+                    </div>
+                  )}
+                  {m.card && (
+                    <AssistantReplyCard card={m.card} onNavigate={onClose} onRead={() => say(m.content)} canPlan={m === last && !busy}
+                      busy={busy} onReview={m === last && m.dbId ? (time) => void review(m, time) : undefined}
+                      transcript={m.card.textIsTranscript && <Linkified text={m.content} mapLabel={tr.openMap} />} />
+                  )}
+                </div>
+              </div>}
+              {picked && <p className="ml-8 inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs text-brand-800">
+                <Check size={13} aria-hidden /><span className="font-medium">{tr.cards.selected}</span> · {picked.label}
+              </p>}
+              {m === last && m.choices && !busy && <Choices choices={m.choices} locale={DATE_LOCALE[locale]} label={tr.choices} onPick={(c) => pick(c, m.dbId)} />}
+              {m.preview && (
+                <DayPreviewCard
+                  preview={m.preview}
+                  locale={DATE_LOCALE[locale]}
+                  onRead={m.preview.textIsTranscript ? () => say(m.content) : undefined}
+                  actions={
+                    // Only the latest proposal can be accepted; older ones are history.
+                    m === last && m.preview.status === "pending" && m.dbId ? (
+                      <PreviewActions preview={m.preview} busy={busy} accept={() => void accept(m)} review={(time) => void review(m, time)} />
+                    ) : undefined
+                  }
+                />
+              )}
+              {m.links && m.links.length > 0 && (
+                <div className="flex flex-wrap gap-2 pl-8">
+                  {m.links.map((l) => {
+                    const Destination = l.href.startsWith("/api/") ? "a" : Link;
+                    return <Destination
+                      key={l.href}
+                      href={l.href}
+                      onClick={onClose}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition hover:border-brand-500 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-500"
+                    >
+                      <span className="truncate">{l.label}</span>
+                      <span aria-hidden>→</span>
+                    </Destination>;
+                  })}
+                </div>
+              )}
             </div>
-            {m.preview && (
-              <DayPreviewCard
-                preview={m.preview}
-                locale={DATE_LOCALE[locale]}
-                actions={
-                  // Only the latest proposal can be accepted; older ones are history.
-                  m === last && m.preview.status === "pending" && !busy ? (
-                    <>
-                      <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => void accept(m)}>{tr.preview.accept}</button>
-                      <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => pick({ label: tr.preview.otherTime, reply: tr.preview.otherTimeReply })}>
-                        {tr.preview.otherTime}
-                      </button>
-                    </>
-                  ) : undefined
-                }
-              />
-            )}
-            {m.links && m.links.length > 0 && (
-              <div className="flex flex-wrap gap-2 pl-8">
-                {m.links.map((l) => {
-                  const Destination = l.href.startsWith("/api/") ? "a" : Link;
-                  return <Destination
-                    key={l.href}
-                    href={l.href}
-                    onClick={onClose}
-                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition hover:border-brand-500 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-500"
-                  >
-                    <span className="truncate">{l.label}</span>
-                    <span aria-hidden>→</span>
-                  </Destination>;
-                })}
-              </div>
-            )}
-          </div>
-        ))}
-        {lastChoices && <Choices choices={lastChoices} locale={DATE_LOCALE[locale]} label={tr.choices} onPick={pick} />}
+          );
+        })}
         {busy && activity && messages.at(-1)?.content && <p className="text-xs text-slate-400">{activity}</p>}
       </div>
 

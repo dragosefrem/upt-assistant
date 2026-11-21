@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "73bc364b-268b-45c3-9afb-b2165ab664f3",
+  "id": "9b7dcbc0-6a3c-48f2-9088-97a2d4ee43f1",
   "prevId": "c2fd5f46-ac88-40ab-9e4b-70d9ce6c021b",
   "tables": {
     "attendance": {
@@ -41,14 +41,6 @@
           "primaryKey": false,
           "notNull": true,
           "autoincrement": false
-        },
-        "occurrence_key": {
-          "name": "occurrence_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "''"
         },
         "status": {
           "name": "status",
@@ -121,8 +113,7 @@
           "columns": [
             "user_id",
             "series_key",
-            "date",
-            "occurrence_key"
+            "date"
           ],
           "isUnique": true
         },
@@ -385,6 +376,13 @@
         },
         "links": {
           "name": "links",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "card": {
+          "name": "card",
           "type": "text",
           "primaryKey": false,
           "notNull": false,

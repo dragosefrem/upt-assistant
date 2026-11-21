@@ -3,9 +3,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { attendance, courses, entries, entryGroups, faculties, googleEventLinks, googleSyncState, groups, personalEvents, specializations, users } from "@/db/schema";
+import { attendance, chatMessages, courses, entries, entryGroups, faculties, googleEventLinks, googleSyncState, groups, personalEvents, specializations, users } from "@/db/schema";
 import { messages } from "@/i18n/messages";
 import { getUser, type User } from "@/lib/auth";
+import { acceptPreview } from "@/lib/assistant/accept";
+import { reviewTime } from "@/lib/assistant/preview";
+import { runTool, type ToolContext } from "@/lib/assistant/tools";
 import { markAttendance } from "@/lib/attendance";
 import { attendanceGoalOverview, setAttendanceGoal } from "@/lib/attendance-goals";
 import { attendanceActivityId } from "@/lib/kinds";
@@ -209,6 +212,31 @@ describe("Poli and Google Calendar", () => {
     expect(db.select().from(users).get()?.googleRefreshToken).toBeNull();
     expect(localRows()).toHaveLength(1);
     expect(new URL(consentUrl("state")).searchParams.get("scope")).toBe("https://www.googleapis.com/auth/calendar.app.created");
+  });
+
+  it("reschedules a Google event from chat and publishes the accepted time on the next worker tick", async () => {
+    google.put(atGoogle("lunch"));
+    google.put({ ...atGoogle("workshop", "Workshop"), recurrence: ["RRULE:FREQ=WEEKLY;COUNT=4"] });
+    google.put({ id: "retreat", summary: "Retreat", start: { date }, end: { date: "2026-11-25" } });
+    await sync();
+    const ctx: ToolContext = { user, location: null, changed: false };
+    runTool("get_schedule", { from: date, to: date }, ctx);
+    if (ctx.card?.type !== "schedule") throw Error("Expected a schedule card");
+    expect(ctx.card.events.filter(e => e.move).map(e => e.title)).toEqual(["Lunch"]);
+    const occurrence = ctx.card.events.find(e => e.title === "Lunch")!.move!.occurrence;
+    const message = db.insert(chatMessages).values({ userId: user.id, role: "assistant", content: "Your timetable",
+      card: JSON.stringify(ctx.card) }).returning().get();
+    const to = "2026-11-26";
+    const review = reviewTime(user, { id: message.id, occurrence, date: to, start: "15:00", end: "16:00" }, "en");
+    if (!review.ok) throw Error("Expected a move preview");
+    expect(eventsBetween(user, to, to)).toHaveLength(0);
+    expect(acceptPreview(user, review.id).ok).toBe(true);
+    expect(eventsBetween(user, to, to)).toMatchObject([{ title: "Lunch", startMin: 900, endMin: 960 }]);
+    expect(await syncDueCalendars()).toBe(1);
+    expect(google.events.get("lunch")?.start?.dateTime).toBe(point(15, to).dateTime);
+    expect(google.events.get("lunch")?.end?.dateTime).toBe(point(16, to).dateTime);
+    expect(runTool("move_personal_event", { title: "Workshop", new_start: "16:00", confirmed: true }, ctx)).toHaveProperty("error");
+    expect(google.events.get("workshop")?.recurrence).toEqual(["RRULE:FREQ=WEEKLY;COUNT=4"]);
   });
 
   it("keeps multi-day all-day dates exclusive in Google and editable in Poli", async () => {

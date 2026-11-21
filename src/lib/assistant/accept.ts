@@ -1,12 +1,14 @@
 import "server-only";
-import { and, desc, eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { chatMessages } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { assistant } from "@/i18n/messages/assistant";
 import type { User } from "../auth";
+import { queueGoogleSync } from "../google-worker";
 import { dayName, formatDate, weekday } from "../time";
 import { parsePreview, type StoredPreview } from "./choices";
+import { latestMessage, sameSource } from "./preview";
 import { runTool, type ToolContext } from "./tools";
 
 export type AcceptResult = { ok: true; reply: string; changed: boolean } | { ok: false; status: number; error: string };
@@ -36,41 +38,49 @@ function confirmation(preview: StoredPreview, result: Any, locale: Locale): stri
  * shown. The Accept button calls this directly, so no AI round trip sits between what
  * the student saw and what is saved.
  */
-export async function acceptPreview(user: User, messageId: number, locale: Locale = "en"): Promise<AcceptResult> {
+export function acceptPreview(user: User, messageId: number, locale: Locale = "en", answer = "✓ Accepted",
+  chatTurn?: { userMessageId: number; proposal: StoredPreview }): AcceptResult {
   const t = assistant[locale].accept;
   const db = getDb();
-  const latest = db
-    .select({ id: chatMessages.id, role: chatMessages.role, preview: chatMessages.preview })
-    .from(chatMessages)
-    .where(eq(chatMessages.userId, user.id))
-    .orderBy(desc(chatMessages.id))
-    .limit(1)
-    .get();
-  if (!latest || latest.id !== messageId || latest.role !== "assistant") {
-    return { ok: false, status: 409, error: t.outOfDate };
-  }
-  const preview = parsePreview(latest.preview);
-  if (!preview) return { ok: false, status: 404, error: t.nothing };
-  if (preview.status !== "pending") return { ok: false, status: 409, error: t.already };
+  return db.transaction((): AcceptResult => {
+    let latest = latestMessage(user.id);
+    if (chatTurn) {
+      if (latest?.id !== chatTurn.userMessageId || latest.role !== "user") return { ok: false, status: 409, error: t.outOfDate };
+      latest = db.select().from(chatMessages).where(and(eq(chatMessages.userId, user.id), eq(chatMessages.id, messageId))).get();
+    }
+    if (latest?.id !== messageId || latest.role !== "assistant") return { ok: false, status: 409, error: t.outOfDate };
+    const preview = parsePreview(latest.preview);
+    if (!preview) return { ok: false, status: 404, error: t.nothing };
+    if (preview.status !== "pending") return { ok: false, status: 409, error: t.already };
+    if (chatTurn) {
+      const proposed = chatTurn.proposal;
+      const sameEvent = (["id", "entry_id", "original_date", "location"] as const).every((key) => preview.change.args[key] === proposed.change.args[key]);
+      if (!sameEvent || !sameSource(preview, proposed) || preview.change.tool !== proposed.change.tool ||
+        preview.date !== proposed.date || preview.start !== proposed.start || preview.end !== proposed.end) {
+        return { ok: false, status: 409, error: t.outOfDate };
+      }
+    }
 
-  // Claim it first, so a double click cannot apply the change twice.
-  const claimed = db
-    .update(chatMessages)
-    .set({ preview: JSON.stringify({ ...preview, status: "accepted" }) })
-    .where(and(eq(chatMessages.id, latest.id), eq(chatMessages.preview, latest.preview!)))
-    .run();
-  if (claimed.changes === 0) return { ok: false, status: 409, error: t.already };
+    // Re-read the source and conflicts under the same SQLite write lock as the save.
+    const ctx: ToolContext = { user, location: null, changed: false, locale };
+    const { tool, args } = preview.change;
+    runTool(tool, { ...args, confirmed: false }, ctx);
+    const fresh = ctx.preview;
+    if (!fresh || !sameSource(preview, fresh) || fresh.date !== preview.date || fresh.start !== preview.start || fresh.end !== preview.end) {
+      return { ok: false, status: 409, error: t.outOfDate };
+    }
+    const conflicts = (p: StoredPreview) => [
+      ...p.events.filter((e) => e.overlaps).map((e) => ({ ...e, date: p.date })), ...(p.otherClashes ?? []),
+    ].map((e) => JSON.stringify([e.date, e.start, e.end, e.title]));
+    const seen = new Set(conflicts(preview));
+    if (conflicts(fresh).some((key) => !seen.has(key))) return { ok: false, status: 409, error: t.newConflict };
 
-  const ctx: ToolContext = { user, location: null, changed: false, locale };
-  // The student saw any overlaps in the preview, so accepting it accepts them.
-  const result = (await runTool(preview.change.tool, { ...preview.change.args, confirmed: true, allow_overlap: true }, ctx)) as Any;
-  if (result.error) {
-    db.update(chatMessages).set({ preview: latest.preview }).where(eq(chatMessages.id, latest.id)).run();
-    return { ok: false, status: 409, error: t.notSaved(String(result.error)) };
-  }
-
-  const reply = confirmation(preview, result, locale);
-  db.insert(chatMessages).values({ userId: user.id, role: "user", content: "✓ Accepted" }).run();
-  db.insert(chatMessages).values({ userId: user.id, role: "assistant", content: reply }).run();
-  return { ok: true, reply, changed: ctx.changed };
+    const result = runTool(tool, { ...args, confirmed: true, allow_overlap: true }, ctx) as Any;
+    if (!ctx.changed) return { ok: false, status: 409, error: t.notSaved(String(result.error ?? t.outOfDate)) };
+    if (user.googleRefreshToken) queueGoogleSync(user.id);
+    const reply = confirmation(preview, result, locale);
+    db.update(chatMessages).set({ preview: JSON.stringify({ ...preview, status: "accepted" }) }).where(eq(chatMessages.id, latest.id)).run();
+    if (!chatTurn) db.insert(chatMessages).values([{ userId: user.id, role: "user", content: answer }, { userId: user.id, role: "assistant", content: reply }]).run();
+    return { ok: true, reply, changed: true };
+  }, { behavior: "immediate" });
 }

@@ -6,6 +6,7 @@ import { chatMessages } from "@/db/schema";
 import { assistant } from "@/i18n/messages/assistant";
 import type { User } from "../auth";
 import { parseChoices, parsePreview } from "./choices";
+import { parseReplyCard } from "./reply-card";
 import { SYSTEM_PROMPT, contextLine, type AssistantChunk } from "./prompt";
 import { modelText } from "./toolkit";
 import { TOOLS, runTool, type ToolContext } from "./tools";
@@ -51,7 +52,7 @@ const config: GenerateContentConfig = {
  */
 export function historyFor(userId: string, current: string, limit = HISTORY_MESSAGES): Content[] {
   const rows = getDb()
-    .select({ role: chatMessages.role, content: chatMessages.content, choices: chatMessages.choices, preview: chatMessages.preview })
+    .select({ role: chatMessages.role, content: chatMessages.content, choices: chatMessages.choices, preview: chatMessages.preview, card: chatMessages.card })
     .from(chatMessages)
     .where(eq(chatMessages.userId, userId))
     .orderBy(desc(chatMessages.id))
@@ -60,12 +61,18 @@ export function historyFor(userId: string, current: string, limit = HISTORY_MESS
     .reverse();
   const last = rows.at(-1);
   if (last?.role === "user" && last.content === current) rows.pop();
+  // A follow-up like “where is the second one?” can refer to a row absent from the prose.
+  const latestCard = rows.findLast((row) => row.role === "assistant" && row.card);
 
   const contents: Content[] = [];
   for (const row of rows) {
     const choices = parseChoices(row.choices);
     const preview = parsePreview(row.preview);
     let text = row.content;
+    if (row === latestCard) {
+      const card = parseReplyCard(row.card);
+      if (card) text += `\n[Lookup shown with this reply, as it was at the time: ${JSON.stringify(card)}]`;
+    }
     if (choices) text += `\n[Buttons shown: ${choices.map((c) => `${JSON.stringify(modelText(c.label, 80))} sends ${JSON.stringify(modelText(c.reply, 300))}`).join("; ")}]`;
     if (preview) {
       const title = JSON.stringify(modelText(preview.title, 120));
@@ -149,6 +156,7 @@ export async function* askGemini(
     const calls = parts.flatMap((p) => (p.functionCall?.name ? [p.functionCall] : []));
     if (!calls.length) {
       if (!answered) {
+        ctx.card = undefined;
         const reason = response.promptFeedback?.blockReason ?? candidate?.finishReason ?? "no answer";
         yield { type: "text", text: t.stopped(String(reason).toLowerCase()) };
       }
@@ -164,5 +172,6 @@ export async function* askGemini(
     }
     contents.push({ role: "user", parts: results });
   }
+  ctx.card = undefined;
   yield { type: "text", text: t.tooManySteps };
 }

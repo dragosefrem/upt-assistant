@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/better-sqlite3";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import * as schema from "./schema";
 
-/** The calendar and attendance branches shipped different subsets of the migrations.
+/** The feature branches shipped different subsets of the migrations.
  * Their timestamps survived renumbering, so use each journal entry to identify applied SQL. */
 export function migrateDatabase(sqlite: Database.Database, migrationsFolder: string) {
   const migrations = readMigrationFiles({ migrationsFolder });

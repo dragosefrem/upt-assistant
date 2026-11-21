@@ -190,7 +190,9 @@ describe("assistant tools", () => {
 
   it("does not move a class onto other events without agreement", () => {
     const r = call("move_class", { course: "SO", to_weekday: 2, start: "15:00" });
-    expect(r.not_moved).toContain("Sisteme de operare");
+    expect(r.preview_shown).toMatchObject({ class: "Sisteme de operare (course)", whole_series: true });
+    expect(ctx.changed).toBe(false);
+    expect(call("move_class", { course: "SO", to_weekday: 2, start: "15:00", confirmed: true }).not_moved).toContain("Sisteme de operare");
     expect(r.overlaps.map((e: Any) => e.title)).toEqual(expect.arrayContaining(["Gym", "Appointment"]));
   });
 

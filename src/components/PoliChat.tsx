@@ -52,7 +52,7 @@ export function PoliChat() {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => setHappy(false), 700);
     if (open) close();
-    else show();
+    else window.dispatchEvent(new Event(OPEN_CHAT));
   };
 
   return (

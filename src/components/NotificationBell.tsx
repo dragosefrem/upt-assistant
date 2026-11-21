@@ -313,7 +313,7 @@ export function NotificationBell({ userId, invitationCount }: { userId: string; 
           </div>
         </div>, document.body)}
       {toast && !open && createPortal(
-        <div role="status" className="animate-pop fixed right-4 top-16 z-[70] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-2 rounded-2xl border border-brand-100 bg-white p-3 shadow-xl">
+        <div role="status" className="exam-reminder-toast animate-pop fixed right-4 top-16 z-[70] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-2 rounded-2xl border border-brand-100 bg-white p-3 shadow-xl">
           <Mascot size={32} wave />
           <Link href={toast.href} prefetch={false} onClick={() => setToastKey(null)} className="min-w-0 flex-1 break-words text-sm">
             <span className="block font-semibold text-slate-900">{toast.title}{isScheduled(toast) && ` · ${noticeCountdown(toast, now, locale)}`}</span>

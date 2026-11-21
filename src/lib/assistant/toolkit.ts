@@ -5,8 +5,9 @@ import type { Locale } from "@/i18n/config";
 import type { User } from "../auth";
 import type { LatLng } from "../directions";
 import type { CalEvent } from "../schedule";
-import { DAY_NAMES, formatMinutes, weekday } from "../time";
+import { DAY_NAMES, addDays, formatMinutes, weekday } from "../time";
 import type { AssistantChoice, AssistantLink, StoredPreview } from "./choices";
+import type { ReplyCard } from "./reply-card";
 
 /** Types and small parsers shared by every group of assistant tools. */
 
@@ -22,8 +23,16 @@ export interface ToolContext {
   changed: boolean;
   /** Interface language: for texts a tool writes into the calendar and for the pages it links to. */
   locale?: Locale;
+  /** The displayed quick answer a spoken ordinal refers to. */
+  pickedReply?: string;
+  /** A provider can confirm only the saved preview preceding this user turn. */
+  confirmPreview?: (proposal: StoredPreview) => string | undefined;
+  acceptedId?: number;
+  savedReply?: string;
   /** Tappable choices to show under the reply (set by show_choices). */
   choices?: AssistantChoice[];
+  /** Result selected for display in this turn. */
+  card?: ReplyCard;
   /** A proposed calendar change to preview for the student (set by add/move without `confirmed`). */
   preview?: StoredPreview;
   /** Buttons under the reply that open a page of the app. */
@@ -88,8 +97,19 @@ export function modelResult(value: unknown, key = ""): unknown {
   return value;
 }
 
+/** The chat time editor can represent one timed day, including an end at midnight. */
+export function canMovePersonalInChat(interval: NonNullable<CalEvent["personalEditor"]>["interval"], pattern: boolean) {
+  if (pattern) return false;
+  if (!interval) return true;
+  return !interval.allDay && (interval.endDate === interval.date
+    || (interval.endMin === 0 && interval.endDate === addDays(interval.date, 1)));
+}
+
 /** What the model is told about one calendar event. */
 export function brief(e: CalEvent) {
+  const editor = e.personalEditor;
+  const canMove = e.type === "class" ? !e.occurrence : e.type === "personal" && !e.privateCalendarEdit
+    && canMovePersonalInChat(editor?.interval, !!editor?.pattern);
   return {
     type: e.type,
     kind: e.kind,
@@ -100,11 +120,16 @@ export function brief(e: CalEvent) {
     end: e.endMin === e.startMin ? null : formatMinutes(e.endMin),
     room: e.room,
     building: e.place?.name ?? null,
+    ...(e.place?.approximate ? { approximate: true } : {}),
+    ...(e.campusRoom ? { campus_room: e.campusRoom } : {}),
     address: e.place?.address ?? null,
     teacher: e.teacher,
     note: e.note,
     // Lets the assistant name exactly which of the student's own events to move or delete.
     ...(e.personalId != null ? { personal_event_id: e.personalId } : {}),
+    ...(canMove ? {
+      move: { occurrence: e.id, scope: !e.recurring ? "once" : e.type === "personal" ? "series" : "choose" },
+    } : {}),
     ...(e.attendance ? { attendance: e.attendance } : {}),
   };
 }
