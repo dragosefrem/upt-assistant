@@ -105,6 +105,7 @@ function toGoogleEvent(item: ExportItem) {
     location: item.location || undefined,
     start: at(item.startMin),
     end: at(item.endMin),
+    ...(item.startMin === item.endMin ? { endTimeUnspecified: true } : {}),
     recurrence: recurrence.length ? recurrence : undefined,
     // Marks events this app owns, so a re-sync replaces exactly those.
     extendedProperties: { private: { uptOrar: item.uid } },

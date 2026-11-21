@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CalEvent } from "@/lib/schedule";
-import { DAY_SHORT, addDays, formatDate, formatMinutes, mondayOf, nowLocal, weekday } from "@/lib/time";
+import { DAY_SHORT, addDays, formatDate, formatMinutes, formatTimeSlot, mondayOf, nowLocal, weekday } from "@/lib/time";
 import { EventDialog } from "./EventDialog";
 import { PersonalEventDialog } from "./PersonalEventDialog";
 
@@ -257,7 +257,7 @@ export function Calendar({
                         </span>
                         {height > 34 && (
                           <span className="block truncate opacity-80">
-                            {formatMinutes(event.startMin)}–{formatMinutes(event.endMin)}
+                            {formatTimeSlot(event.startMin, event.endMin)}
                             {event.room ? ` · ${event.room}` : ""}
                           </span>
                         )}

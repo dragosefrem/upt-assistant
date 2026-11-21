@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   index,
+  blob,
   integer,
   primaryKey,
   real,
@@ -146,7 +147,7 @@ export const entries = sqliteTable(
     day: integer("day").notNull(),
     startMin: integer("start_min").notNull(),
     endMin: integer("end_min").notNull(),
-    /** "all" | "odd" | "even" | "a-b" (teaching-week range) */
+    /** "all", parity, a teaching-week range, or their intersection (e.g. "odd&1-7"). */
     weeks: text("weeks").notNull().default("all"),
     room: text("room"),
     teacher: text("teacher"),
@@ -156,6 +157,7 @@ export const entries = sqliteTable(
      * labs) of which a student attends exactly one.
      */
     isSlotOption: integer("is_slot_option", { mode: "boolean" }).notNull().default(false),
+    publishedOptional: integer("published_optional", { mode: "boolean" }).notNull().default(false),
   },
   (t) => [index("entry_course").on(t.courseId), index("entry_semester").on(t.semesterId)],
 );
@@ -228,7 +230,7 @@ export const sources = sqliteTable(
     format: text("format").$type<SourceFormat>().notNull(),
     academicYear: text("academic_year"),
     semester: integer("semester"),
-    /** discovered | imported | unsupported | failed */
+    /** discovered | imported | partial | unsupported | failed */
     status: text("status").notNull().default("discovered"),
     message: text("message"),
     itemCount: integer("item_count").notNull().default(0),
@@ -250,6 +252,12 @@ export const scrapeRuns = sqliteTable("scrape_runs", {
   triggeredBy: text("triggered_by"),
   stats: text("stats"),
   log: text("log").notNull().default(""),
+});
+
+/** The complete printed timetable, including legends and pages with conflicting dates. */
+export const timetablePdfs = sqliteTable("timetable_pdfs", {
+  sourceId: integer("source_id").primaryKey().references(() => sources.id, { onDelete: "cascade" }),
+  content: blob("content", { mode: "buffer" }).notNull(),
 });
 
 /* ───────────────────────────── Accounts ───────────────────────────── */

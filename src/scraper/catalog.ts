@@ -194,6 +194,13 @@ export async function scrapeCatalog(log: (line: string) => void = () => {}): Pro
     warnings.push(`Could not read the timetable hub page: ${(err as Error).message}`);
   }
 
+  // RIA publishes its own timetable index ahead of its listing on the university hub.
+  const ria = byPath.get("facultatea-de-robotica-inteligenta-artificiala-si-sisteme-autonome");
+  if (ria) {
+    ria.shortName ??= "RIA";
+    ria.scheduleUrl ??= "https://ria.upt.ro/studenti/orare/";
+  }
+
   log(`Catalog: ${byPath.size} faculties, ${[...byPath.values()].reduce((n, f) => n + f.specializations.length, 0)} programmes`);
   return { faculties: [...byPath.values()], warnings };
 }

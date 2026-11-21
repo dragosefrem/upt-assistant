@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { CalEvent } from "@/lib/schedule";
-import { addDays, formatDate, formatMinutes, nowLocal } from "@/lib/time";
+import { addDays, formatDate, formatMinutes, formatTimeSlot, nowLocal } from "@/lib/time";
 import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
 import { TripSuggestions } from "./TripSuggestions";
 
@@ -51,7 +51,7 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label} · {when}</p>
         <p className="truncate font-semibold text-slate-900">{e.title}</p>
         <p className="text-sm text-slate-600">
-          {formatMinutes(e.startMin)}–{formatMinutes(e.endMin)} · {kindStyle(e.kind).label}
+          {formatTimeSlot(e.startMin, e.endMin)} · {kindStyle(e.kind).label}
           {e.room ? ` · ${e.room}` : ""}
           {e.place ? ` · ${e.place.name}` : ""}
         </p>

@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { groups, specializations, userCourses, userOverrides, users } from "@/db/schema";
+import { userCourses, userOverrides, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { courseChoices, currentSemester } from "@/lib/schedule";
+import { pickerData } from "@/lib/catalog";
+import { programmeOptions } from "@/lib/profile-options";
 
 export interface ProfileState {
   error?: string;
@@ -21,14 +23,15 @@ export async function saveProfileAction(_prev: ProfileState, form: FormData): Pr
   const year = Number(form.get("year"));
   const groupId = form.get("groupId") ? Number(form.get("groupId")) : null;
 
-  const spec = db.select().from(specializations).where(eq(specializations.id, specializationId)).get();
+  const data = pickerData();
+  const spec = data.specializations.find((s) => s.id === specializationId);
   if (!spec || spec.facultyId !== facultyId) return { error: "Choose your faculty and specialization." };
   if (!Number.isInteger(year) || year < 1 || year > 6) return { error: "Choose your year of study." };
-  if (groupId !== null) {
-    const group = db.select().from(groups).where(eq(groups.id, groupId)).get();
-    if (!group || group.specializationId !== specializationId || group.year !== year) {
-      return { error: "That group does not belong to the chosen specialization and year." };
-    }
+  const { scheduled, other } = programmeOptions(data.specializations, data.groups, year);
+  if (![...scheduled, ...other].includes(spec)) return { error: "Choose a programme offered for this year." };
+  const available = data.groups.filter((g) => g.specializationId === specializationId && g.year === year);
+  if ((available.length || groupId !== null) && !available.some((g) => g.id === groupId)) {
+    return { error: "Choose a group from this year's timetable." };
   }
 
   if (groupId !== user.groupId) {

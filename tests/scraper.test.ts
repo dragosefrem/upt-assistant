@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
+import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
 import { acAdapter } from "@/scraper/adapters/ac";
+import { fihAdapter } from "@/scraper/adapters/fih";
+import { etcAdapter } from "@/scraper/adapters/others";
+import { pageTerm } from "@/scraper/adapters/printedFaculties";
+import { civilCell, electricalCell, headerColumns, readPrintedTable, type Box } from "@/scraper/printed";
 import { extractSpecializations, parseProgrammeLabel } from "@/scraper/catalog";
 import { parseCellText } from "@/scraper/cellText";
 import { classifyLink, detectAcademicYear, detectSemester, downloadUrl, extractLinks, matchesSemester } from "@/scraper/discover";
@@ -107,6 +112,27 @@ describe("parseSlotNote", () => {
   });
 });
 
+describe("loadWorkbook", () => {
+  it("uses the visible rows and columns of merged cells", async () => {
+    const book = new ExcelJS.Workbook();
+    const sheet = book.addWorksheet("Timetable");
+    sheet.getColumn(2).hidden = true;
+    sheet.getRow(2).hidden = true;
+    sheet.getCell("B1").value = "Hidden group";
+    sheet.getCell("A2").value = "Hidden hour";
+    sheet.mergeCells("B2:D4");
+    sheet.getCell("B2").value = "Shared lecture";
+    sheet.getCell("E5").value = "Next group";
+
+    const [grid] = await loadWorkbook(Buffer.from(await book.xlsx.writeBuffer()));
+    expect(grid.cells).toEqual([
+      { row: 2, col: 2, rowSpan: 2, colSpan: 2, text: "Shared lecture" },
+      { row: 4, col: 4, rowSpan: 1, colSpan: 1, text: "Next group" },
+    ]);
+    expect(grid.at(3, 3)?.text).toBe("Shared lecture");
+  });
+});
+
 describe("parseTimetable", () => {
   it("parses a synthetic grid: merged lectures, continuation rows, day wrap", () => {
     const g = new Grid("An 2");
@@ -185,10 +211,24 @@ describe("parseTimetable", () => {
     const source = { url: "x", label: "C-RO", context: "", kind: "timetable", format: "xlsx", academicYear: "2026-2027", semester: 1 } as DiscoveredSource;
     const y1 = acAdapter.normalize!(parseTimetable(grids.find((g) => g.name === "An 1")!), source)!;
     expect(y1.groups[0]).toMatchObject({ spec: { code: "CTI" }, year: 1, series: "Seria 1 (C)", name: "1.1" });
+    const subgroups = ["1.1", "1.2", "2.1", "2.2", "3.1", "3.2"];
+    for (const series of ["Seria 1 (C)", "Seria 2 (D)"]) {
+      expect(y1.groups.filter((g) => g.series === series).map((g) => g.name)).toEqual(subgroups);
+    }
+    const y2 = acAdapter.normalize!(parseTimetable(grids.find((g) => g.name === "An 2")!), source)!;
+    expect(y2.groups.filter((g) => g.spec.code === "TI").map((g) => g.name)).toEqual(subgroups);
+    const ti32 = y2.groups.findIndex((g) => g.spec.code === "TI" && g.name === "3.2");
+    expect(y2.entries.filter((e) => e.day === 1 && e.startMin === hm(18) && e.groups.includes(ti32)))
+      .toEqual([expect.objectContaining({ courseAbbr: "SDA", kind: "lab", room: "A305" })]);
+    expect(y2.entries.filter((e) => e.day === 1 && e.startMin === hm(18) && e.room === "B521")
+      .map((e) => e.groups.map((i) => y2.groups[i].name))).toEqual([["3.1"]]);
     const y3 = acAdapter.normalize!(parseTimetable(grids.find((g) => g.name === "An 3")!), source)!;
     expect(new Set(y3.groups.map((g) => g.spec.code))).toEqual(new Set(["C", "TI"]));
-    const eng = acAdapter.normalize!(parseTimetable(grids.find((g) => g.name === "An 2 Eng")!), source)!;
-    expect(eng.groups[0]).toMatchObject({ spec: { code: "CTI-EN", language: "EN" }, year: 2 });
+    for (const year of [1, 2, 3, 4]) {
+      const english = acAdapter.normalize!(parseTimetable(grids.find((g) => g.name === `An ${year} Eng`)!), source)!;
+      expect(english.entries.length).toBeGreaterThan(0);
+      expect(english.groups.every((g) => g.year === year && g.spec.name === "Calculatoare" && g.spec.code === "C-EN" && g.spec.language === "EN")).toBe(true);
+    }
     const se = acAdapter.normalize!(parseTimetable(grids.find((g) => g.name === "An 1 SE")!), source)!;
     expect(se.groups[0]).toMatchObject({ spec: { name: "Software Engineering", degree: "master" }, year: 1 });
     expect(acAdapter.normalize!(parseTimetable(grids.find((g) => g.name === "Legenda sali")!), source)).toBeNull();
@@ -211,6 +251,51 @@ describe("parseTimetable", () => {
     expect(t.groups.filter((g) => g.track === "I ETcTI SERIA A").map((g) => g.name)).toEqual(["1.1", "1.2", "2.1", "2.2", "3.1", "3.2", "3.3"]);
     expect(t.entries.length).toBeGreaterThan(100);
     expect(t.entries.every((e) => e.day >= 1 && e.day <= 6 && e.endMin > e.startMin)).toBe(true);
+    const table = etcAdapter.normalize!(t, { label: "Licență an I" } as DiscoveredSource, grids[0])!;
+    expect(new Set(table.groups.map((g) => g.spec.code))).toEqual(new Set(["ETcTI", "TST-EN"]));
+  });
+});
+
+describe("printed and interactive timetables", () => {
+  it("uses subgroup parity, shared lectures and the clock next to each column", () => {
+    const cells: Box[] = [
+      [1, 0, 2, 1, "impară"], [2, 0, 3, 1, "pară"], [4, 0, 5, 1, "Grupa 2"],
+      [0, 1, 1, 2, "8-9"], [0, 2, 1, 3, "9-10"], [0, 3, 1, 4, "10-11"],
+      [3, 1, 4, 2, "14-15"], [3, 2, 4, 3, "15-16"], [3, 3, 4, 4, "16-17"],
+      [1, 1, 3, 2, "Algebră (c)"], [1, 2, 2, 4, "Fizică (l)"], [4, 2, 5, 4, "Mecanică (s)"],
+    ];
+    const table = readPrintedTable(cells, "Anul I", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Inginerie", degree: "bachelor" }, year: 1, series: "", name: labels[0] === "Grupa 2" ? "2" : "1",
+    })), "1-7");
+    expect(table.groups.map((g) => g.name)).toEqual(["1", "2"]);
+    expect(table.entries).toEqual(expect.arrayContaining([
+      expect.objectContaining({ courseName: "Algebră", day: 1, startMin: hm(8), endMin: hm(9), weeks: "1-7", groups: [0] }),
+      expect.objectContaining({ courseName: "Fizică", day: 1, startMin: hm(9), endMin: hm(11), weeks: "1-7&odd", groups: [0] }),
+      expect.objectContaining({ courseName: "Mecanică", startMin: hm(15), endMin: hm(17), groups: [1] }),
+    ]));
+  });
+
+  it("reads the printed term, room and lecturer without treating evening hours as an academic year", () => {
+    expect(pageTerm("20-21\nSemestrul I 2026/2027")).toEqual({ academicYear: "2026-2027", semester: 1 });
+    expect(pageTerm("ORAR\nSemestrul II\nAnul III Anul universitar 2026/2027")).toEqual({ academicYear: "2026-2027", semester: 2 });
+    expect(pageTerm("MASTER ANUL II, Sem. I 2025-2026").academicYear).toBe("2025-2026");
+    expect(civilCell("Fundaţii\nLG 6 Roman O.")).toMatchObject({ name: "Fundaţii", room: "LG 6", teacher: "Roman O." });
+    expect(electricalCell("A 101, Circuite, Conf.dr. I. Pop (C) săpt. 2-13")).toMatchObject({
+      name: "Circuite", kind: "course", room: "A 101", teacher: "Conf.dr. I. Pop", weeks: "2-13",
+    });
+    expect(parseCellText("Materiale (curs) ‐ primele 10 săptămâni").weeks).toBe("1-10");
+  });
+
+  it("inherits the day and half-hour range for FIH rows while keeping subgroup and week restrictions", () => {
+    const html = `<select id="sem"><option selected>2026-2027 sem. 1</option></select><h3>Grupa: L4 IVD</h3>
+      <table class="orar"><tr><td class="wkd">Marți</td><td class="ore">12-14<sup>30</sup></td>
+      <td class="disc">Chimie</td><td class="cslp">C</td></tr>
+      <tr><td class="disc">Analiză</td><td class="sg">1</td><td class="weeks">I 1-9</td></tr>
+      <tr><td class="disc">Reciclare</td><td class="sg">2</td></tr></table>`;
+    const table = fihAdapter.parseHtml!(html, { label: "L4 IVD", academicYear: "2026-2027", semester: 1 } as DiscoveredSource);
+    expect(table.groups.map((g) => g.name)).toEqual(["1", "2"]);
+    expect(table.entries[0]).toMatchObject({ groups: [0, 1], weeks: "all", endMin: hm(14, 30) });
+    expect(table.entries[1]).toMatchObject({ groups: [0], day: 2, startMin: hm(12), endMin: hm(14, 30), weeks: "odd&1-9" });
   });
 });
 

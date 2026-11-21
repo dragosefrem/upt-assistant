@@ -48,6 +48,20 @@ export function formatMinutes(min: number): string {
   return `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 }
 
+/** A meeting published with a start time alone uses equal start and end minutes. */
+export function formatTimeSlot(start: number, end: number): string {
+  return start === end ? formatMinutes(start) : formatMinutes(start) + "–" + formatMinutes(end);
+}
+
+export function isDatedMeeting(rule: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(rule);
+}
+
+/** A dated meeting can also occur during a teaching break. Day changes stay in its original week. */
+export function occursInWeek(rule: string, teachingWeek: number | null, monday: string): boolean {
+  return isDatedMeeting(rule) ? mondayOf(rule) === monday : teachingWeek !== null && weekMatches(rule, teachingWeek);
+}
+
 export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" }, locale = "en-GB"): string {
   return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(utc(date));
 }
@@ -55,18 +69,24 @@ export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { we
 export const DAY_NAMES = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const DAY_SHORT = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-/** Whether an entry's week rule ("all" | "odd" | "even" | "a-b") includes a teaching week. */
+/** Commas list teaching weeks or ranges. An ampersand combines restrictions. */
 export function weekMatches(rule: string, week: number): boolean {
+  if (rule.includes("&")) return rule.split("&").every((part) => weekMatches(part, week));
+  if (rule.startsWith("!")) return !weekMatches(rule.slice(1), week);
+  if (rule.includes(",")) return rule.split(",").some((part) => weekMatches(part, week));
   if (rule === "all") return true;
   if (rule === "odd") return week % 2 === 1;
   if (rule === "even") return week % 2 === 0;
   const m = /^(\d+)-(\d+)$/.exec(rule);
-  return m ? week >= +m[1] && week <= +m[2] : true;
+  return m ? week >= +m[1] && week <= +m[2] : /^\d+$/.test(rule) && week === +rule;
 }
 
 export function describeWeeks(rule: string): string | null {
+  if (isDatedMeeting(rule)) return formatDate(rule, { day: "numeric", month: "long", year: "numeric" });
+  if (rule.includes("&")) return rule.split("&").map(describeWeeks).join(", ");
   if (rule === "all") return null;
   if (rule === "odd") return "odd weeks";
   if (rule === "even") return "even weeks";
-  return `weeks ${rule}`;
+  if (rule.startsWith("!")) return `except ${describeWeeks(rule.slice(1))}`;
+  return /^\d+$/.test(rule) ? `week ${rule}` : `weeks ${rule.replaceAll(",", ", ")}`;
 }

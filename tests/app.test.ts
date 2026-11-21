@@ -26,6 +26,7 @@ describe("time helpers", () => {
     expect(weekMatches("even", 5)).toBe(false);
     expect(weekMatches("1-7", 7)).toBe(true);
     expect(weekMatches("1-7", 8)).toBe(false);
+    expect([6, 7, 8, 9].filter((week) => weekMatches("odd&1-7", week))).toEqual([7]);
   });
 });
 

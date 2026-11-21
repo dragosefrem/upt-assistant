@@ -36,6 +36,7 @@ yarn-error.log*
 
 # local database (accounts and scraped data)
 /data/
+/.venv/
 
 # vercel
 .vercel

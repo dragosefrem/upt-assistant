@@ -1,7 +1,7 @@
 import "server-only";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray, or } from "drizzle-orm";
 import { getDb } from "@/db";
-import { faculties, groups, specializations } from "@/db/schema";
+import { entries, entryGroups, faculties, groups, semesters, specializations } from "@/db/schema";
 
 /** The structure a student picks from: faculty → cycle → specialization → year → group. */
 export interface PickerData {
@@ -21,6 +21,15 @@ export interface PickerData {
 
 export function pickerData(): PickerData {
   const db = getDb();
+  const activeGroups = db
+    .selectDistinct({ id: groups.id, specializationId: groups.specializationId, year: groups.year, series: groups.series, name: groups.name })
+    .from(groups)
+    .innerJoin(entryGroups, eq(entryGroups.groupId, groups.id))
+    .innerJoin(entries, eq(entries.id, entryGroups.entryId))
+    .innerJoin(semesters, eq(semesters.id, entries.semesterId))
+    .where(eq(semesters.isCurrent, true))
+    .orderBy(asc(groups.series), asc(groups.name))
+    .all();
   return {
     faculties: db
       .select({ id: faculties.id, name: faculties.name, shortName: faculties.shortName, scheduleUrl: faculties.scheduleUrl })
@@ -39,13 +48,10 @@ export function pickerData(): PickerData {
         durationYears: specializations.durationYears,
       })
       .from(specializations)
+      .where(or(eq(specializations.source, "catalog"), inArray(specializations.id, [...new Set(activeGroups.map((g) => g.specializationId))])))
       .orderBy(asc(specializations.name))
       .all(),
-    groups: db
-      .select({ id: groups.id, specializationId: groups.specializationId, year: groups.year, series: groups.series, name: groups.name })
-      .from(groups)
-      .orderBy(asc(groups.series), asc(groups.name))
-      .all(),
+    groups: activeGroups,
   };
 }
 

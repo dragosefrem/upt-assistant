@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from "react";
 import type { ProfileState } from "@/app/onboarding/actions";
 import type { PickerData } from "@/lib/catalog";
+import { programmeOptions } from "@/lib/profile-options";
 
 interface Initial {
   facultyId: number | null;
@@ -36,15 +37,11 @@ export function ProfilePicker({
     () => data.specializations.filter((s) => s.facultyId === facultyId && s.degree === degree),
     [data.specializations, facultyId, degree],
   );
-  const maxYear = degree === "master" ? 2 : Math.max(4, ...specs.map((s) => s.durationYears ?? 4));
-  const withTimetable = useMemo(
-    () => new Set(data.groups.filter((g) => g.year === year).map((g) => g.specializationId)),
-    [data.groups, year],
-  );
-  const sortedSpecs = useMemo(
-    () => [...specs].sort((a, b) => Number(withTimetable.has(b.id)) - Number(withTimetable.has(a.id)) || a.name.localeCompare(b.name)),
-    [specs, withTimetable],
-  );
+  const specIds = new Set(specs.map((s) => s.id));
+  const maxYear = Math.max(0, ...specs.map((s) => s.durationYears ?? (degree === "master" ? 2 : 4)),
+    ...data.groups.filter((g) => specIds.has(g.specializationId)).map((g) => g.year));
+  const { scheduled, other } = programmeOptions(specs, data.groups, year);
+  const validSpec = [...scheduled, ...other].some((s) => s.id === specId);
   const groups = data.groups.filter((g) => g.specializationId === specId && g.year === year);
   const seriesList = [...new Set(groups.map((g) => g.series))];
 
@@ -56,6 +53,19 @@ export function ProfilePicker({
   );
   const chip = (active: boolean) =>
     `rounded-lg border px-3 py-2 text-left text-sm transition ${active ? "border-brand-500 bg-brand-50 text-brand-900 ring-1 ring-brand-500" : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"}`;
+
+  const specButton = (s: PickerData["specializations"][number]) => (
+    <button type="button" key={s.id} className={chip(s.id === specId)}
+      onClick={() => { setSpecId(s.id); setGroupId(null); }}>
+      <span className="font-medium">{s.name}</span>
+      <span className="ml-2 text-xs text-slate-500">
+        {[s.code, s.language === "RO" ? "Romanian" : s.language === "EN" ? "English" : s.language].filter(Boolean).join(" · ")}
+      </span>
+      {faculty?.shortName === "AC" && s.code === "CTI" && year === 1 && (
+        <span className="block text-xs text-slate-500">Shared first year for Calculatoare and Tehnologia informației</span>
+      )}
+    </button>
+  );
 
   return (
     <form action={formAction} className="space-y-7">
@@ -74,6 +84,7 @@ export function ProfilePicker({
               className={chip(f.id === facultyId)}
               onClick={() => {
                 setFacultyId(f.id);
+                setYear(null);
                 setSpecId(null);
                 setGroupId(null);
               }}
@@ -103,7 +114,7 @@ export function ProfilePicker({
                   setDegree(d);
                   setSpecId(null);
                   setGroupId(null);
-                  if (d === "master" && (year ?? 0) > 2) setYear(null);
+                  setYear(null);
                 }}
               >
                 {d === "bachelor" ? "Bachelor (licență)" : "Master"}
@@ -117,6 +128,7 @@ export function ProfilePicker({
                 className={chip(year === y)}
                 onClick={() => {
                   setYear(y);
+                  setSpecId(null);
                   setGroupId(null);
                 }}
               >
@@ -129,31 +141,21 @@ export function ProfilePicker({
 
       {facultyId && year && (
         <section>
-          {step(3, "Specialization", !!specId)}
+          {step(3, "Specialization", validSpec)}
           <div className="grid gap-2 sm:grid-cols-2">
-            {sortedSpecs.map((s) => (
-              <button
-                type="button"
-                key={s.id}
-                className={chip(s.id === specId)}
-                onClick={() => {
-                  setSpecId(s.id);
-                  setGroupId(null);
-                }}
-              >
-                <span className="font-medium">{s.name}</span>
-                <span className="ml-2 text-xs text-slate-500">
-                  {[s.code, s.language].filter(Boolean).join(" · ")}
-                </span>
-                {!withTimetable.has(s.id) && <span className="mt-0.5 block text-xs text-slate-400">No timetable imported for year {year}</span>}
-              </button>
-            ))}
+            {scheduled.map(specButton)}
           </div>
-          {!sortedSpecs.length && <p className="text-sm text-slate-500">No programmes listed for this cycle.</p>}
+          {other.length > 0 && (
+            <details key={`${facultyId}-${degree}-${year}`} className="mt-3" open={!scheduled.length || other.some((s) => s.id === specId)}>
+              <summary className="cursor-pointer text-sm text-slate-600">Programmes without a year {year} timetable this semester</summary>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">{other.map(specButton)}</div>
+            </details>
+          )}
+          {!scheduled.length && !other.length && <p className="text-sm text-slate-500">No programmes listed for this year.</p>}
         </section>
       )}
 
-      {specId && year && (
+      {validSpec && year && (
         <section>
           {step(4, "Group", !!groupId)}
           {groups.length ? (
@@ -175,8 +177,7 @@ export function ProfilePicker({
             </div>
           ) : (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              This faculty publishes its timetable in a format that could not be imported automatically, so there are no
-              groups to choose from. You can continue without one
+              No classes are available for this programme and year. You can continue without a group
               {faculty?.scheduleUrl ? (
                 <>
                   {" "}and open the{" "}
@@ -184,15 +185,14 @@ export function ProfilePicker({
                     faculty&apos;s timetable page
                   </a>
                 </>
-              ) : null}
-              ; exams, personal events and the assistant still work.
+              ) : null}.
             </p>
           )}
         </section>
       )}
 
       {state.error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
-      <button className="btn-primary" disabled={pending || !specId || !year || (groups.length > 0 && !groupId)}>
+      <button className="btn-primary" disabled={pending || !validSpec || !year || (groups.length > 0 && !groups.some((g) => g.id === groupId))}>
         {pending ? "Saving…" : submitLabel}
       </button>
     </form>

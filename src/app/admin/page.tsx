@@ -25,6 +25,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     activities: number;
     exams: number;
     imported: number;
+    partial: number;
     unreadable: number;
     failed: number;
   }>(sql`
@@ -34,6 +35,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
       (SELECT count(*) FROM entries e JOIN courses c ON c.id = e.course_id WHERE c.faculty_id = f.id) AS activities,
       (SELECT count(*) FROM exams x WHERE x.faculty_id = f.id) AS exams,
       (SELECT count(*) FROM sources o WHERE o.faculty_id = f.id AND o.status = 'imported') AS imported,
+      (SELECT count(*) FROM sources o WHERE o.faculty_id = f.id AND o.status = 'partial') AS partial,
       (SELECT count(*) FROM sources o WHERE o.faculty_id = f.id AND o.status = 'unsupported') AS unreadable,
       (SELECT count(*) FROM sources o WHERE o.faculty_id = f.id AND o.status = 'failed') AS failed
     FROM faculties f ORDER BY f.name`);
@@ -55,7 +57,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
     .select({ source: sources, faculty: faculties.shortName })
     .from(sources)
     .innerJoin(faculties, eq(faculties.id, sources.facultyId))
-    .where(sql`${sources.status} IN ('imported', 'failed')`)
+    .where(sql`${sources.status} IN ('imported', 'partial', 'failed')`)
     .orderBy(asc(faculties.shortName), asc(sources.kind))
     .all();
 
@@ -101,9 +103,10 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
                   <td className={`${td} tabular-nums`}>{f.exams}</td>
                   <td className={`${td} text-xs`}>
                     {f.imported > 0 && <span className="mr-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">{f.imported} imported</span>}
+                    {f.partial > 0 && <span className="mr-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">{f.partial} partial</span>}
                     {f.unreadable > 0 && <span className="mr-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">{f.unreadable} PDF/link only</span>}
                     {f.failed > 0 && <span className="rounded-full bg-red-50 px-2 py-0.5 text-red-700">{f.failed} failed</span>}
-                    {!f.imported && !f.unreadable && !f.failed && <span className="text-slate-400">none found</span>}
+                    {!f.imported && !f.partial && !f.unreadable && !f.failed && <span className="text-slate-400">none found</span>}
                   </td>
                 </tr>
               ))}
@@ -114,8 +117,7 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
           </table>
         </div>
         <p className="border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
-          Timetables published as Excel workbooks or Google Sheets are imported. Faculties that publish PDFs are listed as documents
-          and linked for their students, but their classes are not in the calendar.
+          Open a publication to check its classes against the faculty timetable. Partial imports list the pages or sheets that need review.
         </p>
       </section>
 

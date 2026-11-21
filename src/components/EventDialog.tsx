@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { CalEvent } from "@/lib/schedule";
-import { DAY_NAMES, formatDate, formatMinutes, weekday } from "@/lib/time";
+import { DAY_NAMES, formatDate, formatMinutes, formatTimeSlot, weekday } from "@/lib/time";
 import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
 import { Modal } from "./Modal";
 import { TripSuggestions } from "./TripSuggestions";
@@ -46,7 +46,7 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
           {style.label}
         </span>
         <span className="text-slate-700">
-          {formatDate(event.date)} · {formatMinutes(event.startMin)}–{formatMinutes(event.endMin)}
+          {formatDate(event.date)} · {formatTimeSlot(event.startMin, event.endMin)}
         </span>
       </p>
       <dl className="mb-4 grid grid-cols-[5.5rem_1fr] gap-y-1.5 text-sm">

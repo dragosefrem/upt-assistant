@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { personalEvents } from "@/db/schema";
 import type { User } from "./auth";
 import { currentSemester, examsForUser, placeResolver, studentWeek, type Semester } from "./schedule";
-import { TIME_ZONE, addDays, describeWeeks, weekMatches, weekday } from "./time";
+import { TIME_ZONE, addDays, describeWeeks, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
 
 /**
  * Calendar-neutral description of a student's timetable, shared by the .ics feed and
@@ -28,6 +28,10 @@ export interface ExportItem {
 const KIND_LABEL: Record<string, string> = { course: "Lecture", seminar: "Seminar", lab: "Lab", project: "Project", other: "" };
 
 function recurring(semester: Semester, day: number, weeks: string): { first: string; until: string; exdates: string[] } | null {
+  if (isDatedMeeting(weeks)) {
+    const first = addDays(mondayOf(weeks), day - 1);
+    return { first, until: first, exdates: [] };
+  }
   const dates = semester.weeks
     .map((monday, i) => ({ date: addDays(monday, day - 1), week: i + 1 }))
     .filter((d) => weekMatches(weeks, d.week) && d.date >= semester.startDate && d.date <= semester.endDate)
@@ -62,7 +66,7 @@ export function exportItems(user: User): ExportItem[] {
         date: r.first,
         startMin: e.startMin,
         endMin: e.endMin,
-        until: r.until,
+        until: r.first === r.until ? undefined : r.until,
         exdates: r.exdates,
       });
     }
@@ -169,7 +173,7 @@ export function toICS(items: ExportItem[], calendarName = "UPT Orar"): string {
       `UID:${item.uid}@upt-orar`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=${TIME_ZONE}:${localStamp(item.date, item.startMin)}`,
-      `DTEND;TZID=${TIME_ZONE}:${localStamp(item.date, item.endMin)}`,
+      ...(item.endMin === item.startMin ? [] : [`DTEND;TZID=${TIME_ZONE}:${localStamp(item.date, item.endMin)}`]),
       `SUMMARY:${escapeText(item.title)}`,
     );
     if (item.location) lines.push(`LOCATION:${escapeText(item.location)}`);

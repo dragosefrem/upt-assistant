@@ -4,7 +4,7 @@ import { CourseChoicesForm } from "@/components/CourseChoicesForm";
 import { ExportPanel } from "@/components/ExportPanel";
 import { ProfilePicker } from "@/components/ProfilePicker";
 import { getDb } from "@/db";
-import { sources } from "@/db/schema";
+import { sources, timetablePdfs } from "@/db/schema";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf, pickerData } from "@/lib/catalog";
 import { googleConfigured } from "@/lib/google";
@@ -18,8 +18,12 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
   const semester = currentSemester();
   const choices = semester ? courseChoices(user, semester) : [];
   const faculty = facultyOf(user.facultyId);
-  const documents = user.facultyId
-    ? getDb().select().from(sources).where(and(eq(sources.facultyId, user.facultyId), eq(sources.kind, "timetable"))).all()
+  const documents = user.facultyId && semester
+    ? getDb().select({ id: sources.id, label: sources.label, url: sources.url, status: sources.status,
+        format: sources.format, message: sources.message, pdfId: timetablePdfs.sourceId }).from(sources)
+      .leftJoin(timetablePdfs, eq(timetablePdfs.sourceId, sources.id))
+      .where(and(eq(sources.facultyId, user.facultyId), eq(sources.kind, "timetable"),
+        eq(sources.academicYear, semester.academicYear), eq(sources.semester, semester.number))).all()
     : [];
 
   return (
@@ -56,14 +60,17 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       {faculty && (
         <section className="card p-6">
           <h2 className="text-base font-semibold">Published timetables — {faculty.shortName ?? faculty.name}</h2>
-          <p className="mb-3 mt-1 text-sm text-slate-600">The documents your faculty links to for this semester. Those marked “imported” feed your calendar.</p>
+          <p className="mb-3 mt-1 text-sm text-slate-600">Timetables published by your faculty for the current semester.</p>
           {documents.length ? (
             <ul className="divide-y divide-slate-100 text-sm">
               {documents.map((d) => (
                 <li key={d.id} className="flex items-center justify-between gap-3 py-2">
-                  <a className="min-w-0 truncate text-brand-700 hover:underline" href={d.url} target="_blank" rel="noreferrer">{d.label}</a>
+                  <div className="min-w-0">
+                    <a className="text-brand-700 hover:underline" href={d.pdfId ? `/api/timetables/${d.pdfId}` : d.url} target="_blank" rel="noreferrer">{d.label}</a>
+                    {d.status === "partial" && <p className="text-xs text-amber-800">{d.message}</p>}
+                  </div>
                   <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${d.status === "imported" ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"}`}>
-                    {d.status === "imported" ? "imported" : d.format.toUpperCase()}
+                    {d.status === "unsupported" ? d.format.toUpperCase() : d.status}
                   </span>
                 </li>
               ))}

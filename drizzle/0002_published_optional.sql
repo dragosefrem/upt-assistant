@@ -1,0 +1,1 @@
+ALTER TABLE `entries` ADD `published_optional` integer DEFAULT false NOT NULL;

@@ -65,9 +65,17 @@ export interface TimeRange {
   endMin: number;
 }
 
+/** An explicit clock interval in the activity can narrow the surrounding timetable row. */
+export function activityTime(text: string, slot: TimeRange): TimeRange {
+  const times = [...text.matchAll(/\(\s*(\d{1,2}(?:[.:]\d{2})?\s*[-–]\s*\d{1,2}(?:[.:]\d{2})?)\s*\)/g)];
+  if (times.length !== 1) return slot;
+  const time = parseTimeRange(times[0][1]);
+  return time && time.startMin >= slot.startMin && time.endMin <= slot.endMin ? time : slot;
+}
+
 /** Parses "08-09", "8 - 10", "20:21", "08:00-10:00", "8.30-10". */
 export function parseTimeRange(text: string): TimeRange | null {
-  const t = squash(text);
+  const t = squash(text).replace(/[_‐‑−]/g, "-");
   const full = /^(\d{1,2})[:.](\d{2})\s*[-–—]\s*(\d{1,2})[:.](\d{2})$/.exec(t);
   if (full) return range(+full[1], +full[2], +full[3], +full[4]);
   const mixed = /^(\d{1,2})(?:[:.](\d{2}))?\s*[-–—]\s*(\d{1,2})(?:[:.](\d{2}))?$/.exec(t);

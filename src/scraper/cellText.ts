@@ -17,7 +17,7 @@ export interface ParsedText {
   hasKindMarker: boolean;
   room: string | null;
   teacher: string | null;
-  /** "all" | "odd" | "even" | "a-b" */
+  /** Teaching-week restriction consumed by weekMatches. */
   weeks: string;
   raw: string;
 }
@@ -30,7 +30,7 @@ const KIND_BY_LETTER: Record<string, EntryKind> = {
 };
 
 const PAREN_KIND = /\(\s*(curs|course|lecture|seminar|sem|laborator|lab|proiect|project|pr|c|s|l|p)\b[^)]*\)/i;
-const WORD_KIND = /[,;]\s*(curs|seminar|laborator|lab|proiect)\b\.?/i;
+const WORD_KIND = /(?:[,;]|\s[-‐–]|(?<=\))\s+)\s*(curs|seminar|sem|laborator|lab|proiect|pr)\b\.?|\s+(curs|seminar|laborator|lab|proiect)(?=\s*(?:[.,;]|\bsal[aă]\b|[sșş]\.l\.|prof\.|conf\.|$))/i;
 
 export function hasKindMarker(text: string): boolean {
   return PAREN_KIND.test(text) || WORD_KIND.test(text);
@@ -46,25 +46,37 @@ const ROOM_CODE =
 const TEACHER =
   /(?<![\p{L}])((?:\p{Lu}\.\s?){1,3}-?\s?\p{Lu}[\p{L}'’-]+(?:\s\p{Lu}[\p{L}'’-]+)?)/u;
 
-function extractWeeks(text: string): { weeks: string; rest: string } {
-  let rest = text;
-  let weeks = "all";
-  const rangeRe =
-    /(?:s[aă]pt(?:[aă]m[aâ]n(?:a|i|ile))?\.?|weeks?|\bs)\s*(\d{1,2})\s*[-–]\s*(\d{1,2})\b/i;
-  const m = rangeRe.exec(rest);
-  if (m) {
-    weeks = `${+m[1]}-${+m[2]}`;
-    rest = rest.replace(m[0], " ");
-  } else {
-    const parity = /s[aă]pt(?:[aă]m[aâ]n(?:a|i|ile))?\.?\s*(imp(?:ar[aăe]?)?|par[aăe]?)\b\.?/i.exec(rest);
-    if (parity) {
-      weeks = /^imp/i.test(parity[1]) ? "odd" : "even";
-      rest = rest.replace(parity[0], " ");
-    }
-  }
-  // Hour-load annotations ("2h/12sapt") describe the course, not when it runs.
-  rest = rest.replace(/\d+\s*h\s*\/\s*\d+\s*s[aă]pt\w*/gi, " ");
-  return { weeks, rest };
+const weekWord = String.raw`(?:s[aă]pt(?:[aă]m[aâ]n(?:ile|a|ă|i))?\.?|weeks?|s\.)`;
+const parityWord = String.raw`(?:imp(?:ar[aăe]?)?|par[aăe]?|[pi](?=\.))`;
+const weekNumber = String.raw`\d{1,2}(?:\s*[-–÷]\s*\d{1,2})?`;
+const numberedWeeks = new RegExp(String.raw`(?<![\p{L}\d.])(${weekWord})\s*[:.]?\s*(${weekNumber}(?:\s*[,/]\s*${weekNumber})*)(?!\d|[.:]\d|\s*[-–÷]\s*\d)`, "giu");
+const parityWeeks = new RegExp(String.raw`(?<![\p{L}\d.])${weekWord}\s*[:.]?\s*(${parityWord})(?!\p{L})\.?`, "giu");
+
+function extractWeeks(input: string) {
+  const numbers = new Set<string>();
+  const parities = new Set<string>();
+  let rest = input.replace(/\d+\s*h\s*\/\s*\d+\s*s[aă]pt\w*/gi, " ");
+  rest = rest.replace(/\bprimele\s+(\d{1,2})\s+s[aă]pt[aă]m[aâ]ni/gi, "săpt. 1-$1");
+  rest = rest.replace(/\((\d{1,2}\s*[-–÷]\s*\d{1,2})\s+s[aă]pt\.?\)/gi, "(săpt. $1)");
+  rest = rest.replace(/(\bs[aă]pt\.?\s*\d{1,2}\s*[-–÷]\s*\d{1,2})\s*:\s*((?:im)?par[aăe]?)(?!\p{L})/giu, "$1 săpt. $2");
+  rest = rest.replace(numberedWeeks, (match, label: string, list: string) => {
+    // "S. 1 (s)" can itself be the subject. A lone week needs an explicit week label.
+    if (/^s\.$/i.test(label) && /^\d+$/.test(list)) return match;
+    const parts = list.replace(/\s/g, "").replace(/[–÷]/g, "-").split(/[,/]/);
+    if (!parts.every((p) => {
+      const [from, to = from] = p.split("-").map(Number);
+      return from >= 1 && to >= from && to <= 53;
+    })) return match;
+    for (const part of parts) numbers.add(part);
+    return " ";
+  });
+  rest = rest.replace(parityWeeks, (_, flag: string) => {
+    parities.add(/^i/i.test(flag) ? "odd" : "even");
+    return " ";
+  });
+  const weeks = [numbers.size ? [...numbers].join(",") : "", parities.size === 1 ? [...parities][0] : ""]
+    .filter(Boolean).join("&") || "all";
+  return { weeks, rest: rest.replace(/\(\s*\)/g, " ").replace(/^\s*[:.]\s*/, "").trim() };
 }
 
 function clean(s: string): string {
@@ -81,24 +93,9 @@ function looksLikeAcronym(name: string): boolean {
 
 export function parseCellText(input: string): ParsedText {
   const raw = squash(input.replace(/\n/g, " "));
-  let text = raw;
-
-  // Leading qualifiers used by some faculties: "Gr. F", "Sapt. imp.".
-  let weeks = "all";
-  for (let i = 0; i < 3; i++) {
-    const parity = /^s[aă]pt\.?\s*(imp(?:ar[aăe]?)?|par[aăe]?)\.?\s+/i.exec(text);
-    if (parity) {
-      weeks = /^imp/i.test(parity[1]) ? "odd" : "even";
-      text = text.slice(parity[0].length);
-      continue;
-    }
-    const group = /^gr\.?\s*[\p{L}\d]{1,2}\.?\s+/iu.exec(text);
-    if (group) {
-      text = text.slice(group[0].length);
-      continue;
-    }
-    break;
-  }
+  const annotations = extractWeeks(raw);
+  let weeks = annotations.weeks;
+  const text = annotations.rest.replace(/^(?:gr\.?\s*[FG12]\.?|G[12])\s+/i, "");
 
   let kind: EntryKind = "other";
   let marker = false;
@@ -114,7 +111,7 @@ export function parseCellText(input: string): ParsedText {
     rest = text.slice(paren.index + paren[0].length);
     if (/online/i.test(paren[0])) rest = `online ${rest}`;
   } else if (word) {
-    kind = KIND_BY_LETTER[word[1].toLowerCase()] ?? "other";
+    kind = KIND_BY_LETTER[(word[1] ?? word[2]).toLowerCase()] ?? "other";
     marker = true;
     name = text.slice(0, word.index);
     rest = text.slice(word.index + word[0].length);
@@ -134,15 +131,7 @@ export function parseCellText(input: string): ParsedText {
       name = text.slice(0, cut.index);
       rest = text.slice(cut.index + 1);
     }
-  }
-
-  const w = extractWeeks(rest);
-  rest = w.rest;
-  if (w.weeks !== "all") weeks = w.weeks;
-  const nameWeeks = extractWeeks(name);
-  if (nameWeeks.weeks !== "all") {
-    weeks = nameWeeks.weeks;
-    name = nameWeeks.rest;
+    if (/^curs\s+/i.test(name)) { kind = "course"; marker = true; }
   }
 
   let room: string | null = null;

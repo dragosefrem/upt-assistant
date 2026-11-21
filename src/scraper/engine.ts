@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 import { and, eq, inArray, notInArray } from "drizzle-orm";
 import { getDb, type DB } from "@/db";
-import { entries, exams, faculties, scrapeRuns, semesters, sources } from "@/db/schema";
+import { entries, exams, faculties, scrapeRuns, semesters, sources, timetablePdfs } from "@/db/schema";
 import { adapterFor } from "./adapters";
 import { genericNormalize } from "./adapters/generic";
+import { distanceSource, distanceTimetable, loadDistanceCalendar } from "./distance";
 import { Importer, applyCatalog } from "./apply";
 import { scrapeCatalog } from "./catalog";
 import {
@@ -17,6 +18,7 @@ import {
 import { loadHtmlTables, loadWorkbook, type Grid } from "./grid";
 import { fetchText, fetchUrl } from "./http";
 import { parseTimetable } from "./timetable";
+import { readPdf } from "./pdf";
 import type { DiscoveredSource, NormalizedTimetable, SemesterRef } from "./types";
 
 /**
@@ -108,6 +110,16 @@ async function discover(
   const scan = async (url: string, inherited = "") => {
     const { text, finalUrl } = await fetchText(url);
     const links = extractLinks(text, finalUrl);
+    if (page === "timetable" && adapter.timetableSources) {
+      for (const s of await adapter.timetableSources(text, finalUrl, semester)) {
+        if (!matchesSemester(s, semester)) continue;
+        const previous = found.get(s.url);
+        if (!previous) found.set(s.url, s);
+        else if (!previous.label.split(" / ").includes(s.label)) previous.label += " / " + s.label;
+      }
+      log.add(`${faculty.shortName ?? faculty.name}: scanned ${url}`);
+      return { links, finalUrl };
+    }
     for (const link of links) {
       const guess = classifyLink(inherited ? { ...link, context: `${inherited} ${link.context}` } : link, page);
       if (!guess) continue;
@@ -134,6 +146,8 @@ async function discover(
       await scan(post.url, post.label);
     }
   }
+  const distance = page === "timetable" && distanceSource(faculty.shortName ?? "", semester);
+  if (distance) found.set(distance.url, distance);
   return [...found.values()];
 }
 
@@ -191,10 +205,10 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
       if (!selected.length) warn("No faculties in the database yet — run the catalog scrape first.");
       log.add(`Target: semester ${semester.number} of ${semester.academicYear}${options.dryRun ? " (dry run)" : ""}.`);
 
+      let distanceCalendar: ReturnType<typeof loadDistanceCalendar> | undefined;
       for (const faculty of selected) {
         const adapter = adapterFor(faculty.slug);
         const name = faculty.shortName ?? faculty.name;
-        const importer = new Importer(db, faculty.id, semester.id);
 
         for (const page of ["timetable", "exams"] as const) {
           if (page === "timetable" ? !options.timetables : !options.exams) continue;
@@ -211,27 +225,10 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
           stats.sourcesFound += found.length;
           if (page === "timetable" || found.length) log.add(`${name}: ${found.length} ${kind} document(s) for this semester.`);
 
-          // Forget documents the faculty no longer links to, with the data they supplied.
-          if (!options.dryRun) {
-            const urls = found.map((s) => s.url);
-            const gone = db
-              .select({ id: sources.id })
-              .from(sources)
-              .where(
-                and(
-                  eq(sources.facultyId, faculty.id),
-                  eq(sources.kind, kind),
-                  urls.length ? notInArray(sources.url, urls) : undefined,
-                ),
-              )
-              .all()
-              .map((r) => r.id);
-            if (gone.length) {
-              db.delete(entries).where(inArray(entries.sourceId, gone)).run();
-              db.delete(exams).where(inArray(exams.sourceId, gone)).run();
-              db.delete(sources).where(inArray(sources.id, gone)).run();
-              log.add(`${name}: removed ${gone.length} outdated ${kind} document(s).`);
-            }
+          let complete = found.length > 0;
+          if (!found.length && page === "timetable") {
+            failed = true;
+            warn(`${name}: no published timetable found for the selected semester.`);
           }
 
           for (const source of found) {
@@ -259,9 +256,12 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
                 .run();
             };
 
-            const parseable = source.format === "xlsx" || source.format === "gsheet";
+            const parseable = source.format === "xlsx" || source.format === "gsheet" ||
+              (kind === "timetable" && (source.format === "pdf" || source.reader === "distance" || (source.format === "html" && adapter.parseHtml)));
             if (!parseable || (kind === "exams" && !adapter.parseExams)) {
               stats.sourcesUnsupported++;
+              complete = false;
+              failed = true;
               finish(
                 "unsupported",
                 source.format === "pdf"
@@ -274,8 +274,9 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
             }
 
             try {
-              const { grids, hash } = await loadGrids(source);
+              const importer = new Importer(db, faculty.id, semester.id);
               if (kind === "exams") {
+                const { grids, hash } = await loadGrids(source);
                 const list = adapter.parseExams!(grids, source);
                 const n = row ? importer.importExams(row.id, source.label, list) : list.length;
                 stats.exams += n;
@@ -286,23 +287,68 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
               }
 
               const tables: NormalizedTimetable[] = [];
+              const issues: string[] = [];
               let skipped = 0;
-              for (const grid of grids) {
-                const parsed = parseTimetable(grid);
-                const table = adapter.normalize
-                  ? adapter.normalize(parsed, source)
-                  : genericNormalize(parsed, source);
-                if (!table || !table.entries.length) {
-                  skipped++;
-                  table?.warnings.forEach(warn);
+              let unreadable = false;
+              let excludedPages = 0;
+              let hash: string;
+              if (source.reader === "distance") {
+                distanceCalendar ??= loadDistanceCalendar(semester.startDate, semester.examEnd ?? semester.endDate);
+                const result = distanceTimetable(await distanceCalendar, name, semester);
+                tables.push(result.table);
+                hash = result.hash;
+              } else if (source.format === "pdf" || source.format === "html") {
+                const { body } = await fetchUrl(downloadUrl(source));
+                hash = createHash("sha1").update(body).digest("hex");
+                if (source.format === "pdf") {
+                  if (row && body.subarray(0, 5).toString() === "%PDF-") {
+                    db.insert(timetablePdfs).values({ sourceId: row.id, content: body })
+                      .onConflictDoUpdate({ target: timetablePdfs.sourceId, set: { content: body } }).run();
+                  }
+                  const pdf = await readPdf(body, faculty.slug, source, semester);
+                  tables.push(...pdf.tables);
+                  issues.push(...pdf.warnings);
+                  unreadable = pdf.unreadable;
+                  excludedPages = pdf.excludedPages;
+                } else {
+                  const table = adapter.parseHtml!(body.toString("utf8"), source);
+                  if (table.entries.length) tables.push(table);
+                }
+              } else {
+                const workbook = await loadGrids(source);
+                hash = workbook.hash;
+                for (const grid of workbook.grids) {
+                  const table = adapter.parseGrid ? adapter.parseGrid(grid, source)
+                    : adapter.normalize ? adapter.normalize(parseTimetable(grid), source, grid)
+                      : genericNormalize(parseTimetable(grid), source);
+                  if (!table?.entries.length) {
+                    skipped++;
+                    if (!/legend|desf[aă][sș]urare ore/i.test(grid.name)) {
+                      unreadable = true;
+                      issues.push(`Sheet "${grid.name}" has no recognised activities.`);
+                    }
+                    continue;
+                  }
+                  tables.push(table);
+                }
+              }
+              tables.forEach((t) => t.warnings.forEach(warn));
+              issues.forEach((issue) => warn(`${name}: "${source.label}" — ${issue}`));
+              if (issues.length) failed = true;
+              if (unreadable) complete = false;
+              const total = tables.reduce((n, t) => n + t.entries.length, 0);
+              if (!total && source.reader !== "distance") {
+                // An explicitly dated replacement withdraws its old classes. Keep
+                // the original document available and report the faculty's dates.
+                if (excludedPages && !unreadable) {
+                  if (row) importer.importTimetable(row.id, []);
+                  stats.sourcesImported++;
+                  finish("partial", issues.join(" "), 0, hash);
                   continue;
                 }
-                table.warnings.forEach(warn);
-                tables.push(table);
-              }
-              const total = tables.reduce((n, t) => n + t.entries.length, 0);
-              if (!total) {
                 stats.sourcesFailed++;
+                complete = false;
+                failed = true;
                 finish("failed", "No timetable grid recognised in this document.", 0, hash);
                 warn(`${name}: "${source.label}" — no timetable grid recognised.`);
                 continue;
@@ -311,21 +357,35 @@ export async function runScrape(options: ScrapeOptions, echo = false): Promise<{
               stats.entries += result.entries;
               stats.sourcesImported++;
               finish(
-                "imported",
-                `${tables.length} sheet(s), ${result.entries} activities${skipped ? `, ${skipped} sheet(s) skipped` : ""}.`,
+                issues.length ? "partial" : "imported",
+                `${tables.length} table(s), ${result.entries} activities${skipped ? `, ${skipped} sheet(s) skipped` : ""}. ${issues.join(" ")}`.trim(),
                 result.entries,
                 hash,
               );
               log.add(`${name}: "${source.label}" → ${tables.length} sheet(s), ${result.entries} activities.`);
             } catch (err) {
               failed = true;
+              complete = false;
               stats.sourcesFailed++;
               finish("failed", (err as Error).message);
               warn(`${name}: "${source.label}" failed — ${(err as Error).message}`);
             }
           }
+          // Only retire replaced publications after their replacements have imported.
+          if (complete && !options.dryRun) {
+            const gone = db.select({ id: sources.id }).from(sources).where(and(
+              eq(sources.facultyId, faculty.id), eq(sources.kind, kind),
+              eq(sources.academicYear, semester.academicYear), eq(sources.semester, semester.number),
+              notInArray(sources.url, found.map((s) => s.url)),
+            )).all().map((s) => s.id);
+            if (gone.length) db.transaction((tx) => {
+              tx.delete(entries).where(inArray(entries.sourceId, gone)).run();
+              tx.delete(exams).where(inArray(exams.sourceId, gone)).run();
+              tx.delete(sources).where(inArray(sources.id, gone)).run();
+            });
+          }
         }
-        if (!options.dryRun) importer.prune();
+        if (!options.dryRun) new Importer(db, faculty.id, semester.id).prune();
       }
     }
   } catch (err) {

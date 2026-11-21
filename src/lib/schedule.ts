@@ -18,7 +18,7 @@ import {
   type EntryKind,
 } from "@/db/schema";
 import type { User } from "./auth";
-import { addDays, daysBetween, describeWeeks, mondayOf, weekMatches, weekday } from "./time";
+import { addDays, daysBetween, describeWeeks, mondayOf, occursInWeek, weekday } from "./time";
 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
 export interface CalEvent {
@@ -156,8 +156,8 @@ const ELECTIVES_FROM_YEAR = 3;
  * Per-course choices for a student: which courses they follow and which alternative
  * slot they attend.
  *
- * Timetables do not say which courses are elective, so from year 3 on every course can
- * be unticked. Courses an admin has marked optional start unticked for everyone.
+ * Published electives and courses marked optional by an administrator start
+ * unticked. From year 3 students can also untick their other courses.
  */
 export function courseChoices(user: Pick<User, "id" | "groupId" | "year">, semester: Semester): CourseChoice[] {
   if (!user.groupId) return [];
@@ -166,17 +166,19 @@ export function courseChoices(user: Pick<User, "id" | "groupId" | "year">, semes
     getDb().select().from(userCourses).where(eq(userCourses.userId, user.id)).all().map((p) => [p.courseId, p]),
   );
   const byCourse = new Map<number, CourseChoice>();
+  const required = new Set(rows.filter((r) => !r.entry.publishedOptional).map((r) => r.course.id));
   for (const { entry, course } of rows) {
     let c = byCourse.get(course.id);
     if (!c) {
       const pick = picks.get(course.id);
+      const optional = course.isOptional || !required.has(course.id);
       c = {
         courseId: course.id,
         name: course.name,
         abbr: course.abbreviation,
-        isOptional: course.isOptional,
-        selectable: course.isOptional || (user.year ?? 0) >= ELECTIVES_FROM_YEAR,
-        enrolled: pick ? pick.enrolled : !course.isOptional,
+        isOptional: optional,
+        selectable: optional || (user.year ?? 0) >= ELECTIVES_FROM_YEAR,
+        enrolled: pick ? pick.enrolled : !optional,
         slots: [],
         chosenSlotId: pick?.slotEntryId ?? null,
         fixedCount: 0,
@@ -224,7 +226,7 @@ export function studentWeek(user: Pick<User, "id" | "groupId" | "year">, semeste
       teacher: entry.teacher,
       note: o?.note ?? null,
       moved,
-      optionalCourse: course.isOptional,
+      optionalCourse: choice.isOptional,
     });
   }
   return out.sort((a, b) => a.day - b.day || a.startMin - b.startMin);
@@ -233,7 +235,7 @@ export function studentWeek(user: Pick<User, "id" | "groupId" | "year">, semeste
 /** The timetable every member of a group shares (no optional courses, no slot picks). */
 export function groupWeek(groupId: number, semester: Semester): WeekEntry[] {
   return loadGroup(groupId, semester.id)
-    .rows.filter(({ entry, course }) => !entry.isSlotOption && !course.isOptional)
+    .rows.filter(({ entry, course }) => !entry.isSlotOption && !entry.publishedOptional && !course.isOptional)
     .map(({ entry, course }) => ({
       entryId: entry.id,
       courseId: course.id,
@@ -284,11 +286,11 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
   if (semester && user.groupId) {
     const week = studentWeek(user, semester);
     for (let date = from; date <= to; date = addDays(date, 1)) {
-      const n = teachingWeek(semester, date);
-      if (n === null || date < semester.startDate || date > semester.endDate) continue;
+      const n = date >= semester.startDate && date <= semester.endDate ? teachingWeek(semester, date) : null;
+      const monday = mondayOf(date);
       const day = weekday(date);
       for (const e of week) {
-        if (e.day !== day || !weekMatches(e.weeks, n)) continue;
+        if (e.day !== day || !occursInWeek(e.weeks, n, monday)) continue;
         events.push({
           id: `e:${e.entryId}:${date}`,
           type: "class",
@@ -300,7 +302,8 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
           endMin: e.endMin,
           room: e.room,
           teacher: e.teacher,
-          note: [describeWeeks(e.weeks), e.moved ? "moved by you" : null, e.note].filter(Boolean).join(" · ") || null,
+          note: [describeWeeks(e.weeks), e.endMin === e.startMin ? "End time unpublished" : null,
+            e.moved ? "moved by you" : null, e.note].filter(Boolean).join(" · ") || null,
           place: place(e.room),
           entryId: e.entryId,
           courseId: e.courseId,
@@ -398,9 +401,9 @@ export function groupBusy(groupId: number, from: string, to: string) {
   const busy: Array<{ date: string; startMin: number; endMin: number; title: string }> = [];
   for (let date = from; date <= to; date = addDays(date, 1)) {
     const n = teachingWeek(semester, date);
-    if (n === null) continue;
+    const monday = mondayOf(date);
     for (const e of week) {
-      if (e.day === weekday(date) && weekMatches(e.weeks, n)) {
+      if (e.day === weekday(date) && occursInWeek(e.weeks, n, monday)) {
         busy.push({ date, startMin: e.startMin, endMin: e.endMin, title: e.title });
       }
     }

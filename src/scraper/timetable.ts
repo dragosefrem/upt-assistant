@@ -3,6 +3,7 @@ import { hasKindMarker, parseCellText } from "./cellText";
 import type { Grid, GridCell } from "./grid";
 import {
   DAY_IN_TEXT,
+  activityTime,
   acronym,
   norm,
   parseDayWord,
@@ -43,6 +44,7 @@ export interface ParsedEntry {
   groups: number[];
   /** One of several alternative slots for the same activity. */
   isSlotOption: boolean;
+  publishedOptional?: boolean;
 }
 
 export interface ParsedTimetable {
@@ -61,6 +63,9 @@ const CONTINUATION_RE =
   /^\s*(?:sal[aă]|ala|amf|amfiteatru|room|s[aă]pt|weeks?|online|\d+\s*h\s*\/)/i;
 /** A cell holding nothing but a room code ("B418a", "SPM 205"). */
 const BARE_ROOM_RE = /^(?:[A-Z]{1,4}\s?\d{1,4}[A-Za-z]?|\d{2,4}\s?[A-Z]{1,4})$/;
+const FACULTATIVE = /\(\s*c\.\s*f\.?\s*\)|\(\s*fac\.?\s*\)|\bcurs(?:ul)?\s+facultativ\b/i;
+// AC explicitly moves the first occurrence of some lectures to another day and room.
+const WEEK_MOVE = /\(\s*[îi]n\s+s[aă]pt\.?\s+(\d{1,2})\s+se\s+[tțţ]ine\s+(\p{L}+)\s+([\d.:]+\s*[-–]\s*[\d.:]+)\s+[îi]n\s+sal[aă]\s+([^()]+)\)/iu;
 
 interface TimeRow {
   row: number;
@@ -83,7 +88,10 @@ function cleanGroupLabel(label: string): string {
   return squash(label.replace(/^\s*(?:sub|semi|s)?(?:grupa|gr|sg)\b\.?\s*/i, "")) || squash(label);
 }
 
-export function parseTimetable(grid: Grid, opts: { yearHint?: number | null } = {}): ParsedTimetable {
+export function parseTimetable(grid: Grid, opts: {
+  yearHint?: number | null;
+  splitActivities?: (cell: string) => string[];
+} = {}): ParsedTimetable {
   const warnings: string[] = [];
   const out: ParsedTimetable = {
     sheet: grid.name,
@@ -164,7 +172,7 @@ export function parseTimetable(grid: Grid, opts: { yearHint?: number | null } = 
   out.year ??= parseStudyYear(out.title) ?? parseStudyYear(grid.name);
 
   const titleSet = new Set(titleCells);
-  const labelCells = headerCells.filter((c) => !titleSet.has(c) && !parseTimeRange(c.text));
+  const labelCells = headerCells.filter((c) => c.col > timeCol && !titleSet.has(c) && !parseTimeRange(c.text));
   const headerAt = (col: number): GridCell[] =>
     labelCells
       .filter((c) => c.col <= col && col < c.col + c.colSpan)
@@ -309,8 +317,7 @@ export function parseTimetable(grid: Grid, opts: { yearHint?: number | null } = 
   }
 
   /* ── 5. Grid cells → entries ── */
-  const sideBlocks: Array<{ blocks: Block[] }> = [];
-  const sideByCol = new Map<number, { blocks: Block[] }>();
+  const sideByCol = new Map<number, Block[]>();
 
   for (const block of blocks) {
     const { cell } = block;
@@ -318,11 +325,10 @@ export function parseTimetable(grid: Grid, opts: { yearHint?: number | null } = 
     if (role?.type === "side") {
       let bucket = sideByCol.get(cell.col);
       if (!bucket) {
-        bucket = { blocks: [] };
+        bucket = [];
         sideByCol.set(cell.col, bucket);
-        sideBlocks.push(bucket);
       }
-      bucket.blocks.push(block);
+      bucket.push(block);
       continue;
     }
     const groupIdx = new Set<number>();
@@ -340,26 +346,31 @@ export function parseTimetable(grid: Grid, opts: { yearHint?: number | null } = 
     }
     const text = squash(block.text);
     if (/^[-–—.~]+$/.test(text)) continue;
-    const parsed = parseCellText(block.text);
-    out.entries.push({
-      day: start.day,
-      startMin: start.time.startMin,
-      endMin: end.time.endMin,
-      kind: parsed.kind,
-      courseName: parsed.name,
-      courseAbbr: parsed.abbr,
-      room: parsed.room,
-      teacher: parsed.teacher,
-      weeks: parsed.weeks,
-      rawText: text,
-      groups: [...groupIdx].sort((a, b) => a - b),
-      isSlotOption: false,
-    });
+    const slot = { startMin: start.time.startMin, endMin: end.time.endMin };
+    for (const activity of opts.splitActivities?.(block.text) ?? [block.text]) {
+      const move = WEEK_MOVE.exec(activity);
+      const otherDay = move && parseDayWord(move[2]), otherTime = move && parseTimeRange(move[3]);
+      const relocated = move && otherDay && otherTime;
+      const regular = relocated ? activity.replace(move[0], "") : activity;
+      const parsed = parseCellText(regular);
+      const entry: ParsedEntry = {
+        day: start.day, ...activityTime(regular, slot), kind: parsed.kind, courseName: parsed.name,
+        courseAbbr: parsed.abbr, room: parsed.room, teacher: parsed.teacher, weeks: parsed.weeks,
+        rawText: squash(activity), groups: [...groupIdx].sort((a, b) => a - b), isSlotOption: false,
+        publishedOptional: FACULTATIVE.test(activity),
+      };
+      if (relocated) {
+        out.entries.push({ ...entry, day: otherDay, ...otherTime, room: squash(move[4]), weeks: move[1] });
+        entry.weeks = [entry.weeks === "all" ? "" : entry.weeks, "!" + move[1]].filter(Boolean).join("&");
+      }
+      out.entries.push(entry);
+    }
   }
 
   /* ── 6. Side column: "PW (l) [C] sala B528b Marti 12-14, sala B515 Vineri 10-12" ── */
-  for (const bucket of sideBlocks) {
-    const ordered = bucket.blocks.sort((a, b) => a.cell.row - b.cell.row);
+  for (const [col, bucket] of sideByCol) {
+    const optional = headerCells.some((h) => h.col <= col && h.col + h.colSpan > col && /op[tțţ]ional/i.test(h.text));
+    const ordered = bucket.sort((a, b) => a.cell.row - b.cell.row);
     let current: { text: string; startRow: number; endRow: number } | null = null;
     const notes: Array<{ text: string; startRow: number; endRow: number }> = [];
     for (const block of ordered) {
@@ -425,12 +436,23 @@ export function parseTimetable(grid: Grid, opts: { yearHint?: number | null } = 
           rawText: squash(note),
           groups: groupIdx,
           isSlotOption: slots.slots.length > 1,
+          publishedOptional: optional || FACULTATIVE.test(note),
         });
       }
     }
   }
 
   resolveCourseNames(out);
+  const optionalGroups = new Map<string, Set<number>>();
+  for (const e of out.entries.filter((e) => e.kind === "course" && FACULTATIVE.test(e.rawText))) {
+    const audience = optionalGroups.get(norm(e.courseName)) ?? new Set<number>();
+    for (const group of e.groups) audience.add(group);
+    optionalGroups.set(norm(e.courseName), audience);
+  }
+  for (const e of out.entries) {
+    const audience = optionalGroups.get(norm(e.courseName));
+    if (audience && e.kind !== "course" && e.groups.every((g) => audience.has(g))) e.publishedOptional = true;
+  }
   if (!out.entries.length) warnings.push("The grid was recognised but contains no activities.");
   return out;
 }
@@ -459,24 +481,25 @@ export function parseSlotNote(note: string): SlotNote | null {
     new RegExp(`${DAY_IN_TEXT.source}|\\bsal[aă]\\b|\\broom\\b|;`, "i"),
   );
   const head = parseCellText(firstRef > 0 ? withoutTracks.slice(0, firstRef) : withoutTracks);
-  const body = withoutTracks;
+  const body = firstRef >= 0 ? withoutTracks.slice(firstRef) : "";
 
   type Token =
     | { type: "room"; value: string; pos: number }
     | { type: "day"; value: number; pos: number }
     | { type: "time"; startMin: number; endMin: number; pos: number };
   const tokens: Token[] = [];
-  for (const m of body.matchAll(/(?:\bsal[aă]|\broom)\s*:?\s*([\p{L}\d]+(?:\s\d{1,4}\b)?)/giu)) {
-    tokens.push({ type: "room", value: m[1].trim(), pos: m.index });
+  const roomsRe = /(?:\b(?:[Ss]al[aă]|[Rr]oom)\s*:?\s*([\p{L}\d.-]+(?:\s+\d{1,4}\b)?(?:\s+Chimie)?))|(?<![\p{L}\d.])((?:[A-Z]{1,4}-?\s?\d{2,4}[a-z]?|\d{2,4}[A-Z]{1,4}))(?![\p{L}\d])/gu;
+  for (const m of body.matchAll(roomsRe)) {
+    tokens.push({ type: "room", value: (m[1] ?? m[2]).trim(), pos: m.index });
   }
   for (const m of body.matchAll(new RegExp(DAY_IN_TEXT.source, "gi"))) {
     const d = parseDayWord(m[0]);
     if (d) tokens.push({ type: "day", value: d, pos: m.index });
   }
-  for (const m of body.matchAll(/(?<![\d.])(\d{1,2})\s*[-–]\s*(\d{1,2})(?![\d.]|\s*s[aă]pt)/g)) {
-    const a = +m[1];
-    const b = +m[2];
-    if (a >= 7 && b <= 22 && b > a) tokens.push({ type: "time", startMin: a * 60, endMin: b * 60, pos: m.index });
+  for (const m of body.matchAll(/(?<![\p{L}\d.:])\d{1,2}(?:[.:]\d{2})?\s*[-–]\s*\d{1,2}(?:[.:]\d{2})?(?![\p{L}\d.:]|\s*s[aă]pt)/gu)) {
+    if (/(?:\bs[aă]pt\p{L}*|\bweeks?|\bs\.)[.:\s]*$/iu.test(body.slice(0, m.index))) continue;
+    const time = parseTimeRange(m[0]);
+    if (time && time.startMin >= 7 * 60 && time.endMin <= 24 * 60) tokens.push({ type: "time", ...time, pos: m.index });
   }
   tokens.sort((a, b) => a.pos - b.pos);
 

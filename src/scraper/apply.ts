@@ -11,7 +11,6 @@ import {
   groups,
   specializations,
   users,
-  type Degree,
 } from "@/db/schema";
 import type { Catalog } from "./catalog";
 import { acronym, slugify } from "./text";
@@ -60,9 +59,10 @@ export function applyCatalog(db: DB, catalog: Catalog) {
           language: s.language,
           durationYears: s.durationYears,
           url: s.url,
+          source: "catalog" as const,
         };
         tx.insert(specializations)
-          .values({ facultyId: row.id, degree: s.degree, slug, source: "catalog", ...set })
+          .values({ facultyId: row.id, degree: s.degree, slug, ...set })
           .onConflictDoUpdate({
             target: [specializations.facultyId, specializations.degree, specializations.slug],
             set,
@@ -96,22 +96,16 @@ export class Importer {
 
     const code = ref.code?.toLowerCase();
     const withLang = specSlug(ref.name, ref.language);
-    const plain = slugify(ref.name);
-    const other: Degree = ref.degree === "bachelor" ? "master" : "bachelor";
-    const tests: Array<(s: (typeof this.specs)[number]) => boolean> = [
-      (s) => !!code && s.degree === ref.degree && s.code?.toLowerCase() === code,
-      (s) => s.degree === ref.degree && s.slug === withLang,
-      (s) => s.degree === ref.degree && s.slug === plain,
-      (s) => !!code && s.degree === ref.degree && acronym(s.name).toLowerCase() === code,
-      // Sheets are not always clear about the cycle; accept the other one before
-      // inventing a duplicate.
-      (s) => s.degree === other && (s.slug === withLang || s.slug === plain),
-    ];
-    let match: (typeof this.specs)[number] | undefined;
-    for (const test of tests) {
-      match = this.specs.find(test);
-      if (match) break;
-    }
+    const candidates = this.specs.filter((s) => s.degree === ref.degree &&
+      (!ref.language || specSlug("", s.language) === specSlug("", ref.language)));
+    const unique = (rows: typeof candidates) => rows.length === 1 ? rows[0] : undefined;
+    const named = candidates.filter((s) => slugify(s.name) === slugify(ref.name));
+    const match = candidates.find((s) => s.slug === withLang && (ref.language || s.source === "catalog"))
+      ?? unique(named.filter((s) => s.source === "catalog"))
+      ?? unique(named)
+      ?? (code && !named.length ? unique(candidates.filter((s) =>
+        s.code?.toLowerCase() === code || acronym(s.name).toLowerCase() === code)) : undefined)
+      ?? candidates.find((s) => s.slug === withLang);
 
     let id: number | null = match?.id ?? null;
     if (match && ref.code && !match.code) {
@@ -135,8 +129,37 @@ export class Importer {
       this.specs.push(row);
       id = row.id;
     }
+    if (create && id !== null && ref.previousSlugs?.length) {
+      for (const old of this.specs.filter((s) => s.degree === ref.degree && s.id !== id && ref.previousSlugs!.includes(s.slug))) {
+        this.moveProgramme(old.id, id);
+        if (old.source === "schedule") {
+          this.db.delete(specializations).where(eq(specializations.id, old.id)).run();
+          this.specs = this.specs.filter((s) => s.id !== old.id);
+        }
+      }
+    }
     this.specCache.set(cacheKey, id);
     return id;
+  }
+
+  /** Preserve selected groups, exams and entry IDs when a previous importer used an alias. */
+  private moveProgramme(from: number, to: number) {
+    for (const group of this.db.select().from(groups).where(eq(groups.specializationId, from)).all()) {
+      const target = this.db.select().from(groups).where(and(eq(groups.specializationId, to),
+        eq(groups.year, group.year), eq(groups.series, group.series), eq(groups.name, group.name))).get();
+      if (target) {
+        this.db.run(sql`INSERT OR IGNORE INTO entry_groups (entry_id, group_id)
+          SELECT entry_id, ${target.id} FROM entry_groups WHERE group_id = ${group.id}`);
+        this.db.update(users).set({ groupId: target.id }).where(eq(users.groupId, group.id)).run();
+        this.db.delete(groups).where(eq(groups.id, group.id)).run();
+      } else {
+        this.db.update(groups).set({ specializationId: to }).where(eq(groups.id, group.id)).run();
+      }
+    }
+    this.db.update(users).set({ specializationId: to }).where(eq(users.specializationId, from)).run();
+    this.db.run(sql`INSERT OR IGNORE INTO exam_specializations (exam_id, specialization_id)
+      SELECT exam_id, ${to} FROM exam_specializations WHERE specialization_id = ${from}`);
+    this.db.delete(examSpecializations).where(eq(examSpecializations.specializationId, from)).run();
   }
 
   private resolveGroup(specId: number, year: number, series: string, name: string): number {
@@ -170,7 +193,19 @@ export class Importer {
         );
         groupIds.forEach((id) => seenGroups.add(id));
 
-        for (const e of table.entries) {
+        // Some printed sheets put several study years in one grid. A course
+        // belongs to one year even when those years attend a lecture together.
+        const byStudyYear = table.entries.flatMap((entry) => {
+          const audiences = new Map<number, number[]>();
+          for (const index of entry.groups) {
+            const year = table.groups[index].year;
+            const audience = audiences.get(year) ?? [];
+            audience.push(index);
+            audiences.set(year, audience);
+          }
+          return [...audiences.values()].map((groups) => ({ ...entry, groups }));
+        });
+        for (const e of byStudyYear) {
           const ids = [...new Set(e.groups.map((i) => groupIds[i]))].sort((a, b) => a - b);
           if (!ids.length) continue;
           const year = table.groups[e.groups[0]].year;
@@ -185,8 +220,7 @@ export class Importer {
               abbreviation: e.courseAbbr,
               year,
             })
-            // `isOptional` is an admin decision (timetables do not state it), so a
-            // re-scrape leaves it alone.
+            // Keep the administrator's faculty-wide optional-course override.
             .onConflictDoUpdate({
               target: courses.key,
               set: { abbreviation: sql`coalesce(${courses.abbreviation}, ${e.courseAbbr})` },
@@ -213,6 +247,7 @@ export class Importer {
             teacher: e.teacher,
             rawText: e.rawText,
             isSlotOption: e.isSlotOption,
+            publishedOptional: e.publishedOptional ?? false,
           };
           const row = this.db
             .insert(entries)
@@ -301,6 +336,21 @@ export class Importer {
         AND id NOT IN (SELECT course_id FROM entries)`);
     const specIds = this.specs.map((s) => s.id);
     if (!specIds.length) return;
+    // When the source withdraws a duplicate label and publishes one group for the
+    // cohort, an existing profile still refers to that same cohort.
+    this.db.run(sql`
+      WITH active AS (
+        SELECT DISTINCT g.id, g.specialization_id, g.year, g.series
+        FROM groups g JOIN entry_groups eg ON eg.group_id = g.id JOIN entries e ON e.id = eg.entry_id
+        JOIN specializations sp ON sp.id = g.specialization_id
+        WHERE sp.faculty_id = ${this.facultyId} AND e.semester_id = ${this.semesterId}
+      ), sole AS (
+        SELECT specialization_id, year, series, min(id) AS id
+        FROM active GROUP BY specialization_id, year, series HAVING count(*) = 1
+      )
+      UPDATE users SET group_id = sole.id
+      FROM groups old JOIN sole USING (specialization_id, year, series)
+      WHERE users.group_id = old.id AND old.id <> sole.id`);
     const used = this.db.selectDistinct({ id: entryGroups.groupId }).from(entryGroups).all().map((r) => r.id);
     const picked = this.db
       .selectDistinct({ id: users.groupId })

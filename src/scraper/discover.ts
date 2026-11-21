@@ -17,6 +17,7 @@ export function extractLinks(html: string, baseUrl: string): PageLink[] {
   $("script, style, noscript, nav, header, footer").remove();
   const links: PageLink[] = [];
   let context = "";
+  let contextElement: ReturnType<typeof $> | null = null;
   $("body *").each((_, el) => {
     const tag = el.tagName?.toLowerCase();
     if (!tag) return;
@@ -34,19 +35,25 @@ export function extractLinks(html: string, baseUrl: string): PageLink[] {
     }
     if (!CONTEXT_TAGS.has(tag)) return;
     // Only text that belongs to this element itself, not to links nested inside it.
-    const own = squash(
+    // Keep a whole heading even when a CMS styles its year and semester in
+    // separate <strong> elements. A nested fragment must not replace it.
+    if (contextElement?.find(el).length) return;
+    const own = !$(el).find("a").length && /^(?:p|h[1-6])$/.test(tag) ? squash($(el).text()) : squash(
       $(el)
         .contents()
         .filter((__, node) => node.type === "text")
         .text(),
     );
-    if (own.length >= 6 && own.length <= 220 && CONTEXT_RE.test(own)) context = own;
+    if (own.length >= 6 && own.length <= 220 && CONTEXT_RE.test(own)) {
+      context = own;
+      contextElement = /^(?:p|h[1-6])$/.test(tag) ? $(el) : null;
+    }
   });
   return links;
 }
 
 export function detectAcademicYear(text: string): string | null {
-  const t = text.replace(/%20|_/g, " ");
+  const t = text.replace(/(20\d{2})_(?=(?:20)?\d{2}\b|(?:20)?\d{2}_)/g, "$1-").replace(/%20|_/g, " ");
   const long = /(20\d\d)\s*[-–\/]\s*(20\d\d)/.exec(t);
   if (long && +long[2] === +long[1] + 1) return `${long[1]}-${long[2]}`;
   const short = /(?<!\d)(20\d\d)\s*[-–\/]\s*(\d\d)(?!\d)/.exec(t);
@@ -59,7 +66,7 @@ export function detectAcademicYear(text: string): string | null {
 export function detectSemester(text: string): number | null {
   const t = stripDiacritics(text).replace(/%20|_/g, " ");
   const m =
-    /sem(?:estrul)?\.?\s*(?:al\s+)?(II|I|2|1)(?![\dIV])/i.exec(t) ??
+    /sem(?:estrul(?:ui)?)?[.\s-]*(?:al\s+)?(II|I|2|1)(?![\dIV])/i.exec(t) ??
     /\b(II|I)\s*-?\s*lea\b/i.exec(t) ??
     /\bS([12])\b/.exec(t);
   if (!m) return null;
@@ -84,7 +91,8 @@ const NOT_TIMETABLE_RE = /consulta|disponibil|s[aă]li\b|sali\b|grafic|tutori|de
 
 export function classifyLink(link: PageLink, page: "timetable" | "exams"): DiscoveredSource | null {
   const format = detectFormat(link.url);
-  const haystack = `${link.label} ${link.context} ${decodeURIComponent(link.url.split("/").pop() ?? "")}`;
+  const filename = decodeURIComponent(new URL(link.url).pathname.split("/").pop() ?? "");
+  const haystack = `${link.label} ${link.context} ${filename}`;
   if (NOT_TIMETABLE_RE.test(`${link.label} ${decodeURIComponent(link.url.split("/").pop() ?? "")}`)) return null;
 
   let kind: SourceKind | null = null;
@@ -100,8 +108,8 @@ export function classifyLink(link: PageLink, page: "timetable" | "exams"): Disco
     context: link.context,
     kind,
     format,
-    academicYear: detectAcademicYear(haystack),
-    semester: detectSemester(haystack),
+    academicYear: detectAcademicYear(filename) ?? detectAcademicYear(haystack),
+    semester: detectSemester(filename) ?? detectSemester(haystack),
   };
 }
 
@@ -115,6 +123,11 @@ export function matchesSemester(source: DiscoveredSource, semester: SemesterRef)
 /** Turns a share/view URL into one that returns the file itself. */
 export function downloadUrl(source: Pick<DiscoveredSource, "url" | "format">): string {
   const { url } = source;
+  if (source.format === "pdf" && new URL(url).hostname === "nextcloud.upt.ro") {
+    const target = new URL(url);
+    target.pathname = target.pathname.replace(/\/$/, "") + "/download";
+    return target.href;
+  }
   if (/sharepoint\.com\//i.test(url)) {
     const u = new URL(url);
     u.searchParams.set("download", "1");

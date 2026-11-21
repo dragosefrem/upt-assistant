@@ -72,6 +72,28 @@ function parseRange(range: string) {
   return { top: +m[2], left: colIndex(m[1]), bottom: +m[4], right: colIndex(m[3]) };
 }
 
+/** Number of visible rows or columns up to and including each worksheet index. */
+function visibleCounts(length: number, hidden: (index: number) => boolean | undefined) {
+  const counts = new Uint32Array(length + 1);
+  for (let i = 1; i <= length; i++) counts[i] = counts[i - 1] + (hidden(i) ? 0 : 1);
+  return counts;
+}
+
+function isSpacer(column: ExcelJS.Column): boolean {
+  if (column.hidden || column.width === undefined || column.width >= 1) return column.hidden;
+  // AC retains an old master's timetable inside a sub-character-width black divider.
+  // A narrow column with legible text (e.g. a vertical weekday) is still part of the grid.
+  let masked = false, legible = false;
+  column.eachCell((cell) => {
+    if (cell.master !== cell || !cellText(cell.value)) return;
+    const fill = cell.fill;
+    if (fill?.type !== "pattern" || fill.pattern !== "solid" || !fill.fgColor?.argb ||
+        cell.font?.color?.argb !== fill.fgColor.argb) legible = true;
+    else masked = true;
+  });
+  return masked && !legible;
+}
+
 export async function loadWorkbook(data: Buffer): Promise<Grid[]> {
   const workbook = new ExcelJS.Workbook();
   // exceljs types predate Node's generic Buffer; the runtime accepts any Buffer.
@@ -80,24 +102,24 @@ export async function loadWorkbook(data: Buffer): Promise<Grid[]> {
   for (const sheet of workbook.worksheets) {
     if (sheet.state !== "visible") continue;
     const grid = new Grid(sheet.name);
-    const spans = new Map<string, { rowSpan: number; colSpan: number }>();
-    const covered = new Set<string>();
+    const rows = visibleCounts(sheet.rowCount, (i) => sheet.findRow(i)?.hidden);
+    const cols = visibleCounts(sheet.columnCount, (i) => isSpacer(sheet.getColumn(i)));
+    const merges = new Map<string, { bottom: number; right: number }>();
     for (const ref of (sheet.model as { merges?: string[] }).merges ?? []) {
       const r = parseRange(ref);
-      if (!r) continue;
-      spans.set(`${r.top}:${r.left}`, { rowSpan: r.bottom - r.top + 1, colSpan: r.right - r.left + 1 });
-      for (let row = r.top; row <= r.bottom; row++)
-        for (let col = r.left; col <= r.right; col++)
-          if (row !== r.top || col !== r.left) covered.add(`${row}:${col}`);
+      if (r) merges.set(`${r.top}:${r.left}`, r);
     }
     sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-        const key = `${rowNumber}:${colNumber}`;
-        if (covered.has(key)) return;
-        const text = cellText(cell.value);
-        if (!text.trim()) return;
-        const span = spans.get(key) ?? { rowSpan: 1, colSpan: 1 };
-        grid.add({ row: rowNumber, col: colNumber, ...span, text });
+        if (cell.master !== cell) return;
+        const merge = merges.get(`${rowNumber}:${colNumber}`);
+        // A merge can start in a hidden column and still cover visible groups.
+        const rowsBefore = rows[rowNumber - 1], colsBefore = cols[colNumber - 1];
+        const rowSpan = rows[merge?.bottom ?? rowNumber] - rowsBefore;
+        const colSpan = cols[merge?.right ?? colNumber] - colsBefore;
+        if (rowSpan && colSpan) {
+          grid.add({ row: rowsBefore + 1, col: colsBefore + 1, rowSpan, colSpan, text: cellText(cell.value) });
+        }
       });
     });
     grids.push(grid);

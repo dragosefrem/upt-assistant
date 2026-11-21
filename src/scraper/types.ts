@@ -4,6 +4,7 @@ import type { ParsedTimetable } from "./timetable";
 
 /** A document found on a faculty page that may hold a timetable or exam schedule. */
 export interface DiscoveredSource {
+  reader?: "distance";
   url: string;
   label: string;
   context: string;
@@ -19,6 +20,8 @@ export interface SpecRef {
   code?: string | null;
   degree: Degree;
   language?: string | null;
+  /** Earlier database slugs for the same programme, before the catalogue was matched. */
+  previousSlugs?: string[];
 }
 
 export interface NormalizedGroup {
@@ -41,6 +44,7 @@ export interface NormalizedEntry {
   weeks: string;
   rawText: string;
   isSlotOption: boolean;
+  publishedOptional?: boolean;
   /** Indexes into the owning `NormalizedTimetable.groups`. */
   groups: number[];
 }
@@ -85,11 +89,14 @@ export interface FacultyAdapter {
   slug: string;
   /** Pages to scan for timetable links (defaults to the faculty's schedule URL). */
   timetablePages?(semester: SemesterRef, scheduleUrl: string | null): string[];
+  timetableSources?(html: string, url: string, semester: SemesterRef): DiscoveredSource[] | Promise<DiscoveredSource[]>;
+  parseHtml?(html: string, source: DiscoveredSource): NormalizedTimetable;
+  parseGrid?(grid: Grid, source: DiscoveredSource): NormalizedTimetable | null;
   /** Pages to scan for exam schedule links. */
   examPages?(semester: SemesterRef): string[];
   /** Overrides or vetoes the generic classification of one link. */
   classify?(link: PageLink, guess: DiscoveredSource, semester: SemesterRef, page: "timetable" | "exams"): DiscoveredSource | null;
   /** Maps one parsed sheet onto specializations/groups. Return null to skip the sheet. */
-  normalize?(parsed: ParsedTimetable, source: DiscoveredSource): NormalizedTimetable | null;
+  normalize?(parsed: ParsedTimetable, source: DiscoveredSource, grid?: Grid): NormalizedTimetable | null;
   parseExams?(grids: Grid[], source: DiscoveredSource): NormalizedExam[];
 }

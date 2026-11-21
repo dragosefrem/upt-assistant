@@ -11,7 +11,8 @@ import { genericNormalize } from "./generic";
  */
 
 const CTI: SpecRef = { name: "Calculatoare și tehnologia informației", code: "CTI", degree: "bachelor", language: "RO" };
-const CTI_EN: SpecRef = { name: "Calculatoare și tehnologia informației", code: "CTI-EN", degree: "bachelor", language: "EN" };
+const C_EN: SpecRef = { name: "Calculatoare", code: "C-EN", degree: "bachelor", language: "EN",
+  previousSlugs: ["calculatoare-si-tehnologia-informatiei-en"] };
 const C: SpecRef = { name: "Calculatoare", code: "C", degree: "bachelor", language: "RO" };
 const TI: SpecRef = { name: "Tehnologia informației", code: "TI", degree: "bachelor", language: "RO" };
 const AIASI: SpecRef = { name: "Automatică, informatică aplicată și sisteme inteligente", code: "AIASI", degree: "bachelor", language: "RO" };
@@ -33,7 +34,9 @@ const MASTERS: Record<string, string> = {
 
 function master(code: string): SpecRef {
   const key = code.toUpperCase();
-  return { name: MASTERS[key] ?? code, code: key, degree: "master" };
+  return { name: MASTERS[key] ?? code, code: key, degree: "master",
+    language: ["CCIT", "DW", "ML", "QC", "SE", "AES", "GD"].includes(key) ? "EN" : "RO",
+    previousSlugs: key === "DW" ? ["digital-media-and-web-development"] : undefined };
 }
 
 /** Audience codes used in exam bookings → the specializations that sit the exam. */
@@ -43,7 +46,7 @@ function audienceSpecs(audience: string): SpecRef[] {
     const token = norm(raw).replace(/ /g, "");
     if (token === "cro" || token === "c") specs.push(C, CTI);
     else if (token === "ti") specs.push(TI, CTI);
-    else if (token === "ceng" || token === "cen") specs.push(CTI_EN);
+    else if (token === "ceng" || token === "cen") specs.push(C_EN);
     else if (token === "aia" || token === "aiasi") specs.push(AIA, AIASI);
     else if (token.startsWith("m") && raw.includes("-")) specs.push(master(raw.split("-").slice(1).join("-").trim()));
   }
@@ -90,7 +93,7 @@ export const acAdapter: FacultyAdapter = {
       });
     }
     if ((m = /^An (\d) Eng$/i.exec(sheet))) {
-      return genericNormalize(parsed, source, { degree: "bachelor", year: +m[1], spec: () => CTI_EN, series: () => "" });
+      return genericNormalize(parsed, source, { degree: "bachelor", year: +m[1], spec: () => C_EN, series: () => "" });
     }
     if ((m = /^AIA(SI)?-an (I{1,3}|IV)$/i.exec(sheet))) {
       return genericNormalize(parsed, source, { degree: "bachelor", spec: () => (m![1] ? AIASI : AIA), series: () => "" });
