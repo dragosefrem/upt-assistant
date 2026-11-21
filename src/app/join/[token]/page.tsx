@@ -16,7 +16,8 @@ import { GUEST_COOKIE } from "./guest-cookie";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
-  return { title: t.contacts.guest.title, robots: { index: false, follow: false }, referrer: "no-referrer" };
+  // Keep invitation tokens out of referrers while allowing a same-origin form POST before hydration.
+  return { title: t.contacts.guest.title, robots: { index: false, follow: false }, referrer: "strict-origin" };
 }
 
 export default async function GuestPage({ params }: PageProps<"/join/[token]">) {

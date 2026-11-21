@@ -11,7 +11,7 @@ export function InvitationForm({ action, children, className }: {
 }) {
   const [result, submit, pending] = useActionState(action, {});
   return (
-    <form action={submit} aria-busy={pending}>
+    <form action={submit} aria-busy={pending} onReset={(event) => event.preventDefault()}>
       <fieldset disabled={pending} className={className}>{children}</fieldset>
       {result.error && <p role="alert" className="mt-2 text-sm text-red-700">{result.error}</p>}
     </form>

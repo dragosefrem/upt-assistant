@@ -1,8 +1,11 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as restoreGuest } from "@/app/join/[token]/manage/[key]/route";
+import { generateMetadata as guestMetadata } from "@/app/join/[token]/page";
 import { getDb } from "@/db";
 import { courses, entries, entryGroups, exams, examSpecializations, faculties, groups, personalEvents, semesters, specializations, userOverrides, users } from "@/db/schema";
+import { messages } from "@/i18n/messages";
+import * as i18nServer from "@/i18n/server";
 import { answerContact, cancelContactRequest, contactList, findPerson, incomingContactCount, invitationFailure, InvitationError, inviteContact, removeContact } from "@/lib/contacts";
 import { contactWeek } from "@/lib/contact-schedule";
 import { exportItems, toICS } from "@/lib/export";
@@ -246,6 +249,15 @@ describe("group RSVPs and calendars", () => {
 });
 
 describe("shareable invitations", () => {
+  it("keeps the guest URL private while preserving the origin on a native RSVP submission", async () => {
+    const locale = vi.spyOn(i18nServer, "getT").mockResolvedValue(messages.en);
+    try {
+      expect(await guestMetadata()).toMatchObject({ referrer: "strict-origin", robots: { index: false, follow: false } });
+    } finally {
+      locale.mockRestore();
+    }
+  });
+
   it("lets guests join a link-only event, revise their own seat and carry it into an account", () => {
     const id = plan({ contactIds: [], share: true, startMin: 1380 });
     const token = memberEvent("alex", id)!.shareToken!;
@@ -288,6 +300,7 @@ describe("shareable invitations", () => {
     });
     const result = await restore(token, key);
     expect(result.status).toBe(303);
+    expect(result.headers.get("referrer-policy")).toBe("no-referrer");
     expect(result.headers.get("location")).toBe(`/join/${token}`);
     expect(result.headers.get("set-cookie")).toContain(`Path=/join/${token}`);
     expect((await restore(token, "J".repeat(43))).status).toBe(404);
