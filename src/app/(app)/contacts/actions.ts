@@ -5,15 +5,15 @@ import { redirect } from "next/navigation";
 import type { FormResult } from "@/components/InvitationForm";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
-import { answerContact, cancelContactRequest, invitationFailure, inviteContact, removeContact } from "@/lib/contacts";
+import { answerContact, cancelContactRequest, invitationFailure, inviteContactById, removeContact } from "@/lib/contacts";
 import { respondToEvent } from "@/lib/group-events";
 import { createGroupEvent } from "@/lib/group-planning";
 import { matchGroups, removeSavedContact, saveContact, SavedContactError, SAVED_NAME_MAX, type GroupChoice } from "@/lib/saved-contacts";
 
-export async function inviteAction(email: string): Promise<FormResult> {
+export async function inviteAction(recipientId: string): Promise<FormResult> {
   const user = await requireOnboardedUser();
   try {
-    inviteContact(user.id, email);
+    inviteContactById(user.id, recipientId);
   } catch (error) { return invitationFailure(error, await getLocale()); }
   revalidatePath("/contacts");
   return {};

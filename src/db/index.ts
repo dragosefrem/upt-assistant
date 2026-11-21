@@ -3,6 +3,7 @@ import path from "node:path";
 import Database from "better-sqlite3";
 import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import { stripDiacritics } from "@/scraper/text";
 import * as schema from "./schema";
 import { seed } from "./seed";
 
@@ -14,6 +15,8 @@ function open(): DB {
   const file = process.env.DATABASE_PATH ?? path.join(process.cwd(), "data", "upt.db");
   if (file !== ":memory:") fs.mkdirSync(path.dirname(file), { recursive: true });
   const sqlite = new Database(file);
+  // SQLite's built-in lower() only folds ASCII. Students often type Romanian names without accents.
+  sqlite.function("fold_name", { deterministic: true }, (name: string) => stripDiacritics(name).toLowerCase());
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
   const db = drizzle(sqlite, { schema });

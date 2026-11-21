@@ -1,7 +1,8 @@
 import "server-only";
 import { and, asc, count, eq, inArray, ne, or, sql } from "drizzle-orm";
+import type { SelectedFields } from "drizzle-orm/sqlite-core";
 import { getDb } from "@/db";
-import { contacts, users } from "@/db/schema";
+import { contacts, faculties, groups, specializations, users } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { contacts as contactTexts, type ContactsErrorCode } from "@/i18n/messages/contacts";
 import { normalizeEmail } from "./auth";
@@ -24,6 +25,19 @@ export function invitationFailure(error: unknown, locale: Locale = "en") {
 }
 
 const person = { id: users.id, name: users.name, email: users.email };
+
+/** Left joins keep students with incomplete study profiles in name searches and contact lists. */
+export function contactProfiles<T extends SelectedFields>(extra: T) {
+  return getDb().select({
+    id: users.id, name: users.name, year: sql<number | null>`coalesce(${groups.year}, ${users.year})`,
+    groupName: groups.name, series: groups.series, faculty: faculties.shortName,
+    programme: sql<string | null>`coalesce(${specializations.code}, ${specializations.name})`,
+    ...extra,
+  }).from(users)
+    .leftJoin(groups, eq(groups.id, users.groupId))
+    .leftJoin(specializations, eq(specializations.id, sql`coalesce(${groups.specializationId}, ${users.specializationId})`))
+    .leftJoin(faculties, eq(faculties.id, sql`coalesce(${specializations.facultyId}, ${users.facultyId})`));
+}
 
 export function findPerson(email: string) {
   return getDb().select(person).from(users).where(eq(users.email, normalizeEmail(email))).get();
@@ -50,10 +64,9 @@ function between(a: string, b: string) {
 }
 
 export function contactList(userId: string) {
-  return getDb().select({ ...person, accepted: contacts.accepted, requestedBy: contacts.requestedBy })
-    .from(contacts)
-    .innerJoin(users, otherUser(userId))
-    .where(involving(userId)).orderBy(asc(users.name), asc(users.email)).all();
+  return contactProfiles({ email: users.email, accepted: contacts.accepted, requestedBy: contacts.requestedBy })
+    .innerJoin(contacts, otherUser(userId))
+    .where(involving(userId)).orderBy(sql`fold_name(${users.name})`, asc(users.id)).all();
 }
 
 /** The calendar profiles this viewer is allowed to look up. */
@@ -74,9 +87,19 @@ export function incomingContactCount(userId: string) {
 export function inviteContact(userId: string, email: string) {
   const { person: recipient, error } = lookupContact(email);
   if (error) throw new InvitationError(error);
-  if (recipient.id === userId) throw new InvitationError("notYourself");
-  getDb().insert(contacts).values({ ...pair(userId, recipient.id), requestedBy: userId })
-    .onConflictDoNothing().run();
+  inviteContactById(userId, recipient.id);
+}
+
+export function inviteContactById(userId: string, recipientId: string) {
+  if (recipientId === userId) throw new InvitationError("notYourself");
+  if (typeof recipientId !== "string") throw new InvitationError("accountGone");
+  getDb().transaction((tx) => {
+    if (!tx.select({ id: users.id }).from(users).where(eq(users.id, recipientId)).get()) {
+      throw new InvitationError("accountGone");
+    }
+    tx.insert(contacts).values({ ...pair(userId, recipientId), requestedBy: userId })
+      .onConflictDoNothing().run();
+  }, { behavior: "immediate" });
 }
 
 export function answerContact(userId: string, otherId: string, accept: boolean) {
