@@ -27,6 +27,6 @@ To activate the connection before the first release, review the pending `web` an
 3. Import the university timetables from **Admin → Scrape UPT**, or run `railway ssh --service web -- npm run scrape`.
 4. Run `railway domain --service web --port 3000`. Set `APP_URL` in the web service to the returned HTTPS address and apply the variable change. Verify that `/api/health` returns HTTP 200 at that address and sign in with the administrator account.
 
-Add production mail, AI or Google Calendar credentials to the web service when enabling those features. The configuration preserves their values on later applies. For Google Calendar, register `<APP_URL>/api/google/callback` as the OAuth redirect URI.
+Set `GEMINI_API_KEY` on `web` to enable Gemini. After deployment, a signed-in `GET /api/assistant` reports the active engine. Add mail and Google Calendar credentials when enabling those features. The configuration preserves their values on later applies. For Google Calendar, register `<APP_URL>/api/google/callback` as the OAuth redirect URI.
 
 Password resets and emailed calendars use SMTP. Railway enables outbound SMTP on Pro and higher plans. [Railway outbound networking](https://docs.railway.com/networking/outbound-networking#email-delivery)
