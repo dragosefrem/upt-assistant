@@ -39,10 +39,11 @@ describe("account verification", () => {
     expect(await requestRegistrationLink({ ...input, email: "  " + address.toUpperCase() + "  " })).toBe("sent");
     const { endpoint, message, options, token } = delivered();
     expect(endpoint).toBe("https://api.resend.com/emails");
-    expect(options?.headers).toMatchObject({ Authorization: "Bearer test-sending-key" });
+    const storedId = getDb().select().from(registrationLinks).get()!.id;
+    expect(options?.headers).toMatchObject({ Authorization: "Bearer test-sending-key", "Idempotency-Key": `registration/${storedId}` });
     expect(message).toMatchObject({ to: address, subject: "Confirmă adresa de e-mail pentru Poli", from: "Poli <signup@mail.example.org>" });
     expect(message.text).toContain(input.baseUrl + "/verify/" + token);
-    expect(getDb().select().from(registrationLinks).get()!.id).not.toBe(token);
+    expect(storedId).not.toBe(token);
     expect(registrationTarget(token)).toEqual({ email: address, invite: input.invite });
     expect(getDb().select().from(users).all()).toHaveLength(0);
     expect(getDb().select().from(sessions).all()).toHaveLength(0);

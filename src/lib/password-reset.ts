@@ -7,7 +7,7 @@ import { passwordResets, sessions, users } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { auth } from "@/i18n/messages/auth";
 import { hashPassword, newFeedToken, normalizeEmail, type User } from "./auth";
-import { mailConfigured, sendMail } from "./mail";
+import { accountMailConfigured, sendAccountMail } from "./mail";
 
 /**
  * "Forgot password?": a one-time link sent to the account's e-mail address.
@@ -50,7 +50,7 @@ export function requestPasswordReset(
   afterResponse: (work: () => Promise<void>) => void,
   transport?: Transporter,
 ): "sent" | "not-configured" {
-  if (!baseUrl || (!transport && !mailConfigured())) return "not-configured";
+  if (!baseUrl || (!transport && !accountMailConfigured())) return "not-configured";
   afterResponse(() => sendResetIfEligible(email, baseUrl, locale, transport));
   return "sent";
 }
@@ -76,7 +76,7 @@ async function sendResetIfEligible(email: string, baseUrl: string, locale: Local
   if (!issued) return;
   const message = resetEmail(user, `${baseUrl}/reset/${token}`, user.locale ?? locale);
   try {
-    await sendMail({ to: user.email, ...message }, transport);
+    await sendAccountMail({ to: user.email, ...message }, `password-reset/${id}`, transport);
   } catch (error) {
     db.delete(passwordResets).where(eq(passwordResets.id, id)).run();
     console.error("Password reset: the e-mail could not be sent", error instanceof Error ? error.name : "transport error");
