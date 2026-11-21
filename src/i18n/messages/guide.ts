@@ -77,7 +77,7 @@ const en = {
     {
       id: "phone",
       title: "Put the timetable on your phone",
-      body: "E-mail yourself the calendar file or subscribe to it, and your classes and exam reminders appear in your phone's calendar.",
+      body: "Send yourself the calendar file or subscribe to it to get reminders for your classes, plans and exams on your phone.",
       href: "/settings#export",
       action: "Export the calendar",
     },
@@ -250,7 +250,7 @@ const ro: typeof en = {
     {
       id: "phone",
       title: "Pune-ți orarul pe telefon",
-      body: "Trimite-ți fișierul de calendar pe e-mail sau abonează-te la el, iar orele și alertele de examen apar în calendarul telefonului.",
+      body: "Trimite-ți calendarul pe e-mail sau abonează-te la el ca să primești pe telefon notificări pentru ore, evenimente și examene.",
       href: "/settings#export",
       action: "Exportă calendarul",
     },

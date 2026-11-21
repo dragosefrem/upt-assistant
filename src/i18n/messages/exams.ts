@@ -1,6 +1,6 @@
 import { plural } from "../config";
 
-/** Texts for the exams page, exam cards, the reminder bell and Poli's exam tips (src/lib/examTips.ts). */
+/** Texts for the exams page, exam cards and Poli's exam tips (src/lib/examTips.ts). */
 const en = {
   page: {
     title: "Exams",
@@ -23,37 +23,6 @@ const en = {
     roomUnknown: "Room not published yet",
     approximate: "(approximate)",
     openMap: "Open map ↗",
-  },
-  bell: {
-    label: "Reminders",
-    labelNew: (n: number) => `Reminders, ${n} new`,
-    title: "Exam reminders",
-    heading: "Reminders",
-    subheading: "Your exams in the next 30 days",
-    room: (room: string) => `Room ${room}`,
-    roomTba: "Room TBA",
-    openMap: "Open map ↗",
-    empty: "No exams in the next 30 days 🎉",
-    unsupported: "This browser can't show notifications.",
-    blocked: "Notifications are blocked for this site. Allow them in the browser's site settings to get reminders.",
-    deviceTitle: "Notify me on this device",
-    deviceHint: "A week, a day, 2 h and 30 min before, while Poli is open.",
-    exportBefore: "📱 Want reminders even when the app is closed? ",
-    exportLink: "Export to Google Calendar",
-    exportAfter: ": exams come with alerts a day and 2 hours before.",
-    enabledTitle: "🔔 Poli will remind you",
-    enabledBody: "A week, a day, 2 hours and 30 minutes before each exam, with the room to go to.",
-    dismiss: "Dismiss",
-    /** Texts of the reminder at each milestone. `where` is a room/building phrase; the bell capitalises it where it starts a sentence. */
-    where: (room: string | null, building: string | null) =>
-      [room ? `Room ${room}` : null, building].filter(Boolean).join(" · ") || "Check the room on the exam list",
-    startsIn: (course: string, minutes: number) => `📝 ${course} starts in ${minutes} min`,
-    startsInBody: (where: string) => `Head to ${where}. Good luck! 🍀`,
-    inHours: (course: string, hours: number) => `📝 ${course} in ${hours} h`,
-    inHoursBody: (where: string) => `${where}. Time to get going, and bring your student ID.`,
-    tomorrow: (course: string) => `📝 ${course} exam tomorrow`,
-    tomorrowBody: (when: string, where: string) => `${when} · ${where}. Light review and a good night's sleep! 😴`,
-    inDays: (course: string, days: number) => `📝 ${course} exam in ${days} days`,
   },
   countdown: {
     now: "now",
@@ -131,36 +100,6 @@ const ro: typeof en = {
     roomUnknown: "Sala nu a fost publicată încă",
     approximate: "(aproximativ)",
     openMap: "Deschide harta ↗",
-  },
-  bell: {
-    label: "Notificări",
-    labelNew: (n: number) => `Notificări, ${plural("ro", n, { one: "una nouă", few: `${n} noi`, other: `${n} de noi` })}`,
-    title: "Notificări pentru examene",
-    heading: "Notificări",
-    subheading: "Examenele tale din următoarele 30 de zile",
-    room: (room: string) => `Sala ${room}`,
-    roomTba: "Sala nu e anunțată",
-    openMap: "Deschide harta ↗",
-    empty: "Niciun examen în următoarele 30 de zile 🎉",
-    unsupported: "Browserul acesta nu poate afișa notificări.",
-    blocked: "Notificările sunt blocate pentru acest site. Permite-le din setările site-ului, în browser, ca să primești reamintiri.",
-    deviceTitle: "Anunță-mă pe acest dispozitiv",
-    deviceHint: "Cu o săptămână, o zi, 2 h și 30 min înainte, cât timp folosești Poli.",
-    exportBefore: "📱 Vrei reamintiri și când aplicația e închisă? ",
-    exportLink: "Exportă în Google Calendar",
-    exportAfter: ": examenele vin cu alerte cu o zi și cu 2 ore înainte.",
-    enabledTitle: "🔔 Poli îți va aminti",
-    enabledBody: "Cu o săptămână, o zi, 2 ore și 30 de minute înainte de fiecare examen, cu sala în care trebuie să mergi.",
-    dismiss: "Închide",
-    where: (room: string | null, building: string | null) =>
-      [room ? `sala ${room}` : null, building].filter(Boolean).join(" · ") || "verifică sala în lista de examene",
-    startsIn: (course: string, minutes: number) => `📝 ${course} începe în ${minutes} min`,
-    startsInBody: (where: string) => `Mergi la ${where}. Baftă! 🍀`,
-    inHours: (course: string, hours: number) => `📝 ${course} în ${hours} h`,
-    inHoursBody: (where: string) => `${where}. E timpul să pornești și nu uita carnetul de student.`,
-    tomorrow: (course: string) => `📝 Examen la ${course} mâine`,
-    tomorrowBody: (when: string, where: string) => `${when} · ${where}. O recapitulare ușoară și un somn bun! 😴`,
-    inDays: (course: string, days: number) => `📝 Examen la ${course} în ${zile(days)}`,
   },
   countdown: {
     now: "acum",

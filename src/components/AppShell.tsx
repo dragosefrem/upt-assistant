@@ -21,7 +21,7 @@ export async function AppShell({ user, children }: { user: User; children: React
           <Brand />
           <StudentNav invites={invites} />
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            <NotificationBell />
+            <NotificationBell key={user.id} userId={user.id} invitationCount={invites} />
             <UserMenu name={user.name} email={user.email} admin={user.role === "admin"} />
           </div>
         </div>

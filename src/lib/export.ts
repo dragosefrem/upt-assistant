@@ -9,6 +9,7 @@ import type { User } from "./auth";
 import { sharedEventsFor } from "./group-events";
 import { isPublicHoliday } from "./holidays";
 import { kindLabel } from "./kinds";
+import { EVENT_NOTICE_MINUTES } from "./notification-timing";
 import { currentSemester, examsForUser, occurrenceMoves, placeResolver, studentWeek, type Semester } from "./schedule";
 import { TIME_ZONE, addDays, describeWeeks, formatDate, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
 
@@ -135,7 +136,7 @@ export function exportItems(user: User, locale: Locale = user.locale ?? "en"): E
     items.push({ uid: `group-${e.id}`, title: e.title, location: e.location ?? "", description: common[locale].kinds.shared,
       date: e.date, startMin: e.startMin, endMin: e.endMin });
   }
-  return items;
+  return items.map((item) => ({ ...item, alarms: item.alarms ?? [EVENT_NOTICE_MINUTES] }));
 }
 
 /* ───────────────────────────── iCalendar ───────────────────────────── */

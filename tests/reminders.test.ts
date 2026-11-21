@@ -112,7 +112,7 @@ describe("exam alarms in the .ics export", () => {
     expect(ics.indexOf("END:VALARM")).toBeLessThan(ics.indexOf("END:VEVENT"));
   });
 
-  it("adds no alarm to ordinary events", () => {
+  it("omits alarms when the export item has none", () => {
     const ics = toICS([{ uid: "p-1", title: "Gym", description: "", location: "", date: "2027-01-20", startMin: 1080, endMin: 1140 }]);
     expect(ics).not.toContain("VALARM");
   });

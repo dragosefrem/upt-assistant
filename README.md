@@ -33,6 +33,10 @@ works in Romanian and English.
   the faculty's exams; and a study planner that works backwards from each exam and puts
   study blocks into the student's free time.
 - **Attendance.** Mark each class as attended or missed and see the totals per course.
+- **Notifications.** The bell shows contact requests, event invitations, today's and
+  tomorrow's timetable, and exams over the next 30 days. Classes and personal or group
+  plans have a 15-minute reminder. Exams have four reminders while Poli is open.
+  Calendar exports include the 15-minute reminders and alerts one day and two hours before exams.
 - **Contacts and group events.** Link accounts with colleagues (requests are accepted
   by the other person; real calendars then count as busy time), or save a friend as a
   name plus a group. See shared free time over custom dates, book a group event, collect
