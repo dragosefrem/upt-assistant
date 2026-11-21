@@ -5,22 +5,27 @@ import { eventParticipants, groupEvents } from "@/db/schema";
 import type { User } from "./auth";
 import { acceptedScheduleContacts, InvitationError } from "./contacts";
 import { tentativeTimesFor } from "./group-events";
+import { nextDays, PLANNING_PAGE_DAYS, type DateRange } from "./planning-range";
 import { eventsBetween, freeSlots } from "./schedule";
-import { addDays, formatMinutes, localInstant, mondayOf, nowLocal } from "./time";
+import { daysBetween, formatMinutes, localInstant, nowLocal } from "./time";
 
 /** Only the intersection of free intervals leaves the server. */
-export function weeklyAvailability(user: User, contactIds: string[]) {
+export function groupAvailability(user: User, contactIds: string[], range?: DateRange, asOf = nowLocal()) {
+  const { date: today, minutes } = asOf;
+  const { from, to } = range ?? nextDays(today, 7);
+  const span = daysBetween(from, to);
+  if (!Number.isInteger(span) || from < today || span < 0 || span >= PLANNING_PAGE_DAYS) {
+    throw new InvitationError("Choose a valid page of upcoming dates.");
+  }
   const ids = [...new Set(contactIds)];
   const others = acceptedScheduleContacts(user.id, ids);
   if (others.length !== ids.length) throw new InvitationError("Choose people from your accepted contacts.");
-  const { date: today, minutes } = nowLocal();
-  const sunday = addDays(mondayOf(today), 6);
   const busy = [user, ...others].flatMap((person) => [
-    ...eventsBetween(person, today, sunday),
-    ...tentativeTimesFor(person.id, today, sunday),
+    ...eventsBetween(person, from, to),
+    ...tentativeTimesFor(person.id, from, to),
   ]);
-  busy.push({ date: today, startMin: 0, endMin: minutes + 1 });
-  return freeSlots(busy, today, sunday, { dayStart: 0, dayEnd: 1440, weekdaysOnly: false, minMinutes: 1 });
+  if (from === today) busy.push({ date: today, startMin: 0, endMin: minutes + 1 });
+  return freeSlots(busy, from, to, { dayStart: 0, dayEnd: 1440, weekdaysOnly: false, minMinutes: 1 });
 }
 
 interface Booking {
@@ -56,9 +61,9 @@ export function createGroupEvent(user: User, booking: Booking) {
       throw new InvitationError("Set the reply deadline after now and at or before the event starts.");
     }
     // Check the current calendars and contact permissions under the same write lock as the booking.
-    const windows = weeklyAvailability(user, contactIds);
-    if (!windows.some((w) => w.date === date && w.startMin <= startMin && endMin <= w.endMin)) {
-      throw new InvitationError("That time is no longer free for everyone this week. Check the available times again.");
+    const windows = groupAvailability(user, contactIds, { from: date, to: date });
+    if (!windows.some((w) => w.startMin <= startMin && endMin <= w.endMin)) {
+      throw new InvitationError("That time is no longer free for everyone. Check the available times again.");
     }
     const id = randomUUID();
     tx.insert(groupEvents).values({

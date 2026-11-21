@@ -2,12 +2,13 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as restoreGuest } from "@/app/join/[token]/manage/[key]/route";
 import { getDb } from "@/db";
-import { courses, entries, entryGroups, exams, examSpecializations, faculties, groups, personalEvents, specializations, userOverrides, users } from "@/db/schema";
+import { courses, entries, entryGroups, exams, examSpecializations, faculties, groups, personalEvents, semesters, specializations, userOverrides, users } from "@/db/schema";
 import { answerContact, cancelContactRequest, contactList, findPerson, incomingContactCount, inviteContact, removeContact } from "@/lib/contacts";
 import { contactWeek } from "@/lib/contact-schedule";
 import { exportItems, toICS } from "@/lib/export";
 import { groupInviteCount, memberEvent, myGroupEvents, publicEvent, respondToEvent, sharedEventsFor } from "@/lib/group-events";
-import { createGroupEvent, weeklyAvailability } from "@/lib/group-planning";
+import { createGroupEvent, groupAvailability } from "@/lib/group-planning";
+import { planningRange } from "@/lib/planning-range";
 import { currentSemester, eventsBetween } from "@/lib/schedule";
 import { localInstant } from "@/lib/time";
 
@@ -65,7 +66,7 @@ describe("contact requests", () => {
     expect(contactList("bea")[0]).toMatchObject({ id: "alex", accepted: true });
     expect(contactList("cam")).toHaveLength(0);
     removeContact("bea", "alex");
-    expect(() => weeklyAvailability(host(), ["bea"])).toThrow(/accepted contacts/);
+    expect(() => groupAvailability(host(), ["bea"])).toThrow(/accepted contacts/);
   });
 });
 
@@ -121,7 +122,7 @@ describe("finding a time together", () => {
       date: friday, startMin: 780, endMin: 840, rawText: "" }).returning().get();
     db.insert(examSpecializations).values({ examId: exam.id, specializationId: spec.id }).run();
     db.insert(personalEvents).values({ userId: "alex", title: "Appointment", day: 5, startMin: 660, endMin: 780 }).run();
-    const slots = weeklyAvailability(host(), ["bea", "bea"]);
+    const slots = groupAvailability(host(), ["bea", "bea"]);
     expect(slots.filter((s) => s.date === friday)).toEqual([
       { date: friday, startMin: 0, endMin: 600 }, { date: friday, startMin: 840, endMin: 1440 },
     ]);
@@ -132,15 +133,25 @@ describe("finding a time together", () => {
       { date: friday, startMin: 780, endMin: 840, title: "Private exam", kind: "exam", room: null },
     ]);
     expect(() => createGroupEvent(host(), { ...booking, contactIds: ["bea"], startMin: 650 })).toThrow(/no longer free/);
-    expect(() => weeklyAvailability(host(), ["dan"])).toThrow(/accepted contacts/);
+    expect(() => groupAvailability(host(), ["dan"])).toThrow(/accepted contacts/);
+
+    const spring = db.select().from(semesters).where(eq(semesters.number, 2)).get()!;
+    const springCourse = db.insert(courses).values({ key: "c2", name: "Spring lab", semesterId: spring.id, facultyId: faculty.id }).returning().get();
+    const springLab = db.insert(entries).values({ key: "e2", day: 1, startMin: 900, endMin: 960, courseId: springCourse.id, kind: "lab", semesterId: spring.id, rawText: "" }).returning().get();
+    db.insert(entryGroups).values({ groupId: group.id, entryId: springLab.id }).run();
+    const springMonday = "2027-03-01";
+    expect(groupAvailability(host(), ["bea"], { from: springMonday, to: springMonday })).toEqual([
+      { date: springMonday, startMin: 0, endMin: 900 }, { date: springMonday, startMin: 960, endMin: 1440 },
+    ]);
+    expect(() => createGroupEvent(host(), { ...booking, contactIds: ["bea"], date: springMonday, startMin: 900 })).toThrow(/no longer free/);
   });
 
-  it("validates the deadline, week, attendees and boundaries again at booking time", () => {
+  it("validates the deadline, date, attendees and boundaries again at booking time", () => {
     connect("bea");
     const make = (options: Partial<typeof booking>) => createGroupEvent(host(), { ...booking, contactIds: ["bea"], ...options });
     expect(() => make({ contactIds: [] })).toThrow(/guest link/);
     expect(() => make({ contactIds: ["dan"] })).toThrow(/accepted contacts/);
-    expect(() => make({ date: "2026-11-23" })).toThrow(/this week/);
+    expect(() => make({ date: "2026-11-15" })).toThrow(/future time/);
     expect(() => make({ duration: 500 })).toThrow(/duration/);
     expect(() => make({ deadline: "2026-11-16T10:59" })).toThrow(/deadline/);
     expect(() => make({ deadline: "2026-11-20T18:01" })).toThrow(/deadline/);
@@ -149,6 +160,23 @@ describe("finding a time together", () => {
     expect(sharedEventsFor("alex")).toHaveLength(0);
     expect(myGroupEvents("bea").map((e) => e.id)).toEqual([id]);
     expect(myGroupEvents("dan")).toEqual([]);
+  });
+
+  it("opens a full seven days on Saturday and can book and recheck a date several months out", () => {
+    vi.setSystemTime(new Date("2026-11-21T12:00:00Z"));
+    connect("bea");
+    const days = groupAvailability(host(), ["bea"]);
+    expect(days).toHaveLength(7);
+    expect(days[0]).toEqual({ date: "2026-11-21", startMin: 841, endMin: 1440 });
+    expect(days.at(-1)?.date).toBe("2026-11-27");
+    const date = "2027-02-01";
+    const page = planningRange("2026-11-21", { from: "2026-11-21", to: date, page: "3" });
+    expect(groupAvailability(host(), ["bea"], page.visible).at(-1)).toEqual({ date, startMin: 0, endMin: 1440 });
+    const details = { ...booking, date, contactIds: ["bea"], deadline: "2027-01-30T18:00" };
+    const id = createGroupEvent(host(), details);
+    expect(() => createGroupEvent(host(), details)).toThrow(/no longer free/);
+    reply(id, "bea", "accepted");
+    expect(eventsBetween(account("bea"), date, date)).toMatchObject([{ date, groupEventId: id }]);
   });
 });
 
@@ -165,7 +193,7 @@ describe("group RSVPs and calendars", () => {
     expect(groupInviteCount("bea")).toBe(0);
     expect(calendar("bea")).toMatchObject([{ title: "Football night", room: "West pitch", groupEventId: id }]);
     expect(toICS(exportItems(account("cam")))).toContain(`UID:group-${id}@upt-orar`);
-    expect(weeklyAvailability(account("bea"), []).filter((s) => s.date === friday)).toHaveLength(2);
+    expect(groupAvailability(account("bea"), []).filter((s) => s.date === friday)).toHaveLength(2);
     reply(id, "cam", "declined");
     expect(calendar("cam")).toEqual([]);
     expect(calendar("alex")).toHaveLength(1);

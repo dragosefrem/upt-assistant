@@ -16,6 +16,7 @@ export default async function ContactSchedulePage({ params, searchParams }: Page
   if (!schedule) notFound();
 
   const path = `/contacts/${encodeURIComponent(id)}/schedule`;
+  const planningDates = schedule.from > today ? { from: schedule.from, to: schedule.to } : {};
   const shortDate = (date: string) => formatDate(date, { day: "numeric", month: "short" });
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5">
@@ -25,7 +26,7 @@ export default async function ContactSchedulePage({ params, searchParams }: Page
           <h1 className="break-words text-2xl font-semibold tracking-tight">{schedule.name}’s schedule</h1>
           {schedule.group && <p className="mt-1 text-sm text-slate-600">{schedule.group}</p>}
         </div>
-        <Link href={{ pathname: "/contacts/plan", query: { find: "1", person: id } }} className="btn-primary">Find time together</Link>
+        <Link href={{ pathname: "/contacts/plan", query: { find: "1", person: id, ...planningDates } }} className="btn-primary">Find time together</Link>
       </header>
       <section className="card overflow-hidden" aria-labelledby="week-heading">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">

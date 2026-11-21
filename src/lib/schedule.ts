@@ -53,9 +53,13 @@ export interface Place {
 
 export type Semester = typeof semesters.$inferSelect & { weeks: string[] };
 
+function withTeachingWeeks(row: typeof semesters.$inferSelect): Semester {
+  return { ...row, weeks: JSON.parse(row.teachingWeeks) as string[] };
+}
+
 export function currentSemester(): Semester | null {
   const row = getDb().select().from(semesters).where(eq(semesters.isCurrent, true)).get();
-  return row ? { ...row, weeks: JSON.parse(row.teachingWeeks) as string[] } : null;
+  return row ? withTeachingWeeks(row) : null;
 }
 
 /** 1-based teaching week containing `date`, or null during holidays and sessions. */
@@ -279,15 +283,20 @@ export function examsForUser(user: Pick<User, "specializationId" | "year">, from
 
 /** Expands the student's effective schedule into dated events. */
 export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">, from: string, to: string): CalEvent[] {
-  const semester = currentSemester();
   const place = placeResolver(user.facultyId);
   const events: CalEvent[] = [];
 
-  if (semester && user.groupId) {
+  const terms = user.groupId ? getDb().select().from(semesters)
+    .where(and(lte(semesters.startDate, to), gte(semesters.endDate, from))).all() : [];
+  for (const semester of terms.map(withTeachingWeeks)) {
     const week = studentWeek(user, semester);
-    for (let date = from; date <= to; date = addDays(date, 1)) {
+    const first = from > semester.startDate ? from : semester.startDate;
+    const last = to < semester.endDate ? to : semester.endDate;
+    const span = daysBetween(first, last);
+    for (let i = 0; i <= span; i++) {
+      const date = addDays(first, i);
       const n = teachingWeek(semester, date);
-      if (n === null || date < semester.startDate || date > semester.endDate) continue;
+      if (n === null) continue;
       const day = weekday(date);
       for (const e of week) {
         if (e.day !== day || !weekMatches(e.weeks, n)) continue;
@@ -336,7 +345,9 @@ export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializat
     if (p.date) {
       if (p.date >= from && p.date <= to) dates.push(p.date);
     } else if (p.day) {
-      for (let date = from; date <= to; date = addDays(date, 1)) if (weekday(date) === p.day) dates.push(date);
+      const span = daysBetween(from, to);
+      const first = (p.day - weekday(from) + 7) % 7;
+      for (let i = first; i <= span; i += 7) dates.push(addDays(from, i));
     }
     for (const date of dates) {
       events.push({

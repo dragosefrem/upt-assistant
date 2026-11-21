@@ -3,8 +3,10 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { bookAction } from "@/app/(app)/contacts/actions";
+import type { DateRange } from "@/lib/planning-range";
 import type { FreeSlot } from "@/lib/schedule";
 import { formatDate, formatMinutes } from "@/lib/time";
+import { AvailabilityCharts, availabilityDays, hourViews, windowLabel } from "./AvailabilityCharts";
 import { InvitationForm } from "./InvitationForm";
 
 function BookingTime({ slot, earliestReply }: { slot: FreeSlot; earliestReply: string }) {
@@ -40,56 +42,60 @@ function BookingTime({ slot, earliestReply }: { slot: FreeSlot; earliestReply: s
 
 const slotKey = (slot: FreeSlot) => `${slot.date}-${slot.startMin}-${slot.endMin}`;
 
-export function BookingForm({ slots, contactIds, earliestReply }: {
-  slots: FreeSlot[]; contactIds: string[]; earliestReply: string;
+export function BookingForm({ slots, range, contactIds, earliestReply }: {
+  slots: FreeSlot[]; range: DateRange; contactIds: string[]; earliestReply: string;
 }) {
   const router = useRouter();
-  const [choice, setChoice] = useState("");
+  const [choice, setChoice] = useState<{ date: string; start?: number } | null>(null);
+  const [hourView, setHourView] = useState(0);
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [share, setShare] = useState(contactIds.length === 0);
-  const selected = slots.find((slot) => slotKey(slot) === choice) ?? slots[0];
+  const hours = hourViews[hourView];
+  const days = availabilityDays(range, slots, hours);
+  const day = days.find((d) => d.date === choice?.date) ?? days.find((d) => d.slots.length > 0) ?? days[0];
+  const selected = day.slots.find((s) => choice?.date === day.date && s.startMin === choice.start)
+    ?? day.slots.find((s) => s.endMin - s.startMin >= 60) ?? day.slots[0];
+  const heading = formatDate(day.date, { weekday: "long", day: "numeric", month: "long" });
   return (
     <>
-      <section className="card space-y-3 p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Free together this week</h2>
-          <button type="button" className="btn-ghost" onClick={() => router.refresh()}>Refresh times</button>
-        </div>
-        {selected ? <p className="text-sm text-slate-600">Choose a free window. All times are in Timișoara.</p>
-          : <p className="text-sm text-slate-600">There’s no shared free time left this week.</p>}
-        {[...new Set(slots.map((s) => s.date))].map((date) => (
-          <div key={date} className="grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-[9rem_1fr] sm:items-baseline">
-            <h3 className="text-sm font-medium">{formatDate(date, { weekday: "short", day: "numeric", month: "short" })}</h3>
-            <div className="flex flex-wrap gap-2">{slots.filter((s) => s.date === date).map((s) => {
-              const active = s === selected;
-              return <button key={slotKey(s)} type="button" aria-pressed={active} onClick={() => setChoice(slotKey(s))}
-                className={`rounded-lg border px-3 py-1.5 text-sm tabular-nums ${active ? "border-brand-600 bg-brand-600 text-white" : "border-slate-300 text-slate-700 hover:bg-brand-50"}`}>
-                {formatMinutes(s.startMin)}–{formatMinutes(s.endMin)}
-              </button>;
-            })}</div>
-          </div>
-        ))}
-      </section>
-      {selected && <section className="card space-y-4 p-5">
-        <h2 className="text-lg font-semibold">Book {formatDate(selected.date, { weekday: "long", day: "numeric", month: "short" })}</h2>
-        <InvitationForm action={bookAction} className="space-y-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        <label className="flex items-center gap-2 font-medium text-slate-700">Show hours
+          <select value={hourView} onChange={(e) => setHourView(Number(e.target.value))} className="field w-auto">
+            {hourViews.map((view, i) => <option key={view.label} value={i}>{view.label}</option>)}
+          </select>
+        </label>
+        <p className="grow text-slate-600">Select a day or a free window. All times are in Timișoara.</p>
+        <button type="button" className="text-sm font-medium text-brand-700 hover:underline" onClick={() => router.refresh()}>Refresh times</button>
+      </div>
+      <AvailabilityCharts days={days} selectedDay={day} selectedSlot={selected} asOf={earliestReply} hours={hours}
+        onSelect={(date, slot) => setChoice({ date, start: slot?.startMin })} />
+      <section className="card space-y-4 p-4 sm:p-5" aria-labelledby="booking-day">
+        <h2 id="booking-day" aria-live="polite" className="text-lg font-semibold tracking-tight">Openings for {heading}</h2>
+        {day.slots.length ? <div role="group" aria-label="Bookable windows" className="flex flex-wrap gap-2">
+          {day.slots.map((slot) => <button key={slot.startMin} type="button" aria-pressed={slot === selected}
+            onClick={() => setChoice({ date: day.date, start: slot.startMin })}
+            className={`rounded-lg border px-3 py-2 text-sm font-medium tabular-nums ${slot === selected ? "border-brand-600 bg-brand-600 text-white" : "border-slate-300 text-slate-700 hover:bg-brand-50"}`}>
+            {windowLabel(slot)}
+          </button>)}
+        </div> : <p className="text-sm text-slate-600">There are no shared openings on this day.</p>}
+        {selected && <InvitationForm action={bookAction} className="grid gap-4 border-t border-slate-200 pt-4 sm:grid-cols-2">
           {contactIds.map((id) => <input key={id} type="hidden" name="person" value={id} />)}
           <label className="block"><span className="label">Event name</span>
             <input name="title" className="field" placeholder="Football night" maxLength={120} required value={title} onChange={(e) => setTitle(e.target.value)} />
           </label>
-          <BookingTime key={slotKey(selected)} slot={selected} earliestReply={earliestReply} />
           <label className="block"><span className="label">Location (optional)</span>
             <input name="location" className="field" maxLength={200} value={location} onChange={(e) => setLocation(e.target.value)} />
           </label>
-          {contactIds.length > 0 ? <label className="flex items-center gap-2 text-sm">
+          <BookingTime key={slotKey(selected)} slot={selected} earliestReply={earliestReply} />
+          {contactIds.length > 0 ? <label className="flex items-center gap-2 text-sm sm:col-span-2">
             <input type="checkbox" name="share" checked={share} onChange={(e) => setShare(e.target.checked)} className="h-4 w-4 accent-brand-600" />
             Create a link that anyone can use to join
           </label> : <><input type="hidden" name="share" value="on" /><p className="text-sm text-slate-600">You’ll get a link guests can use to join without an account.</p></>}
-          <p className="text-sm text-slate-600">You count as going. The event confirms when everyone accepts, or with at least two people at the deadline.</p>
-          <button className="btn-primary">{contactIds.length ? "Send invitations" : "Create guest invitation"}</button>
-        </InvitationForm>
-      </section>}
+          <p className="text-sm text-slate-600 sm:col-span-2">You count as going. The event confirms when everyone accepts, or with at least two people at the deadline.</p>
+          <button className="btn-primary justify-self-start">{contactIds.length ? "Send invitations" : "Create guest invitation"}</button>
+        </InvitationForm>}
+      </section>
     </>
   );
 }

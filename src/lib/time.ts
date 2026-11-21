@@ -72,6 +72,14 @@ export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { we
   return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(utc(date));
 }
 
+export function formatDateRange(from: string, to: string): string {
+  const end = formatDate(to, { day: "numeric", month: "long", year: "numeric" });
+  if (from === to) return end;
+  if (from.slice(0, 7) === to.slice(0, 7)) return `${Number(from.slice(8))}–${end}`;
+  const start = formatDate(from, { day: "numeric", month: "long", year: from.slice(0, 4) === to.slice(0, 4) ? undefined : "numeric" });
+  return `${start} – ${end}`;
+}
+
 export const DAY_NAMES = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const DAY_SHORT = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
