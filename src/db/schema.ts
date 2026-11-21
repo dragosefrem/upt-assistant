@@ -266,6 +266,8 @@ export const timetablePdfs = sqliteTable("timetable_pdfs", {
 export const users = sqliteTable("users", {
   id: text("id").primaryKey(),
   email: text("email").notNull().unique(),
+  /** Null for accounts created before e-mail verification was introduced. */
+  emailVerifiedAt: text("email_verified_at"),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
   role: text("role").$type<Role>().notNull().default("student"),
@@ -291,6 +293,23 @@ export const users = sqliteTable("users", {
   welcomeSeenAt: text("welcome_seen_at"),
   createdAt: createdAt(),
 });
+
+/** Requests expire one hour after issue. A request only becomes a user on confirmation. */
+export const registrationLinks = sqliteTable(
+  "registration_links",
+  {
+    id: text("id").primaryKey(), // SHA-256 of the token sent by e-mail
+    email: text("email").notNull(),
+    invite: text("invite"),
+    clientKey: text("client_key").notNull(),
+    createdAt: integer("created_at").notNull(),
+  },
+  (t) => [
+    index("registration_email_time").on(t.email, t.createdAt),
+    index("registration_client_time").on(t.clientKey, t.createdAt),
+    index("registration_time").on(t.createdAt),
+  ],
+);
 
 /** One-time links e-mailed by "Forgot password?". Only the hash of the token is stored. */
 export const passwordResets = sqliteTable(

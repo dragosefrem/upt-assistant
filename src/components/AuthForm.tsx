@@ -12,7 +12,7 @@ function fieldFeedback(state: AuthState, field: AuthState["field"], hint?: strin
   return { "aria-invalid": invalid || undefined, "aria-describedby": [hint, invalid && "auth-error"].filter(Boolean).join(" ") || undefined };
 }
 
-function Feedback({ state, loginHref = "/login" }: { state: AuthState; loginHref?: string }) {
+function Feedback({ state, loginHref = "/login", sentMessage }: { state: AuthState; loginHref?: string; sentMessage?: string }) {
   const t = useT();
   return (
     <>
@@ -20,24 +20,25 @@ function Feedback({ state, loginHref = "/login" }: { state: AuthState; loginHref
         <p id="auth-error" role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
           {state.error === "tooMany" ? t.auth.errors.tooMany(state.retryMinutes ?? 1) : t.auth.errors[state.error]}
           {state.error === "exists" && <> <Link className="font-medium underline" href={loginHref}>{t.auth.register.signIn}</Link></>}
+          {state.error === "invalidVerification" && <> <Link className="font-medium underline" href="/register">{t.auth.verification.again}</Link></>}
         </p>
       )}
-      {state.sent && (
-        <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{t.auth.forgot.sent}</p>
+      {state.sent && sentMessage && (
+        <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{sentMessage}</p>
       )}
     </>
   );
 }
 
 /** Sign in or create an account. `notice` shows good news from a previous step ("password changed"). */
-export function AuthForm({ mode, action, invite, notice }: { mode: "login" | "register"; action: Action; invite?: string; notice?: string }) {
+export function AuthForm({ action, invite, notice, verifiedEmail }: { action: Action; invite?: string; notice?: string; verifiedEmail?: string }) {
   const t = useT();
   const [state, formAction, pending] = useActionState(action, {});
-  const register = mode === "register";
+  const register = verifiedEmail !== undefined;
   const inviteQuery = invite ? `?invite=${encodeURIComponent(invite)}` : "";
   return (
     <form action={formAction} noValidate className="space-y-4">
-      <h1 className="page-heading mb-6">{register ? t.auth.register.title : t.auth.login.title}</h1>
+      <h1 className="page-heading mb-6">{register ? t.auth.verification.finish : t.auth.login.title}</h1>
       {invite && <input type="hidden" name="invite" value={invite} />}
       {invite && !state.error && <p className="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900">{t.auth.register.invited}</p>}
       {notice && !state.error && <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{notice}</p>}
@@ -49,7 +50,7 @@ export function AuthForm({ mode, action, invite, notice }: { mode: "login" | "re
       )}
       <div>
         <label className="label" htmlFor="email">{t.auth.fields.email}</label>
-        <input id="email" name="email" type="email" className="field" autoComplete="email" defaultValue={state.email} required {...fieldFeedback(state, "email")} />
+        <input id="email" name="email" type="email" className="field" autoComplete="email" defaultValue={verifiedEmail ?? state.email} readOnly={register} required {...fieldFeedback(state, "email")} />
       </div>
       <div>
         <div className="flex items-baseline justify-between gap-2">
@@ -85,21 +86,28 @@ export function AuthForm({ mode, action, invite, notice }: { mode: "login" | "re
   );
 }
 
-/** "Forgot your password?": asks for the account's e-mail address. */
-export function ForgotForm({ action }: { action: Action }) {
+/** Request an e-mail link to start registration or recover an account. */
+export function EmailLinkForm({ action, purpose, invite }: { action: Action; purpose: "register" | "reset"; invite?: string }) {
   const t = useT();
   const [state, formAction, pending] = useActionState(action, {});
+  const register = purpose === "register";
+  const loginHref = invite ? `/login?invite=${encodeURIComponent(invite)}` : "/login";
+  const submit = register ? (state.sent ? t.auth.verification.resend : t.auth.verification.send) : t.auth.forgot.submit;
   return (
     <form action={formAction} noValidate className="space-y-4">
-      <p className="text-sm text-slate-600">{t.auth.forgot.intro}</p>
+      <h1 className="page-heading mb-4">{register ? t.auth.register.title : t.auth.forgot.title}</h1>
+      {invite && <input type="hidden" name="invite" value={invite} />}
+      {invite && <p className="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900">{t.auth.register.invited}</p>}
+      <p className="text-sm text-slate-600">{register ? t.auth.verification.intro : t.auth.forgot.intro}</p>
       <div>
         <label className="label" htmlFor="email">{t.auth.fields.email}</label>
         <input id="email" name="email" type="email" className="field" autoComplete="email" defaultValue={state.email} required {...fieldFeedback(state, "email")} />
       </div>
-      <Feedback state={state} />
-      <button className="btn-primary w-full" disabled={pending}>{pending ? t.common.status.pleaseWait : t.auth.forgot.submit}</button>
+      <Feedback state={state} loginHref={loginHref} sentMessage={register ? t.auth.verification.sent(state.email ?? "") : t.auth.forgot.sent} />
+      <button className="btn-primary w-full" disabled={pending}>{pending ? t.common.status.pleaseWait : submit}</button>
       <p className="text-center text-sm">
-        <Link className="font-medium text-brand-600 hover:underline" href="/login">{t.auth.forgot.back}</Link>
+        {register && <>{t.auth.register.haveAccount} </>}
+        <Link className="font-medium text-brand-600 hover:underline" href={loginHref}>{register ? t.auth.register.signIn : t.auth.forgot.back}</Link>
       </p>
     </form>
   );

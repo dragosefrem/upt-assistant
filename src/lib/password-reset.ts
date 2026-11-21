@@ -41,25 +41,7 @@ export function resetEmail(user: Pick<User, "name">, link: string, locale: Local
   return { subject: t.subject, text, html };
 }
 
-/** Only local development may derive the reset address from the incoming request. */
-export function resetBaseUrl(headers: Pick<Headers, "get">): string | null {
-  const configured = process.env.APP_URL?.trim();
-  if (configured) {
-    try {
-      const url = new URL(configured);
-      if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash) {
-        return url.origin + url.pathname.replace(/\/+$/, "");
-      }
-    } catch {
-      // Log the configuration problem without including the value.
-    }
-    console.error("Password reset is unavailable: APP_URL must be an absolute HTTP(S) base URL.");
-    return null;
-  }
-  if (process.env.NODE_ENV === "development") return `http://${headers.get("host") ?? "localhost:3000"}`;
-  console.error("Password reset is unavailable: set APP_URL to the public address of this installation.");
-  return null;
-}
+export { accountEmailBaseUrl as resetBaseUrl } from "./mail";
 
 export function requestPasswordReset(
   email: string,
