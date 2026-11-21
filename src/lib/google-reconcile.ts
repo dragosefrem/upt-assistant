@@ -64,6 +64,10 @@ export function acceptChanges(user: User, locale: Locale, events: GoogleEvent[],
       continue;
     }
     let link = byId.get(event.id);
+    if (link && !link.origin && event.status !== "cancelled") {
+      const origin = event.extendedProperties?.private?.uptOrar === link.uid ? "poli" : "google";
+      db.update(googleEventLinks).set({ origin }).where(linkKey(user.id, link.uid)).run();
+    }
     if (link?.remote?.etag && event.etag === link.remote.etag && event.status === link.remote.status) continue;
     if (event.status === "cancelled") {
       if (!link) continue;
@@ -78,10 +82,13 @@ export function acceptChanges(user: User, locale: Locale, events: GoogleEvent[],
       if (tagged && !byUid.has(tagged) && !sources.has(tagged)) continue;
       let uid: string;
       let base: CalendarFields;
+      let origin: "poli" | "google";
       if (tagged && sources.has(tagged) && !byUid.has(tagged)) {
+        origin = "poli";
         uid = tagged;
         base = sources.get(uid)!;
       } else {
+        origin = "google";
         const row = db.insert(personalEvents).values({
           userId: user.id, title: fields.summary, ...personalTimes(fields.timing), ...personalPatch(fields),
         }).returning({ id: personalEvents.id }).get();
@@ -89,7 +96,7 @@ export function acceptChanges(user: User, locale: Locale, events: GoogleEvent[],
         base = { ...fields, reminders: { useDefault: true } };
         sources.set(uid, base);
       }
-      link = db.insert(googleEventLinks).values({ userId: user.id, uid, googleId: event.id, base }).returning().get();
+      link = db.insert(googleEventLinks).values({ userId: user.id, uid, googleId: event.id, base, origin }).returning().get();
       byUid.set(uid, link);
       byId.set(event.id, link);
     }

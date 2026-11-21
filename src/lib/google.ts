@@ -1,15 +1,16 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, inArray, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { googleEventLinks, googleExceptions, googleSyncState, users } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { settings } from "@/i18n/messages/settings";
 import type { User } from "./auth";
-import type { CalendarFields, GoogleEvent } from "./calendar-types";
+import type { CalendarFields, GoogleEvent, GoogleSyncMode } from "./calendar-types";
 import { call, GoogleError, token } from "./google-api";
 import { equalField, fieldNames, googleBody } from "./google-event";
 import { acceptChanges, forgetLink, linkKey, snapshot, sourceFields } from "./google-reconcile";
+import { publishCalendar } from "./google-publish";
 import { TIME_ZONE } from "./time";
 
 export { appUrl, consentUrl, exchangeCode, googleConfigured, GoogleError } from "./google-api";
@@ -38,7 +39,7 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
   // request and fence all subsequent writes if the user disconnects or a lease expires.
   const guard = () => {
     if (!db.update(googleSyncState).set({ leaseUntil: Date.now() + LEASE }).where(owns).run().changes) {
-      throw new GoogleError(t.notConnected, 409, true);
+      throw new GoogleError(t.tryAgain, 409, true);
     }
   };
   try {
@@ -55,12 +56,11 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
     }
     async function api<T>(method: string, path: string, body?: unknown, etag?: string) {
       guard();
-      const result = await call<T>(access, method, path, body, etag);
-      guard();
-      return result;
+      try { return await call<T>(access, method, path, body, etag); }
+      finally { guard(); }
     }
     let calendarId = user.googleCalendarId;
-    let cursor = state.cursor;
+    let cursor = state.mode === "two_way" ? state.cursor : null;
     if (calendarId) {
       const path = "/calendars/" + encodeURIComponent(calendarId);
       try {
@@ -77,7 +77,15 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
       calendarId = created.id;
       cursor = null;
       db.transaction(tx => {
+        const previous = tx.select().from(googleEventLinks).where(eq(googleEventLinks.userId, id)).all();
         tx.delete(googleEventLinks).where(eq(googleEventLinks.userId, id)).run();
+        // A missing calendar does not turn Google-origin personal copies into Poli publications.
+        for (const link of previous) {
+          if (link.uid.startsWith("personal-") && (link.origin === "google" || (!link.origin && link.remote))) {
+            tx.insert(googleEventLinks).values({ userId: id, uid: link.uid, base: link.base,
+              googleId: randomUUID().replaceAll("-", ""), origin: "google" }).run();
+          }
+        }
         tx.delete(googleExceptions).where(eq(googleExceptions.userId, id)).run();
         tx.update(googleSyncState).set({ cursor: null }).where(owns).run();
         tx.update(users).set({ googleCalendarId: calendarId }).where(eq(users.id, id)).run();
@@ -85,6 +93,14 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
     }
     const basePath = "/calendars/" + encodeURIComponent(calendarId) + "/events";
     const pathFor = (googleId: string) => basePath + "/" + encodeURIComponent(googleId);
+    const finish = (events: number): Result => {
+      db.transaction(tx => {
+        guard();
+        tx.update(users).set({ googleSyncedAt: new Date().toISOString() }).where(eq(users.id, id)).run();
+        tx.update(googleSyncState).set({ failures: 0, nextAttempt: Date.now() + INTERVAL }).where(owns).run();
+      });
+      return { events, calendarId };
+    };
     // A 412 means the event changed after the download. Fetch that change and perform
     // the three-way comparison again before retrying any conditional write.
     let count = 0;
@@ -108,7 +124,15 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
       }
       if (!next) throw new Error("Google Calendar did not return a synchronization token.");
       const active = account()!;
+      if (state.mode === "one_way") {
+        try { return finish(await publishCalendar(active, locale, [...events.values()], basePath, api)); }
+        catch (e) {
+          if (e instanceof GoogleError && !e.known && (e.status === 409 || e.status === 412 || absent(e))) continue;
+          throw e;
+        }
+      }
       db.transaction(tx => {
+        guard();
         acceptChanges(active, locale, [...events.values()], !cursor);
         tx.update(googleSyncState).set({ cursor: next }).where(owns).run();
       });
@@ -119,7 +143,7 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
       for (const [uid, fields] of local) {
         if (linked.has(uid)) continue;
         // Allocate before POST. A lost response can be recovered using the same Google ID.
-        links.push(db.insert(googleEventLinks).values({ userId: id, uid, googleId: randomUUID().replaceAll("-", ""), base: fields }).returning().get());
+        links.push(db.insert(googleEventLinks).values({ userId: id, uid, googleId: randomUUID().replaceAll("-", ""), origin: "poli", base: fields }).returning().get());
       }
       let raced = false;
       for (const link of links) {
@@ -174,13 +198,7 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
         }
       }
       if (raced) continue;
-      const time = new Date().toISOString();
-      guard();
-      db.transaction(tx => {
-        tx.update(users).set({ googleSyncedAt: time }).where(eq(users.id, id)).run();
-        tx.update(googleSyncState).set({ failures: 0, nextAttempt: Date.now() + INTERVAL }).where(owns).run();
-      });
-      return { events: count, calendarId };
+      return finish(count);
     }
     throw new GoogleError(t.tryAgain, 409, true);
   } catch (e) {
@@ -188,18 +206,41 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
     db.update(googleSyncState).set({ failures, nextAttempt: Date.now() + Math.min(900_000, INTERVAL * 2 ** Math.min(failures - 1, 4)) }).where(owns).run();
     throw e;
   } finally {
-    db.update(googleSyncState).set({ lease: null, leaseUntil: 0 }).where(owns).run();
+    db.update(googleSyncState).set({ lease: null, leaseUntil: 0 }).where(and(key, inArray(googleSyncState.lease, [lease, "stopping:" + lease]))).run();
   }
 }
 
-const running = new Map<string, Promise<Result>>();
+export function googleSyncMode(userId: string): GoogleSyncMode {
+  return getDb().select({ mode: googleSyncState.mode }).from(googleSyncState).where(eq(googleSyncState.userId, userId)).get()?.mode ?? "one_way";
+}
+
+export function setGoogleSyncMode(userId: string, mode: GoogleSyncMode) {
+  const changed = getDb().transaction(tx => {
+    const key = eq(googleSyncState.userId, userId);
+    const state = tx.select().from(googleSyncState).where(key).get();
+    if (!state) {
+      tx.insert(googleSyncState).values({ userId, mode }).run();
+    } else if (state.mode !== mode) {
+      // Fence the active request but retain its lease until it finishes. The new direction
+      // always starts from a complete listing, including Google-only changes made while paused.
+      const lease = state.lease && !state.lease.startsWith("stopping:") ? "stopping:" + state.lease : state.lease;
+      tx.update(googleSyncState).set({ mode, cursor: null, lease, nextAttempt: 0, failures: 0 }).where(key).run();
+    }
+    return state?.mode !== mode;
+  });
+  const active = running.get(userId);
+  if (active && changed) active.superseded = true;
+}
+
+const running = new Map<string, { mode: GoogleSyncMode; superseded: boolean; promise: Promise<Result> }>();
 export function syncToGoogle(user: Pick<User, "id">, locale?: Locale): Promise<Result> {
   const existing = running.get(user.id);
-  if (existing) return existing;
+  const mode = googleSyncMode(user.id);
+  if (existing) return !existing.superseded && existing.mode === mode ? existing.promise : existing.promise.catch(() => {}).then(() => syncToGoogle(user, locale));
   const promise = syncAccount(user.id, locale).finally(() => {
-    if (running.get(user.id) === promise) running.delete(user.id);
+    if (running.get(user.id)?.promise === promise) running.delete(user.id);
   });
-  running.set(user.id, promise);
+  running.set(user.id, { mode, superseded: false, promise });
   return promise;
 }
 

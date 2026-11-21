@@ -44,7 +44,7 @@ works in Romanian and English.
   timetable, a glossary of the words first-years meet (serie, grupă, semigrupă,
   restanță, …) and the buildings the student actually uses.
 - **Export.** The calendar by e-mail as an `.ics` file, a subscription link, or (when
-  configured) two-way sync with the dedicated **Poli** Google calendar. Exports are written in the
+  configured) one-way or two-way sync with the dedicated **Poli** Google calendar. Exports are written in the
   account's language.
 - **Admin.** A scraping engine reads the university structure from upt.ro and each
   faculty's timetable and exam documents, and replaces what is in the database.
@@ -93,17 +93,22 @@ history and has to be recreated.
 
 The production setup and first-release steps are in [Deploying UPT to Railway](docs/railway.md).
 
-### Two-way Google Calendar sync
+### Google Calendar sync
 
-In Settings, choose **Connect Google Calendar**. When creating an event in Google, select
-the **Poli** calendar. Personal events, including recurring and all-day events, appear in
-both apps. Edits to a class, exam or shared meeting in Google change the student's own
-view. The university timetable and other participants retain their schedules.
+Under **Settings → Calendar sync and export**, choose a direction for the **Poli** calendar
+and select **Connect Google Calendar**. You can change direction later on the same calendar.
 
-The Node server checks connected accounts about once a minute. **Sync now** runs the same
-operation immediately. Edits to different fields are combined. When both apps change the
-same field between syncs, the Google edit takes precedence. Deletions propagate. Disconnecting
-stops updates, and reconnecting to the same account resumes the existing calendar.
+- **One-way** publishes your Poli timetable to Google. Changing or deleting a published
+  event in Google restores the Poli version on the next sync. Events created in Google
+  stay separate. Previously imported personal events stay in Poli and their Google copies
+  resume syncing when you select two-way again.
+- **Two-way** lets you create, edit or delete personal events in either app. Changes made
+  in Google to a class, exam or shared meeting appear on your own timetable. Edits to
+  different fields are combined. If both apps edit the same field between syncs, Google wins.
+
+New connections and connections using the original exporter start in one-way mode.
+Accounts already using two-way sync keep it. The server checks about once a minute.
+**Sync now** runs the selected direction immediately.
 
 To check a deployment’s OAuth client against Google, set its client ID and secret and a
 `GOOGLE_CALENDAR_TEST_REFRESH_TOKEN` from a consenting test account in the shell. Run

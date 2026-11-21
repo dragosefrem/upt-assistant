@@ -1,3 +1,9 @@
+export type GoogleSyncMode = "one_way" | "two_way";
+
+export function isGoogleSyncMode(value: unknown): value is GoogleSyncMode {
+  return value === "one_way" || value === "two_way";
+}
+
 /** Event fields shared by the local calendar and Google's Events API. */
 export interface CalendarTime {
   date?: string;

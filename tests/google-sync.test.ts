@@ -1,3 +1,5 @@
+import Database from "better-sqlite3";
+import { readFileSync, readdirSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
@@ -6,13 +8,13 @@ import { messages } from "@/i18n/messages";
 import { getUser, type User } from "@/lib/auth";
 import { calendarSlices } from "@/lib/calendar-timing";
 import type { GoogleEvent } from "@/lib/calendar-types";
-import { consentUrl, disconnectGoogle, syncToGoogle } from "@/lib/google";
+import { connectGoogle, consentUrl, disconnectGoogle, googleSyncMode, setGoogleSyncMode, syncToGoogle } from "@/lib/google";
 import { syncDueCalendars } from "@/lib/google-worker";
 import { exportItems, toICS } from "@/lib/export";
 import { currentSemester, eventsBetween, hiddenClasses, unhideClass } from "@/lib/schedule";
 import { POST as schedule } from "@/app/api/schedule/route";
 import { GET as eventsApi } from "@/app/api/events/route";
-import { POST as manualSync } from "@/app/api/google/sync/route";
+import { PATCH as saveDirection, POST as manualSync } from "@/app/api/google/sync/route";
 import { GoogleCalendarFixture } from "./fixtures/google-calendar";
 
 vi.mock("@/lib/auth", { spy: true });
@@ -43,6 +45,8 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); });
 
 describe("Poli and Google Calendar", () => {
+  beforeEach(() => setGoogleSyncMode(user.id, "two_way"));
+
   it("creates, edits and deletes through the authenticated app routes while retaining the Google event ID", async () => {
     expect((await add()).ok).toBe(true);
     expect((await manualSync()).ok).toBe(true);
@@ -261,5 +265,179 @@ describe("Poli and Google Calendar", () => {
     await change("deletePersonal", { id: row.id });
     expect(localRows()[0].title).toBe("Lunch");
     expect(eventsBetween({ ...user, id: "other" }, date, date)).toEqual([]);
+  });
+});
+
+function choose(mode: unknown) {
+  return saveDirection(new Request("http://localhost/api/google/sync", { method: "PATCH", body: JSON.stringify({ mode }) }));
+}
+
+describe("Google Calendar sync direction", () => {
+  it("migrates existing two-way accounts without opting legacy exporters or new accounts into imports", () => {
+    const old = new Database(":memory:");
+    try {
+      const files = readdirSync("drizzle").filter(f => f.endsWith(".sql")).sort();
+      for (const name of files.filter(n => n < "0007")) old.exec(readFileSync("drizzle/" + name, "utf8"));
+      for (const id of ["two", "legacy"]) old.prepare("INSERT INTO users (id, name, email, password_hash, feed_token, google_refresh_token) VALUES (?, ?, ?, 'x', ?, 'grant')").run(id, id, id + "@example.test", id);
+      old.exec("INSERT INTO google_sync_state (user_id, cursor) VALUES ('two','earlier-cursor')");
+      old.exec(readFileSync("drizzle/0007_google_sync_direction.sql", "utf8"));
+      old.exec("INSERT INTO google_sync_state (user_id) VALUES ('legacy')");
+      expect(old.prepare("SELECT user_id,mode,cursor FROM google_sync_state ORDER BY user_id").all()).toEqual([
+        { user_id: "legacy", mode: "one_way", cursor: null }, { user_id: "two", mode: "two_way", cursor: null },
+      ]);
+    } finally { old.close(); }
+  });
+
+  it("defaults to publishing, repairs Google edits or deletions of Poli events and leaves unrelated events alone", async () => {
+    expect(googleSyncMode(user.id)).toBe("one_way");
+    google.put(atGoogle("google-only", "Private appointment"));
+    await add();
+    await syncDueCalendars();
+    const first = google.live().find(e => e.summary === "Gym")!;
+    const row = localRows()[0];
+    expect(localRows().map(r => r.title)).toEqual(["Gym"]);
+    google.put({ ...first, summary: "Edited at Google", location: "Other room" });
+    await manualSync();
+    expect(google.events.get(first.id)).toMatchObject({ summary: "Gym", location: "Campus" });
+    expect(localRows()[0]).toMatchObject({ id: row.id, title: "Gym", location: "Campus" });
+    google.remove(first.id);
+    await sync();
+    const restored = google.live().find(e => e.summary === "Gym")!;
+    expect(restored.id).not.toBe(first.id);
+    await change("updatePersonal", { id: row.id, title: "Training", location: "Park" });
+    await sync();
+    expect(google.events.get(restored.id)).toMatchObject({ summary: "Training", location: "Park" });
+    await sync();
+    expect(google.writes).toEqual(["POST", "PATCH", "POST", "PATCH"]);
+    await change("deletePersonal", { id: row.id }); await sync();
+    expect(google.live().map(e => e.id)).toEqual(["google-only"]);
+    expect(localRows()).toHaveLength(0);
+  });
+
+  it("pauses previously imported Google events and catches up on changes and deletions after switching back", async () => {
+    google.put(atGoogle("import-me")); google.put(atGoogle("remove-me", "Practice"));
+    await add("From Poli"); await sync();
+    const published = google.live().find(e => e.summary === "From Poli")!.id;
+    expect((await choose("two_way")).status).toBe(200);
+    await syncDueCalendars();
+    expect(localRows()).toHaveLength(3);
+    const imported = localRows().find(r => r.title === "Lunch")!;
+    expect((await choose("one_way")).status).toBe(200);
+    google.put({ ...google.events.get("import-me")!, summary: "Renamed while paused" });
+    google.remove("remove-me");
+    google.put(atGoogle("new-while-paused", "New from Google"));
+    await change("updatePersonal", { id: imported.id, title: "Lunch", location: "Local edit while paused" });
+    await sync(); await sync();
+    expect(localRows().map(r => r.title).sort()).toEqual(["From Poli", "Lunch", "Practice"]);
+    expect(google.events.get("import-me")).toMatchObject({ summary: "Renamed while paused", location: "Canteen" });
+    await choose("two_way"); await sync(); await sync();
+    expect(localRows().map(r => r.title).sort()).toEqual(["From Poli", "New from Google", "Renamed while paused"]);
+    expect(localRows().find(r => r.id === imported.id)?.location).toBe("Local edit while paused");
+    expect(google.events.get("import-me")?.location).toBe("Local edit while paused");
+    expect(google.live().find(e => e.summary === "From Poli")?.id).toBe(published);
+    expect(google.live()).toHaveLength(3);
+  });
+
+  it("adopts a tagged legacy export without importing Google-origin items or duplicating a lost insert", async () => {
+    await add();
+    const uid = "personal-" + localRows()[0].id;
+    google.put({ ...atGoogle("legacy", "Old Google edit"), extendedProperties: { private: { uptOrar: uid } } });
+    google.put(atGoogle("original"));
+    await sync();
+    expect(google.events.get("legacy")?.summary).toBe("Gym");
+    expect(localRows()).toHaveLength(1);
+    await add("Second");
+    google.loseInsertResponse = true;
+    await expect(sync()).rejects.toThrow("Connection closed");
+    await sync();
+    expect(google.live().filter(e => e.summary === "Second")).toHaveLength(1);
+    expect(localRows()).toHaveLength(2);
+    // Upgrade a connection with links created before the origin column existed.
+    await choose("two_way"); await sync();
+    db.update(googleEventLinks).set({ origin: null }).run();
+    await choose("one_way");
+    google.put({ ...google.events.get("original")!, summary: "Still Google-owned" });
+    await sync();
+    expect(google.events.get("original")?.summary).toBe("Still Google-owned");
+    expect(localRows().some(r => r.title === "Still Google-owned")).toBe(false);
+  });
+
+  it("never claims an unrelated resource which shares the ID of an unacknowledged insert", async () => {
+    await add();
+    google.loseInsertResponse = true;
+    await expect(sync()).rejects.toThrow();
+    const mistakenId = google.live()[0].id;
+    google.put(atGoogle(mistakenId, "Unrelated Google item"));
+    await sync(); await sync();
+    expect(google.events.get(mistakenId)?.summary).toBe("Unrelated Google item");
+    expect(google.live().map(e => e.summary).sort()).toEqual(["Gym", "Unrelated Google item"]);
+    expect(localRows().map(r => r.title)).toEqual(["Gym"]);
+  });
+
+  it("repairs an externally moved or cancelled occurrence of a published recurring event", async () => {
+    await change("addPersonal", { title: "Practice", day: 1, startMin: 540, endMin: 600 });
+    await sync();
+    const master = google.live()[0];
+    const original = master.start!;
+    google.put({ id: "drift", recurringEventId: master.id, originalStartTime: original,
+      summary: "Remote move", start: point(13), end: point(14) });
+    await sync();
+    expect(google.events.get("drift")?.summary).toBe("Practice");
+    expect(google.events.get("drift")?.start).toEqual(original);
+    google.remove("drift"); await sync();
+    expect(google.events.get("drift")).toMatchObject({ status: "confirmed", summary: "Practice" });
+    expect(localRows()).toHaveLength(1);
+    expect(eventsBetween(user, date, date).map(e => e.title)).toEqual(["Practice"]);
+    const writes = [...google.writes]; await sync(); expect(google.writes).toEqual(writes);
+  });
+
+  it("does not let an in-flight two-way download import after switching to one-way", async () => {
+    await choose("two_way"); await sync();
+    google.put(atGoogle("late"));
+    let release!: () => void;
+    let reached!: () => void;
+    const waiting = new Promise<void>(r => { reached = r; });
+    const resume = new Promise<void>(r => { release = r; });
+    let hold = true;
+    vi.stubGlobal("fetch", async (input: string | URL | Request, init?: RequestInit) => {
+      const response = await google.fetch(input, init);
+      if (hold && String(input).includes("/events?")) { hold = false; reached(); await resume; }
+      return response;
+    });
+    const old = sync();
+    await waiting;
+    expect((await choose("one_way")).ok).toBe(true);
+    const next = sync();
+    release();
+    await expect(old).rejects.toThrow();
+    await next;
+    expect(localRows()).toHaveLength(0);
+    expect(google.live().map(e => e.id)).toEqual(["late"]);
+  });
+
+  it("keeps Google-origin local copies private to Poli when switching one-way to a replacement calendar", async () => {
+    await choose("two_way");
+    google.put(atGoogle("previous-google-original"));
+    await add("Published event"); await sync();
+    await choose("one_way");
+    db.update(users).set({ googleCalendarId: "calendar-that-no-longer-exists" }).where(eq(users.id, user.id)).run();
+    google = new GoogleCalendarFixture(); vi.stubGlobal("fetch", google.fetch);
+    await sync();
+    expect(localRows().map(r => r.title).sort()).toEqual(["Lunch", "Published event"]);
+    expect(google.live().map(e => e.summary)).toEqual(["Published event"]);
+  });
+
+  it("validates and persists account-specific preferences before connecting and across reconnects", async () => {
+    disconnectGoogle(user.id);
+    expect((await choose("both")).status).toBe(400);
+    expect((await choose("two_way")).ok).toBe(true);
+    expect(googleSyncMode("another-student")).toBe("one_way");
+    expect(googleSyncMode(user.id)).toBe("two_way");
+    connectGoogle(user.id, "fixture-refresh");
+    await sync(); disconnectGoogle(user.id);
+    expect(googleSyncMode(user.id)).toBe("two_way");
+    vi.mocked(getUser).mockResolvedValue(null);
+    expect((await choose("one_way")).status).toBe(401);
+    expect(googleSyncMode(user.id)).toBe("two_way");
   });
 });

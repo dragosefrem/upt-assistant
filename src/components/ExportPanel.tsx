@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { renewCalendarLink } from "@/app/(app)/settings/actions";
 import { useLocale, useT } from "@/i18n/client";
 import { DATE_LOCALE } from "@/i18n/config";
+import type { GoogleSyncMode } from "@/lib/calendar-types";
 import { TIME_ZONE } from "@/lib/time";
 
 type Status = { ok: boolean; text: string } | null;
@@ -24,6 +25,7 @@ export function ExportPanel({
   defaultEmail,
   googleConfigured,
   connected,
+  syncMode,
   syncedAt,
   syncDelayed,
   feedPath,
@@ -33,6 +35,7 @@ export function ExportPanel({
   defaultEmail: string;
   googleConfigured: boolean;
   connected: boolean;
+  syncMode: GoogleSyncMode;
   syncedAt: string | null;
   syncDelayed: boolean;
   feedPath: string;
@@ -46,6 +49,8 @@ export function ExportPanel({
   const [sending, setSending] = useState(false);
   const [mailStatus, setMailStatus] = useState<Status>(null);
   const [busy, setBusy] = useState(false);
+  const [direction, setDirection] = useState(syncMode);
+  const [savingDirection, setSavingDirection] = useState(false);
   const [message, setMessage] = useState<Status>(
     flash && x.flash[flash] ? { ok: flash === "synced", text: x.flash[flash] } : null,
   );
@@ -75,13 +80,34 @@ export function ExportPanel({
     }
   };
 
+  const changeDirection = async (mode: GoogleSyncMode) => {
+    if (mode === direction || savingDirection) return;
+    const previous = direction;
+    setDirection(mode);
+    setSavingDirection(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/google/sync", {
+        method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ mode }),
+      });
+      if (!res.ok) throw new Error();
+      setMessage({ ok: true, text: x.google.modeSaved });
+      router.refresh();
+    } catch {
+      setDirection(previous);
+      setMessage({ ok: false, text: x.google.modeFailed });
+    } finally {
+      setSavingDirection(false);
+    }
+  };
+
   const sync = async () => {
     setBusy(true);
     setMessage(null);
     try {
       const res = await fetch("/api/google/sync", { method: "POST" });
       const data = await res.json();
-      setMessage(res.ok ? { ok: true, text: x.google.upToDate } : { ok: false, text: data.error });
+      setMessage(res.ok ? { ok: true, text: direction === "one_way" ? x.google.published : x.google.upToDate } : { ok: false, text: data.error });
       router.refresh();
     } catch {
       setMessage({ ok: false, text: x.google.unreachable });
@@ -112,11 +138,24 @@ export function ExportPanel({
         <div className="border-b border-slate-100 pb-5">
           <h3 className="text-sm font-semibold text-slate-900">{x.google.title}</h3>
           <p className="mt-1 text-sm text-slate-600">{x.google.hint}</p>
+          <fieldset className="mt-4" disabled={busy || savingDirection}>
+            <legend className="label">{x.google.direction}</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(["one_way", "two_way"] as const).map(mode => (
+                <label key={mode} className={`flex cursor-pointer items-start gap-2 rounded-lg border p-3 text-sm ${direction === mode ? "border-brand-500 bg-brand-50" : "border-slate-200"}`}>
+                  <input name="google-sync-direction" type="radio" value={mode} checked={direction === mode}
+                    onChange={() => void changeDirection(mode)} className="mt-1 accent-brand-700" />
+                  <span><span className="block font-medium text-slate-900">{x.google.modes[mode].label}</span>
+                    <span className="mt-0.5 block text-slate-600">{x.google.modes[mode].hint}</span></span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {connected ? (
               <>
-                <button className="btn-primary" onClick={sync} disabled={busy}>{busy ? x.google.syncing : x.google.syncNow}</button>
-                <button className="btn-ghost" onClick={disconnect} disabled={busy}>{x.google.disconnect}</button>
+                <button className="btn-primary" onClick={sync} disabled={busy || savingDirection}>{busy ? x.google.syncing : x.google.syncNow}</button>
+                <button className="btn-ghost" onClick={disconnect} disabled={busy || savingDirection}>{x.google.disconnect}</button>
                 {syncedAt && (
                   <span className="text-xs text-slate-500">
                     {x.google.lastSync(new Date(syncedAt).toLocaleString(DATE_LOCALE[locale], { dateStyle: "medium", timeStyle: "short", timeZone: TIME_ZONE }))}
@@ -124,14 +163,14 @@ export function ExportPanel({
                 )}
               </>
             ) : (
-              <a className="btn-primary" href="/api/google/connect">{x.google.connect}</a>
+              <a className="btn-primary" href={savingDirection ? undefined : "/api/google/connect"} aria-disabled={savingDirection}>{x.google.connect}</a>
             )}
           </div>
           <p className="mt-2 text-xs text-slate-500">{x.google.refreshHint}</p>
           {syncDelayed && <p className="mt-2 text-sm text-amber-800">{x.google.delayed}</p>}
+          <StatusLine status={message} />
         </div>
       )}
-      <StatusLine status={message} />
       <div>
         <h3 className="text-sm font-semibold text-slate-900">{x.email.title}</h3>
         <p className="mt-1 text-sm text-slate-600">{x.email.hint}</p>

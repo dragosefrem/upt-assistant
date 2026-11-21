@@ -13,7 +13,7 @@ import { listClassrooms } from "../campuspath/client";
 import { campus } from "@/i18n/messages/campus";
 import { settings } from "@/i18n/messages/settings";
 import { rotateCalendarFeed } from "../auth";
-import { disconnectGoogle, googleConfigured, syncToGoogle } from "../google";
+import { disconnectGoogle, googleConfigured, googleSyncMode, syncToGoogle } from "../google";
 import { publicBaseUrl } from "../export-email";
 import { matchGroups } from "../saved-contacts";
 import { courseChoices, currentSemester, describeGroup, eventsBetween, hiddenClasses, unhideClass } from "../schedule";
@@ -365,7 +365,7 @@ export const APP_TOOLS: AssistantTool[] = [
   },
   {
     name: "google_calendar",
-    description: "Check the Google Calendar connection, open the student's consent screen, sync changes in both directions with their dedicated Poli calendar, or disconnect it. Ask before syncing or disconnecting.",
+    description: "Check the Google Calendar connection, open the student's consent screen, sync their dedicated Poli calendar using the direction selected in Settings, or disconnect it. Ask before syncing or disconnecting.",
     input_schema: { type: "object", properties: {
       action: { type: "string", enum: ["status", "connect", "sync", "disconnect"] }, confirmed: { type: "boolean" },
     }, required: ["action"] },
@@ -374,14 +374,14 @@ export const APP_TOOLS: AssistantTool[] = [
       const configured = googleConfigured();
       const connected = !!user.googleRefreshToken;
       const t = settings[ctx.locale ?? user.locale ?? "en"].export.google;
-      if (input.action === "status") return { configured, connected, last_sync: user.googleSyncedAt };
+      if (input.action === "status") return { configured, connected, direction: googleSyncMode(user.id), last_sync: user.googleSyncedAt, settings: "/settings#export" };
       if (input.action === "connect" && configured) {
-        addLink(ctx, t.connect, "/api/google/connect");
-        return { note: "The student can open Google's consent screen with the button." };
+        addLink(ctx, t.connect, "/settings#export");
+        return { note: "Choose one-way or two-way sync in Settings, then connect Google Calendar." };
       }
       if (!connected) return { error: configured ? t.notConnected : "Google Calendar is not configured." };
       if (input.action !== "disconnect" && input.action !== "sync") return { error: "Choose sync or disconnect for an existing connection." };
-      if (input.confirmed !== true) return { needs_confirmation: input.action === "sync" ? "Sync changes between Poli and your Poli calendar in Google?" : "Disconnect Google Calendar? The existing Google calendar will remain in your account." };
+      if (input.confirmed !== true) return { needs_confirmation: input.action === "sync" ? (googleSyncMode(user.id) === "one_way" ? "Publish your Poli timetable to Google Calendar?" : "Sync changes between Poli and your Poli calendar in Google?") : "Disconnect Google Calendar? The existing Google calendar will remain in your account." };
       if (input.action === "disconnect") {
         disconnectGoogle(user.id);
         ctx.changed = true;

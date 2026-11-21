@@ -5,7 +5,7 @@ import { getDb } from "@/db";
 import { personalEvents, users } from "@/db/schema";
 import type { GoogleEvent } from "@/lib/calendar-types";
 import { call, token } from "@/lib/google-api";
-import { syncToGoogle } from "@/lib/google";
+import { setGoogleSyncMode, syncToGoogle } from "@/lib/google";
 
 process.env.DATABASE_PATH = ":memory:";
 const grant = process.env.GOOGLE_CALENDAR_TEST_REFRESH_TOKEN;
@@ -23,6 +23,7 @@ it.skipIf(!grant || !process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_
       const db = getDb();
       const user = db.insert(users).values({ id: randomUUID(), name: "Sync test", email: randomUUID() + "@example.invalid",
         passwordHash: "test", feedToken: randomUUID(), googleRefreshToken: grant, googleCalendarId: cal.id }).returning().get();
+      setGoogleSyncMode(user.id, "two_way");
       const row = db.insert(personalEvents).values({ userId: user.id, title: "Created in Poli", date: "2027-03-08", startMin: 600, endMin: 660 }).returning().get();
       await syncToGoogle(user);
       const list = () => call<{ items: GoogleEvent[] }>(access, "GET", path + "/events");

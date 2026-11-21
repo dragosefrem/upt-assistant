@@ -1,4 +1,4 @@
-import type { CalendarFields, CalendarTiming, GoogleEvent } from "../lib/calendar-types";
+import type { CalendarFields, CalendarTiming, GoogleEvent, GoogleSyncMode } from "../lib/calendar-types";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -388,6 +388,7 @@ export const occurrenceOverrides = sqliteTable(
 
 export const googleSyncState = sqliteTable("google_sync_state", {
   userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  mode: text("mode").$type<GoogleSyncMode>().notNull().default("one_way"),
   cursor: text("cursor"),
   lease: text("lease"),
   leaseUntil: integer("lease_until").notNull().default(0),
@@ -399,6 +400,7 @@ export const googleEventLinks = sqliteTable("google_event_links", {
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   uid: text("uid").notNull(),
   googleId: text("google_id").notNull(),
+  origin: text("origin").$type<"poli" | "google">(),
   base: text("base", { mode: "json" }).$type<CalendarFields>().notNull(),
   remote: text("remote", { mode: "json" }).$type<GoogleEvent>(),
   pending: text("pending", { mode: "json" }).$type<Partial<CalendarFields>>(),
