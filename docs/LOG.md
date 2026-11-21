@@ -35,3 +35,7 @@ Următorul pas: rămân cele de la intrarea anterioară (traducerea interfeței 
 Gata: landing page refăcut după modelul wisprflow.ai (`src/app/welcome/page.tsx`, animația în `src/app/globals.css`, clasele `lp-*`). Slogan: „Mereu la timp. Poli te acoperă.”; cuvintele accentuate în italic cu Instrument Serif (are diacritice românești). Animație de 9 s în buclă: fișierele împrăștiate (PDF, Excel, întrebări) zboară spre Poli, Poli sare, apar cardurile zilei organizate („Sala găsită”, „Examen detectat”, „Timp liber găsit”, „Reminder setat”). Apoi „11 site-uri de facultate. Un singur calendar.”, trei pași și finalul „Tu ai grijă de examene. Poli are grijă de rest.”
 Decis: stil Wispr (centrat, fundal crem, butoane rotunde închise, un singur „înainte/după” animat) și pagină scurtă; animația se oprește pentru cine a cerut mișcare redusă.
 Următorul pas: traducerea interfeței aplicației în română.
+
+## 21 nov 2026, 15:40
+Gata: sloganul landing page-ului schimbat în „Tu ai planul. Poli are calendarul.” (`src/app/welcome/page.tsx`, inclusiv titlul paginii).
+Decis: sloganul ales de echipă dintre variantele propuse; fraza de sub slogan rămâne deocamdată, până alege echipa una nouă.

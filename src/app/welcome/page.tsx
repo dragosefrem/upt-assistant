@@ -7,7 +7,7 @@ import { getUser } from "@/lib/auth";
 import { landingStats, roCount } from "@/lib/landing";
 
 export const metadata: Metadata = {
-  title: "Mereu la timp. Poli te acoperă.",
+  title: "Tu ai planul. Poli are calendarul.",
   description: "UPT Orar: asistentul care îți știe orarul, examenele și sala. Nu mai pierzi nimic, iar timpul câștigat e al tău.",
 };
 
@@ -73,9 +73,9 @@ export default async function WelcomePage() {
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Asistentul tău de orar · UPT
           </p>
           <h1 className="mt-6 text-5xl font-semibold leading-[1.02] tracking-tight sm:text-7xl">
-            Mereu la timp.
+            Tu ai planul.
             <br />
-            <em className="font-[family-name:var(--font-serif)] text-[1.08em] font-normal italic tracking-normal text-brand-600">Poli te acoperă.</em>
+            <em className="font-[family-name:var(--font-serif)] text-[1.08em] font-normal italic tracking-normal text-brand-600">Poli are calendarul.</em>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl">
             Asistentul care îți știe orarul, examenele și sala. Tu nu mai pierzi nimic, iar timpul câștigat e al tău.
