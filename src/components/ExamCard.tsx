@@ -22,7 +22,7 @@ export async function ExamCard({ exam, compact = false, tips = true }: { exam: E
   const locale = await getLocale();
   const urgent = exam.stage === "now" || exam.stage === "today" || exam.stage === "tomorrow";
   return (
-    <article className={`rounded-2xl border bg-white p-4 ${urgent ? "border-red-200 shadow-[0_4px_16px_-6px_rgba(220,38,38,0.25)]" : "border-slate-200"}`}>
+    <article id={exam.id} className={`scroll-mt-20 rounded-2xl border bg-white p-4 ${urgent ? "border-red-200 shadow-[0_4px_16px_-6px_rgba(220,38,38,0.25)]" : "border-slate-200"}`}>
       <div className="flex flex-wrap items-start gap-3">
         <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-red-50 text-red-700">
           <span className="text-[10px] font-semibold uppercase tracking-wide">{formatDate(exam.date, { month: "short" }, locale).replace(/\.$/, "")}</span>

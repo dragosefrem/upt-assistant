@@ -38,7 +38,7 @@ const en = {
   steps: [
     { title: "Choose your group", text: "Select your faculty, programme and group to see the timetable published for you." },
     { title: "Complete your timetable", text: "Your fixed classes are already there. Pick your electives and lab times." },
-    { title: "Set exam reminders", text: "Add exams to your phone’s calendar for reminders 24 hours and 2 hours before each exam." },
+    { title: "Make plans with classmates", text: "Find a gap in everyone’s timetable and invite your classmates to a study session." },
   ],
   closing: { line: "You take care of yourself.", accent: "Poli takes care of the rest." },
   guide: { title: "New to UPT?", action: "Open the student guide" },
@@ -85,7 +85,7 @@ const ro: typeof en = {
   steps: [
     { title: "Alegi grupa", text: "Selectezi facultatea, programul de studii și grupa ca să vezi orarul publicat pentru tine." },
     { title: "Îți completezi orarul", text: "Cursurile cu oră fixă sunt deja în calendar. Tu alegi opționalele și orele de laborator." },
-    { title: "Activezi alertele pentru examene", text: "Adaugă examenele în calendarul telefonului ca să primești alerte cu o zi și cu două ore înainte." },
+    { title: "Faci planuri cu colegii", text: "Vezi când sunteți cu toții liberi și invită-ți colegii la o sesiune de studiu." },
   ],
   closing: { line: "Tu ai grijă de tine.", accent: "Poli are grijă de restul." },
   guide: { title: "Ești la început la UPT?", action: "Deschide ghidul studentului" },

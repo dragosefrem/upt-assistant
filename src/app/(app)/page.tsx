@@ -15,12 +15,15 @@ export async function generateMetadata() {
   return { title: t.calendar.page.title };
 }
 
-export default async function HomePage() {
+export default async function HomePage({ searchParams }: PageProps<"/">) {
   const user = await requireOnboardedUser();
   const t = await getT();
   const locale = await getLocale();
   const { date: today } = nowLocal();
-  const from = mondayOf(today);
+  const nextEvents = eventsBetween(user, today, addDays(today, 14), locale);
+  const { date, event } = await searchParams;
+  const selected = nextEvents.find((item) => item.id === event && item.date === date);
+  const from = mondayOf(selected?.date ?? today);
   const to = addDays(from, 6);
   const semester = currentSemester();
   const group = describeGroup(user.groupId, locale);
@@ -49,8 +52,10 @@ export default async function HomePage() {
         </p>
       )}
       <div className="schedule-layout">
-        <NextUp initial={eventsBetween(user, today, addDays(today, 14), locale)} />
+        <NextUp initial={nextEvents} />
         <Calendar
+          key={selected?.id ?? "current-week"}
+          initialSelection={selected}
           initialEvents={eventsBetween(user, from, to, locale)}
           initialHolidays={holidaysBetween(from, to, locale)}
           initialFrom={from}

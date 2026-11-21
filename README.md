@@ -35,6 +35,10 @@ works in Romanian and English.
 - **Attendance.** Set a semester minimum separately for each course’s lectures, labs,
   seminars and other classes. The Attendance tab shows how many more sessions you need.
   Mark sessions from the calendar and review individual dates in History.
+- **Notifications.** The bell shows contact requests, event invitations, today's and
+  tomorrow's timetable, and exams over the next 30 days. Classes and personal or group
+  plans have a 15-minute reminder. Exams have four reminders while Poli is open.
+  Calendar exports include the 15-minute reminders and alerts one day and two hours before exams.
 - **Contacts and group events.** Link accounts with colleagues (requests are accepted
   by the other person; real calendars then count as busy time), or save a friend as a
   name plus a group. See shared free time over custom dates, book a group event, collect

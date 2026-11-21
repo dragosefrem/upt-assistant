@@ -9,6 +9,7 @@ import { contacts } from "./contacts";
 import { exams } from "./exams";
 import { guide } from "./guide";
 import { landing } from "./landing";
+import { notifications } from "./notifications";
 import { onboarding } from "./onboarding";
 import { settings } from "./settings";
 import { study } from "./study";
@@ -34,6 +35,7 @@ export const messages = {
     exams: exams.en,
     guide: guide.en,
     landing: landing.en,
+    notifications: notifications.en,
     onboarding: onboarding.en,
     settings: settings.en,
     study: study.en,
@@ -50,6 +52,7 @@ export const messages = {
     exams: exams.ro,
     guide: guide.ro,
     landing: landing.ro,
+    notifications: notifications.ro,
     onboarding: onboarding.ro,
     settings: settings.ro,
     study: study.ro,

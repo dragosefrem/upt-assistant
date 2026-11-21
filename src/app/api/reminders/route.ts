@@ -4,7 +4,7 @@ import { everydayTip } from "@/lib/examTips";
 import { REMINDER_DAYS, examReminders } from "@/lib/reminders";
 import { nowLocal } from "@/lib/time";
 
-/** Upcoming exam reminders for the signed-in student, for the notification bell, in the request's language. */
+/** Exam reminders for clients using the original exam-only feed. */
 export async function GET() {
   const user = await getUser();
   if (!user) return Response.json({ error: (await getT()).common.status.notSignedIn }, { status: 401 });

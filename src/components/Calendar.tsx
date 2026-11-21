@@ -2,6 +2,7 @@
 
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
 import type { Locale } from "@/i18n/config";
@@ -80,6 +81,7 @@ function layoutDay(events: CalEvent[]) {
 
 export function Calendar({
   initialEvents,
+  initialSelection,
   initialHolidays,
   initialFrom,
   initialTo,
@@ -90,6 +92,7 @@ export function Calendar({
   year,
 }: {
   initialEvents: CalEvent[];
+  initialSelection?: CalEvent;
   initialHolidays: PublicHoliday[];
   initialFrom: string;
   initialTo: string;
@@ -101,9 +104,10 @@ export function Calendar({
 }) {
   const messages = useT();
   const t = messages.calendar;
+  const router = useRouter();
   const locale = useLocale();
   const [view, setView] = useState<View>("week");
-  const [anchor, setAnchor] = useState(today);
+  const [anchor, setAnchor] = useState(initialSelection?.date ?? today);
   const [events, setEvents] = useState<CalEvent[]>(initialEvents);
   const [holidays, setHolidays] = useState(initialHolidays);
   const holidayNames = new Map(holidays.map((holiday) => [holiday.date, holiday.name]));
@@ -112,7 +116,7 @@ export function Calendar({
   const [teachingWeek, setTeachingWeek] = useState<number | null>(initialWeek);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<CalEvent | null>(null);
+  const [selected, setSelected] = useState<CalEvent | null>(initialSelection ?? null);
   const [adding, setAdding] = useState<NewEvent | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -423,7 +427,10 @@ export function Calendar({
         ))}
       </footer>}
 
-      {selected && <EventDialog event={selected} onHidden={setHiddenClass} onClose={() => setSelected(null)} />}
+      {selected && <EventDialog event={selected} onHidden={setHiddenClass} onClose={() => {
+        setSelected(null);
+        if (initialSelection?.id === selected.id) router.replace("/", { scroll: false });
+      }} />}
       {adding && (
         <PersonalEventDialog
           defaultDate={adding.date}

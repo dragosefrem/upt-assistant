@@ -83,6 +83,7 @@ describe("calendar export language", () => {
 
   it.each(["UPT Orar", "My lectures"])("reuses a connected Google calendar named %s", async (summary) => {
     const updates: unknown[] = [];
+    const alarms = new Map<string, unknown>();
     const fake = vi.fn(async (url: string, init?: RequestInit) => {
       if (url.includes("oauth2.googleapis.com")) return Response.json({ access_token: "test" });
       if (url.endsWith("/calendars/connected") && init?.method === "GET") return Response.json({ summary });
@@ -91,7 +92,11 @@ describe("calendar export language", () => {
         return Response.json({ id: "connected" });
       }
       if (url.includes("/calendars/connected/events")) {
-        if (init?.method === "POST") return Response.json({ ...JSON.parse(String(init.body)), etag: '"v1"' });
+        if (init?.method === "POST") {
+          const event = JSON.parse(String(init.body));
+          alarms.set(event.extendedProperties.private.uptOrar, event.reminders);
+          return Response.json({ ...event, etag: '"v1"' });
+        }
         return Response.json({ items: [], nextSyncToken: "v1" });
       }
       throw new Error("Unexpected Google Calendar endpoint");
@@ -102,6 +107,11 @@ describe("calendar export language", () => {
       const result = await syncToGoogle(user);
       expect(result.calendarId).toBe("connected");
       expect(updates).toEqual(summary === "UPT Orar" ? [{ summary: "Poli" }] : []);
+      expect([...alarms.keys()]).toEqual(expect.arrayContaining([expect.stringMatching(/^exam-/), expect.stringMatching(/^entry-/)]));
+      for (const [uid, reminders] of alarms) {
+        const minutes = uid.startsWith("exam-") ? [1440, 120] : [15];
+        expect(reminders).toEqual({ useDefault: false, overrides: minutes.map((m) => ({ method: "popup", minutes: m })) });
+      }
     } finally {
       vi.unstubAllGlobals();
     }

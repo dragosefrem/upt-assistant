@@ -1,173 +1,229 @@
 "use client";
 
+import { Bell, CalendarDays, ChevronRight, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocale, useT } from "@/i18n/client";
-import type { Locale } from "@/i18n/config";
-import type { Messages } from "@/i18n/messages";
-import { campusJourneyHref } from "@/lib/campuspath/links";
-import type { ExamReminder } from "@/lib/reminders";
-import { capitalize, formatDate, formatMinutes } from "@/lib/time";
+import { showDeviceNotice } from "@/lib/device-notifications";
+import { kindStyle } from "@/lib/kinds";
+import { alertKey, historyKeys, isScheduled, noticeCountdown, type Notice } from "@/lib/notification-timing";
+import type { NotificationFeed } from "@/lib/notifications";
+import { SCHEDULE_CHANGED } from "./Calendar";
 import { Mascot } from "./Mascot";
 import { OPEN_CHAT } from "./poliFx";
 
-/** Minutes before an exam at which Poli reminds the student: a week, a day, 2 hours, 30 minutes. */
-const MILESTONES = [7 * 1440, 1440, 120, 30];
-const PREF_KEY = "upt-notify";
-const FIRED_KEY = "upt-notify-fired";
-const SEEN_KEY = "upt-notify-seen";
-
-function readSet(key: string): Set<string> {
+function readKeys(key: string): Set<string> {
   try {
-    return new Set(JSON.parse(localStorage.getItem(key) ?? "[]") as string[]);
-  } catch {
-    return new Set();
-  }
+    const saved: unknown = JSON.parse(localStorage.getItem(key) ?? "[]");
+    if (Array.isArray(saved)) return new Set(saved.filter((value) => typeof value === "string"));
+  } catch {}
+  return new Set();
 }
-function writeSet(key: string, set: Set<string>) {
+
+function writeKeys(key: string, keys: Set<string>) {
   try {
-    // Keep the list short: old exams drop off.
-    localStorage.setItem(key, JSON.stringify([...set].slice(-200)));
-  } catch {
-    // Storage unavailable (private mode): reminders still show, they may just repeat.
-  }
+    localStorage.setItem(key, JSON.stringify([...keys]));
+  } catch {}
 }
 
-/** What the reminder says at a milestone, in the interface language: when, and which room to go to. */
-function message(r: ExamReminder, minutesLeft: number, t: Messages["exams"]["bell"], locale: Locale): { title: string; body: string } {
-  const where = t.where(r.room, r.place?.name ?? null);
-  const when = `${capitalize(formatDate(r.date, { weekday: "long", day: "numeric", month: "short" }, locale))}, ${formatMinutes(r.startMin)}`;
-  if (minutesLeft <= 30) return { title: t.startsIn(r.course, Math.max(1, minutesLeft)), body: t.startsInBody(where) };
-  if (minutesLeft <= 120) return { title: t.inHours(r.course, Math.round(minutesLeft / 60) || 1), body: t.inHoursBody(capitalize(where)) };
-  if (minutesLeft <= 1440) return { title: t.tomorrow(r.course), body: t.tomorrowBody(when, where) };
-  const days = Math.max(2, r.daysLeft);
-  return { title: t.inDays(r.course, days), body: `${when} · ${where}. ${r.tips[0] ?? ""}` };
+function remember(key: string, previous: Set<string>, additions: string[]) {
+  const merged = new Set([...readKeys(key), ...previous, ...additions]);
+  writeKeys(key, merged);
+  return merged;
 }
 
-/**
- * The bell in the header: upcoming exam reminders with the room to go to, and optional
- * device notifications while the app is open. (For alerts when the app is closed, the
- * Google Calendar and .ics exports carry reminders 1 day and 2 hours before each exam.)
- */
-export function NotificationBell() {
-  const messages = useT();
-  const t = messages.exams.bell;
+function NoticeRow({ notice, now, onClose }: { notice: Notice; now: number; onClose: () => void }) {
+  const t = useT();
   const locale = useLocale();
-  const [reminders, setReminders] = useState<ExamReminder[]>([]);
-  const [tip, setTip] = useState<string | null>(null);
-  const [fetchedAt, setFetchedAt] = useState(0);
+  const scheduled = isScheduled(notice) ? notice : null;
+  return (
+    <li className="px-4 py-2.5">
+      <Link href={notice.href} prefetch={false} onClick={onClose} className="group flex items-start gap-2.5 rounded-md">
+        <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${scheduled ? kindStyle(scheduled.kind).dot : "bg-brand-600"}`} />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-slate-600">{notice.category}{scheduled && ` · ${noticeCountdown(scheduled, now, locale)}`}</p>
+          <p className="break-words text-sm font-semibold text-slate-900 group-hover:text-brand-700">{notice.title}</p>
+          <p className="break-words text-xs leading-relaxed text-slate-600">{notice.detail}</p>
+        </div>
+        <ChevronRight size={15} aria-hidden className="mt-1 text-slate-400 group-hover:text-brand-700" />
+      </Link>
+      {scheduled?.tip && <p className="ml-[1.125rem] mt-1 text-xs text-slate-600">{scheduled.tip}</p>}
+      {(scheduled?.directionsHref || scheduled?.mapsUrl) && (
+        <div className="ml-[1.125rem] mt-1 flex flex-wrap gap-x-3 text-xs font-medium text-brand-700">
+          {scheduled.directionsHref && <Link href={scheduled.directionsHref} onClick={onClose} className="hover:underline">{t.campus.rooms.showWay}</Link>}
+          {scheduled.mapsUrl && <a href={scheduled.mapsUrl} target="_blank" rel="noreferrer" className="hover:underline">{t.exams.card.openMap}</a>}
+        </div>
+      )}
+    </li>
+  );
+}
+
+export function NotificationBell({ userId, invitationCount }: { userId: string; invitationCount: number }) {
+  const messages = useT();
+  const t = messages.notifications;
+  const locale = useLocale();
+  const seenKey = `upt-notify-seen:${userId}`;
+  const firedKey = `upt-notify-fired:${userId}`;
+  const prefKey = `upt-notify:${userId}`;
+  const [feed, setFeed] = useState<NotificationFeed | null>(null);
+  const [error, setError] = useState("");
+  const [now, setNow] = useState(0);
   const [open, setOpen] = useState(false);
+  const [visible, setVisible] = useState(false);
   const [seen, setSeen] = useState<Set<string>>(new Set());
+  const fired = useRef(new Set<string>());
   const [enabled, setEnabled] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
-  const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
-  const box = useRef<HTMLDivElement>(null);
+  const [enabling, setEnabling] = useState(false);
+  const [deviceError, setDeviceError] = useState(false);
+  const [toastKey, setToastKey] = useState<string | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
-  const router = useRouter();
-  const loadedLocale = useRef(locale);
+  const request = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    request.current?.abort();
+    const controller = new AbortController();
+    request.current = controller;
     try {
-      const res = await fetch("/api/reminders", { cache: "no-store" });
-      if (!res.ok) return;
-      const data = (await res.json()) as { reminders: ExamReminder[]; tip: string };
-      setReminders(data.reminders);
-      setTip(data.tip);
-      setFetchedAt(Date.now());
+      const res = await fetch("/api/notifications", { cache: "no-store", signal: controller.signal });
+      if (!res.ok && res.status !== 401) throw new Error();
+      const data: NotificationFeed | null = res.ok ? await res.json() : null;
+      if (controller.signal.aborted) return;
+      if (data?.userId !== userId) {
+        setFeed(null);
+        setToastKey(null);
+        setError(messages.common.status.notSignedIn);
+        return;
+      }
+      setFeed(data);
+      setNow(Date.now());
+      setError("");
     } catch {
-      // Offline: keep the last list.
+      if (!controller.signal.aborted) setError(messages.common.status.offline);
     }
-  }, []);
+  }, [userId, messages]);
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect -- reading browser-only state after hydration */
-    setSeen(readSet(SEEN_KEY));
-    setMounted(true);
-    setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
-    try {
-      setEnabled(localStorage.getItem(PREF_KEY) === "on");
-    } catch {}
-    /* eslint-enable react-hooks/set-state-in-effect */
-    void load();
-    const refresh = setInterval(load, 5 * 60_000);
-    // Pressing a Poli opens the chat; the reminder list and toast step aside.
-    const onChat = () => {
-      setOpen(false);
-      setToast(null);
+    function readPreferences() {
+      setVisible(document.visibilityState === "visible");
+      setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
+      setSeen(readKeys(seenKey));
+      try {
+        // The old switch was device-wide. Carry that choice forward once for the current student.
+        const legacy = localStorage.getItem("upt-notify");
+        if (legacy !== null && localStorage.getItem(prefKey) === null) {
+          localStorage.setItem(prefKey, legacy);
+          localStorage.removeItem("upt-notify");
+        }
+        setEnabled(localStorage.getItem(prefKey) === "on");
+      } catch {}
+    }
+    readPreferences();
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === prefKey || event.key === seenKey) readPreferences();
     };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [prefKey, seenKey]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch on mount, locale change and invitation replies
+    void load();
+    const refresh = setInterval(load, 60_000);
+    const clock = setInterval(() => setNow(Date.now()), 15_000);
+    const onVisible = () => {
+      const active = document.visibilityState === "visible";
+      setVisible(active);
+      if (!active) return;
+      setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
+      void load();
+    };
+    const onChat = () => { setOpen(false); setToastKey(null); };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener(SCHEDULE_CHANGED, load);
     window.addEventListener(OPEN_CHAT, onChat);
     return () => {
+      request.current?.abort();
       clearInterval(refresh);
+      clearInterval(clock);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener(SCHEDULE_CHANGED, load);
       window.removeEventListener(OPEN_CHAT, onChat);
     };
-  }, [load]);
+  }, [load, invitationCount]);
 
-  // Countdowns and tips come in the interface language: fetch again after a language switch.
-  useEffect(() => {
-    if (loadedLocale.current === locale) return;
-    loadedLocale.current = locale;
-    void load();
-  }, [locale, load]);
+  const due = useMemo(() => {
+    if (!feed) return [];
+    return [...feed.upcoming, ...feed.requests].flatMap((notice) => {
+      const key = alertKey(notice, now);
+      return key ? [{ notice, key }] : [];
+    });
+  }, [feed, now]);
+  const unread = due.filter(({ key }) => !seen.has(key));
+  const toast = due.find(({ key }) => key === toastKey)?.notice;
 
-  // Check the milestones every 30 seconds and remind once per exam and milestone.
+  // Keep history only for items in a successful feed. A new request from a former
+  // contact can then ring again, and previous weeks' occurrences leave storage.
   useEffect(() => {
-    if (!fetchedAt || !reminders.length) return;
-    const check = () => {
-      const elapsed = Math.floor((Date.now() - fetchedAt) / 60_000);
-      const fired = readSet(FIRED_KEY);
-      let changed = false;
-      let first: { title: string; body: string } | null = null;
-      // Reminders come nearest first, so the most urgent one gets the on-screen toast.
-      for (const r of reminders) {
-        const left = r.minutesUntil - elapsed;
-        if (left <= 0) continue;
-        // The closest milestone already reached; earlier ones count as done, so opening
-        // the app late gives one reminder, not four.
-        const reached = MILESTONES.filter((m) => left <= m);
-        if (!reached.length) continue;
-        const current = Math.min(...reached);
-        const key = `${r.id}:${current}`;
-        if (fired.has(key)) continue;
-        reached.forEach((m) => fired.add(`${r.id}:${m}`));
-        changed = true;
-        const msg = message(r, left, t, locale);
-        first ??= msg;
-        if (enabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
-          try {
-            const n = new Notification(msg.title, { body: msg.body, tag: key, icon: "/images/mascot.svg" });
-            n.onclick = () => {
-              window.focus();
-              router.push("/exams");
-            };
-          } catch {
-            // Some mobile browsers only allow notifications from a service worker.
-          }
-        }
+    if (!feed) return;
+    const active = new Set([...feed.requests, ...feed.upcoming].flatMap(historyKeys));
+    function keepActive(keys: Set<string>) {
+      const kept = new Set([...keys].filter((key) => active.has(key)));
+      return kept.size === keys.size ? keys : kept;
+    }
+    for (const key of [firedKey, seenKey]) {
+      const stored = readKeys(key);
+      const kept = keepActive(stored);
+      if (kept !== stored) writeKeys(key, kept);
+    }
+    fired.current = keepActive(fired.current);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- discard read state for resolved requests
+    setSeen(keepActive);
+  }, [feed, firedKey, seenKey]);
+
+  useEffect(() => {
+    if (!due.length) return;
+    const stored = readKeys(firedKey);
+    const fresh = due.filter(({ key }) => !fired.current.has(key) && !stored.has(key));
+    if (!fresh.length) return;
+    fired.current = remember(firedKey, fired.current, fresh.map(({ key }) => key));
+    if (open && visible) return;
+    // Only the nearest item gets a toast when several reminders arrive at once.
+    setToastKey(fresh[0].key);
+    if (enabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      for (const { notice, key } of fresh) {
+        const title = isScheduled(notice) ? `${notice.title} · ${noticeCountdown(notice, now, locale)}` : notice.title;
+        void showDeviceNotice(title, `${notice.category} · ${notice.detail}`, `${userId}:${key}`, notice.href).catch(() => setDeviceError(true));
       }
-      if (first) setToast(first);
-      if (changed) writeSet(FIRED_KEY, fired);
-    };
-    check();
-    const timer = setInterval(check, 30_000);
-    return () => clearInterval(timer);
-  }, [reminders, fetchedAt, enabled, router, t, locale]);
+    }
+  }, [due, enabled, firedKey, locale, now, open, userId, visible]);
 
   useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 8000);
+    if (!open || !visible) return;
+    const keys = due.map(({ key }) => key).filter((key) => !seen.has(key));
+    // Items arriving while the panel is open have also been read.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- record the visible notification keys
+    if (keys.length) setSeen(remember(seenKey, seen, keys));
+  }, [open, visible, due, seenKey, seen]);
+
+  useEffect(() => {
+    if (!toastKey) return;
+    const timer = setTimeout(() => setToastKey(null), 8000);
     return () => clearTimeout(timer);
-  }, [toast]);
+  }, [toastKey]);
 
   useEffect(() => {
     if (!open) return;
-    const onDown = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (!box.current?.contains(target) && !panel.current?.contains(target)) setOpen(false);
+    panel.current?.focus();
+    const onDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (!trigger.current?.contains(target) && !panel.current?.contains(target)) setOpen(false);
     };
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { setOpen(false); trigger.current?.focus(); }
+    };
     window.addEventListener("pointerdown", onDown);
     window.addEventListener("keydown", onKey);
     return () => {
@@ -176,152 +232,95 @@ export function NotificationBell() {
     };
   }, [open]);
 
-  // The bell counts exams within a week the student has not looked at at this stage yet.
-  const relevant = reminders.filter((r) => r.stage !== "later");
-  const unseen = relevant.filter((r) => !seen.has(`${r.id}:${r.stage}`));
-
-  const toggleOpen = () => {
-    const next = !open;
-    setOpen(next);
-    if (next) setToast(null);
-    if (next && unseen.length) {
-      const s = new Set(seen);
-      relevant.forEach((r) => s.add(`${r.id}:${r.stage}`));
-      setSeen(s);
-      writeSet(SEEN_KEY, s);
-    }
-  };
-
   const toggleDevice = async () => {
-    if (enabled) {
+    setDeviceError(false);
+    if (enabled && permission === "granted") {
       setEnabled(false);
-      try {
-        localStorage.setItem(PREF_KEY, "off");
-      } catch {}
+      try { localStorage.setItem(prefKey, "off"); } catch {}
       return;
     }
     if (typeof Notification === "undefined") return;
-    const result = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
-    setPermission(result);
-    if (result === "granted") {
+    setEnabling(true);
+    try {
+      const result = Notification.permission === "default" ? await Notification.requestPermission() : Notification.permission;
+      setPermission(result);
+      if (result !== "granted") return;
+      await showDeviceNotice(t.testTitle, t.testBody, `${userId}:enabled`, "/");
       setEnabled(true);
-      try {
-        localStorage.setItem(PREF_KEY, "on");
-      } catch {}
-      new Notification(t.enabledTitle, { body: t.enabledBody, icon: "/images/mascot.svg" });
+      try { localStorage.setItem(prefKey, "on"); } catch {}
+    } catch {
+      setDeviceError(true);
+    } finally {
+      setEnabling(false);
     }
   };
 
+  const requests = feed?.requests.filter((r) => r.expiresAt === null || r.expiresAt > now) ?? [];
+  const upcoming = feed?.upcoming.filter((r) => r.expiresAt > now) ?? [];
+  const deviceOn = enabled && permission === "granted";
+  const close = () => setOpen(false);
+
   return (
-    <div ref={box} className="relative">
-      <button
-        onClick={toggleOpen}
-        className={`relative flex h-9 w-9 items-center justify-center rounded-full text-lg transition hover:bg-slate-100 ${unseen.length ? "animate-wiggle" : ""}`}
-        aria-label={unseen.length ? t.labelNew(unseen.length) : t.label}
-        aria-expanded={open}
-        title={t.title}
-      >
-        <span aria-hidden>🔔</span>
-        {unseen.length > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-white">
-            {unseen.length}
-          </span>
-        )}
+    <>
+      <button ref={trigger} type="button" onClick={() => {
+        if (!open) { setToastKey(null); void load(); }
+        setOpen(!open);
+      }} className="relative flex h-9 w-9 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100"
+        aria-label={unread.length ? t.unread(unread.length) : t.title} title={t.title}
+        aria-haspopup="dialog" aria-expanded={open} aria-controls={open ? "notification-panel" : undefined}>
+        <Bell size={20} aria-hidden />
+        {unread.length > 0 && <span aria-hidden className="absolute -right-0.5 -top-0.5 min-w-4 rounded-full bg-red-600 px-1 text-center text-[10px] font-bold leading-4 text-white ring-2 ring-white">{unread.length}</span>}
       </button>
-
-      {/* Rendered on <body>, so the list and the toast sit above Poli's button and the chat. */}
-      {open && mounted && createPortal(
-        <div ref={panel} role="dialog" aria-label={t.title} className="animate-pop fixed inset-x-2 top-16 z-[60] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl sm:inset-x-auto sm:right-4 sm:top-14 sm:w-[24rem]">
-          <div className="flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
-            <Mascot size={30} />
-            <div className="min-w-0 flex-1">
-              <p className="font-semibold text-slate-900">{t.heading}</p>
-              <p className="text-xs text-slate-500">{t.subheading}</p>
-            </div>
-          </div>
-          <div className="max-h-[45vh] overflow-y-auto sm:max-h-[60vh]">
-            {reminders.length ? (
-              <ul className="divide-y divide-slate-100">
-                {reminders.map((r) => (
-                  <li key={r.id} className="px-4 py-3">
-                    <div className="flex items-start gap-3">
-                      <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${r.stage === "later" ? "bg-slate-300" : r.stage === "week" || r.stage === "soon" ? "bg-amber-400" : "bg-red-500"}`} />
-                      <div className="min-w-0 flex-1 text-sm">
-                        <p className="font-semibold text-slate-900">
-                          {r.course} <span className="font-medium text-slate-500">· {r.countdown}</span>
-                        </p>
-                        <p className="text-slate-600">
-                          {capitalize(formatDate(r.date, { weekday: "short", day: "numeric", month: "short" }, locale))}, {formatMinutes(r.startMin)} ·{" "}
-                          <span className="font-medium text-slate-800">{r.room ? t.room(r.room) : t.roomTba}</span>
-                          {r.place ? ` · ${r.place.name}` : ""}
-                        </p>
-                        <p className="mt-1 text-xs text-slate-500">💡 {r.tips[0]}</p>
-                        {r.room && r.place && (
-                          <Link href={campusJourneyHref({ to: r.room, building: r.place.name, course: r.course, date: r.date, at: formatMinutes(r.startMin) })}
-                            onClick={() => setOpen(false)} className="mr-3 mt-1 inline-block text-xs font-semibold text-brand-700 hover:underline">
-                            {messages.campus.rooms.showWay}
-                          </Link>
-                        )}
-                        {r.mapsUrl && (
-                          <a href={r.mapsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-medium text-brand-600 hover:underline">
-                            {t.openMap}
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="px-4 py-5 text-sm text-slate-600">{t.empty}{tip ? <span className="mt-1 block text-xs text-slate-500">💡 {tip}</span> : null}</p>
-            )}
-          </div>
-          <div className="space-y-2 border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-            {permission === "unsupported" ? (
-              <p>{t.unsupported}</p>
-            ) : permission === "denied" ? (
-              <p>{t.blocked}</p>
-            ) : (
-              <label className="flex cursor-pointer items-center justify-between gap-3">
-                <span>
-                  <span className="block font-medium text-slate-800">{t.deviceTitle}</span>
-                  {t.deviceHint}
-                </span>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={enabled}
-                  aria-label={t.deviceTitle}
-                  onClick={toggleDevice}
-                  className={`relative h-6 w-11 shrink-0 rounded-full transition ${enabled ? "bg-brand-600" : "bg-slate-300"}`}
-                >
-                  <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${enabled ? "left-[1.375rem]" : "left-0.5"}`} />
-                </button>
-              </label>
-            )}
-            <p>
-              {t.exportBefore}
-              <Link href="/settings#export" className="font-medium text-brand-600 hover:underline" onClick={() => setOpen(false)}>
-                {t.exportLink}
+      {open && createPortal(
+        <div id="notification-panel" ref={panel} role="dialog" tabIndex={-1} aria-labelledby="notification-title"
+          className="animate-pop fixed inset-x-2 top-16 z-[60] flex max-h-[calc(100dvh-5rem)] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl sm:inset-x-auto sm:right-4 sm:w-96">
+          <header className="flex items-center justify-between border-b border-slate-100 px-4 py-2">
+            <div className="flex items-center gap-2"><Mascot size={26} /><h2 id="notification-title" className="font-semibold">{t.title}</h2></div>
+            <button type="button" className="btn-ghost px-2" aria-label={messages.common.actions.close} onClick={() => { close(); trigger.current?.focus(); }}><X size={17} aria-hidden /></button>
+          </header>
+          <div className="min-h-0 overflow-y-auto overscroll-contain">
+            {error && <p role="status" className="px-4 py-3 text-sm">{error} <button onClick={load} className="font-semibold text-brand-700 underline">{messages.common.actions.retry}</button></p>}
+            {!feed && !error && <p role="status" className="px-4 py-3 text-sm">{messages.common.status.loading}</p>}
+            {requests.length > 0 && <section>
+              <h3 className="bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-700">{t.requests}</h3>
+              <ul className="divide-y divide-slate-100">{requests.map((notice) => <NoticeRow key={notice.id} notice={notice} now={now} onClose={close} />)}</ul>
+            </section>}
+            {upcoming.length > 0 && <section>
+              <div className="bg-slate-50 px-4 py-2"><h3 className="text-xs font-semibold text-slate-700">{t.upcoming}</h3><p className="text-xs text-slate-600">{t.horizon}</p></div>
+              <ul className="divide-y divide-slate-100">{upcoming.map((notice) => <NoticeRow key={notice.id} notice={notice} now={now} onClose={close} />)}</ul>
+            </section>}
+            {feed && !error && !upcoming.length && !requests.length && <div className="px-4 py-5">
+              <p className="font-medium">{t.empty}</p><p className="mt-1 text-xs text-slate-600">{feed.tip}</p>
+            </div>}
+            <footer className="space-y-2 border-t border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
+              {permission === "unsupported" ? <p>{t.unsupported}</p> : permission === "denied" ? <p>{t.blocked}</p> : (
+                <>
+                  <button type="button" role="switch" aria-checked={deviceOn} aria-describedby="notification-timings" disabled={enabling} onClick={toggleDevice}
+                    className="flex w-full items-center justify-between gap-3 rounded-md text-left text-sm font-medium text-slate-800">
+                    {t.device}
+                    <span aria-hidden className={`relative h-6 w-11 shrink-0 rounded-full transition ${deviceOn ? "bg-brand-600" : "bg-slate-300"}`}>
+                      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${deviceOn ? "left-[1.375rem]" : "left-0.5"}`} />
+                    </span>
+                  </button>
+                  <p id="notification-timings">{t.timings}</p>
+                </>
+              )}
+              {deviceError && <p role="status">{t.deviceFailed}</p>}
+              <Link href="/settings#export" onClick={close} className="inline-flex items-center gap-1.5 font-medium text-brand-700 hover:underline">
+                <CalendarDays size={14} aria-hidden />{t.export}
               </Link>
-              {t.exportAfter}
-            </p>
+            </footer>
           </div>
-        </div>,
-        document.body,
-      )}
-
-      {toast && mounted && createPortal(
-        <div role="status" className="animate-pop fixed right-4 top-16 z-[70] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-3 rounded-2xl border border-brand-100 bg-white p-3 shadow-xl">
-          <Mascot size={36} wave />
-          <div className="min-w-0 flex-1 text-sm">
-            <p className="font-semibold text-slate-900">{toast.title}</p>
-            <p className="text-slate-600">{toast.body}</p>
-          </div>
-          <button className="text-slate-400 hover:text-slate-700" onClick={() => setToast(null)} aria-label={t.dismiss}>✕</button>
-        </div>,
-        document.body,
-      )}
-    </div>
+        </div>, document.body)}
+      {toast && !open && createPortal(
+        <div role="status" className="animate-pop fixed right-4 top-16 z-[70] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-2 rounded-2xl border border-brand-100 bg-white p-3 shadow-xl">
+          <Mascot size={32} wave />
+          <Link href={toast.href} prefetch={false} onClick={() => setToastKey(null)} className="min-w-0 flex-1 break-words text-sm">
+            <span className="block font-semibold text-slate-900">{toast.title}{isScheduled(toast) && ` · ${noticeCountdown(toast, now, locale)}`}</span>
+            <span className="text-slate-600">{toast.category} · {toast.detail}</span>
+          </Link>
+          <button aria-label={messages.common.actions.close} onClick={() => setToastKey(null)} className="text-slate-500"><X size={16} aria-hidden /></button>
+        </div>, document.body)}
+    </>
   );
 }

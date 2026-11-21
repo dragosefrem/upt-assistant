@@ -17,6 +17,7 @@ import { getUser, type User } from "@/lib/auth";
 import { studyBlocks } from "@/lib/study-plan";
 
 vi.mock("@/lib/auth", async (load) => ({ ...(await load<typeof import("@/lib/auth")>()), getUser: vi.fn() }));
+vi.mock("next/navigation", async (load) => ({ ...(await load<typeof import("next/navigation")>()), useRouter: () => ({ replace: vi.fn() }) }));
 vi.mock("@/i18n/server", async (load) => ({ ...(await load<typeof import("@/i18n/server")>()), getT: vi.fn(), getLocale: vi.fn() }));
 
 const from = "2026-11-30";
