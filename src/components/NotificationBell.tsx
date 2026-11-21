@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { ExamReminder } from "@/lib/reminders";
 import { formatDate, formatMinutes } from "@/lib/time";
 import { Mascot } from "./Mascot";
@@ -55,6 +56,8 @@ export function NotificationBell() {
   const [permission, setPermission] = useState<NotificationPermission | "unsupported">("default");
   const [toast, setToast] = useState<{ title: string; body: string } | null>(null);
   const box = useRef<HTMLDivElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
 
   const load = useCallback(async () => {
@@ -73,6 +76,7 @@ export function NotificationBell() {
   useEffect(() => {
     /* eslint-disable react-hooks/set-state-in-effect -- reading browser-only state after hydration */
     setSeen(readSet(SEEN_KEY));
+    setMounted(true);
     setPermission(typeof Notification === "undefined" ? "unsupported" : Notification.permission);
     try {
       setEnabled(localStorage.getItem(PREF_KEY) === "on");
@@ -135,7 +139,8 @@ export function NotificationBell() {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (!box.current?.contains(target) && !panel.current?.contains(target)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     window.addEventListener("pointerdown", onDown);
@@ -153,6 +158,7 @@ export function NotificationBell() {
   const toggleOpen = () => {
     const next = !open;
     setOpen(next);
+    if (next) setToast(null);
     if (next && unseen.length) {
       const s = new Set(seen);
       relevant.forEach((r) => s.add(`${r.id}:${r.stage}`));
@@ -198,8 +204,9 @@ export function NotificationBell() {
         )}
       </button>
 
-      {open && (
-        <div role="dialog" aria-label="Exam reminders" className="animate-pop fixed inset-x-2 top-16 z-[60] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-11 sm:w-[24rem]">
+      {/* Rendered on <body>, so the list and the toast sit above Poli's button and the chat. */}
+      {open && mounted && createPortal(
+        <div ref={panel} role="dialog" aria-label="Exam reminders" className="animate-pop fixed inset-x-2 top-16 z-[60] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl sm:inset-x-auto sm:right-4 sm:top-14 sm:w-[24rem]">
           <div className="flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
             <Mascot size={30} />
             <div className="min-w-0 flex-1">
@@ -207,7 +214,7 @@ export function NotificationBell() {
               <p className="text-xs text-slate-500">Your exams in the next 30 days</p>
             </div>
           </div>
-          <div className="max-h-[60vh] overflow-y-auto">
+          <div className="max-h-[45vh] overflow-y-auto sm:max-h-[60vh]">
             {reminders.length ? (
               <ul className="divide-y divide-slate-100">
                 {reminders.map((r) => (
@@ -268,10 +275,11 @@ export function NotificationBell() {
               : exams come with alerts a day and 2 hours before.
             </p>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {toast && (
+      {toast && mounted && createPortal(
         <div role="status" className="animate-pop fixed right-4 top-16 z-[70] flex w-[min(22rem,calc(100vw-2rem))] items-start gap-3 rounded-2xl border border-brand-100 bg-white p-3 shadow-xl">
           <Mascot size={36} wave />
           <div className="min-w-0 flex-1 text-sm">
@@ -279,7 +287,8 @@ export function NotificationBell() {
             <p className="text-slate-600">{toast.body}</p>
           </div>
           <button className="text-slate-400 hover:text-slate-700" onClick={() => setToast(null)} aria-label="Dismiss">✕</button>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
