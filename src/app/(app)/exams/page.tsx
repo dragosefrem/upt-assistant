@@ -1,6 +1,8 @@
-import { and, asc, eq } from "drizzle-orm";
+import { facultyDocuments } from "@/lib/faculty-documents";
+import { importDiagnostic } from "@/i18n/messages/import-diagnostics";
+import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { exams, sources } from "@/db/schema";
+import { exams } from "@/db/schema";
 import { ExamCard } from "@/components/ExamCard";
 import { StudyPlanCard } from "@/components/StudyPlanCard";
 import { getLocale, getT } from "@/i18n/server";
@@ -38,9 +40,7 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
     ? db.select().from(exams).where(eq(exams.facultyId, user.facultyId)).orderBy(asc(exams.date), asc(exams.startMin)).all()
     : [];
   const found = q ? all.filter((x) => fold(`${x.courseName} ${x.courseAbbr ?? ""} ${x.teacher ?? ""} ${x.audience ?? ""} ${x.room ?? ""}`).includes(fold(q))) : [];
-  const documents = user.facultyId
-    ? db.select().from(sources).where(and(eq(sources.facultyId, user.facultyId), eq(sources.kind, "exams"))).all()
-    : [];
+  const documents = facultyDocuments(user.facultyId, "exams");
 
   const table = (list: Exam[]) => (
     <div className="overflow-x-auto">
@@ -118,7 +118,7 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
             <span key={d.id}>
               {i > 0 && ", "}
               <a className="underline hover:text-brand-600" href={d.url} target="_blank" rel="noreferrer">{d.label}</a>
-              {d.status === "partial" && d.message && <span> · {d.message}</span>}
+              {d.status === "partial" && d.message && <span> · {importDiagnostic(d.message, locale)}</span>}
             </span>
           ))}
           {documents[0].lastFetchedAt ? ` · ${t.lastImported(formatDate(documents[0].lastFetchedAt.slice(0, 10), { day: "numeric", month: "short", year: "numeric" }, locale))}` : ""}

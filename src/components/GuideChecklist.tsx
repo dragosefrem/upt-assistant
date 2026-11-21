@@ -1,39 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { useT } from "@/i18n/client";
 import { askAssistant } from "./Mascot";
 
-const KEY = "upt-first-week";
+import { readChecklist, updateChecklist, watchChecklist } from "@/lib/guide-checklist";
+
+const snapshot = () => JSON.stringify(readChecklist());
+const empty = () => "[]";
 
 /** The first-week checklist. What is ticked is remembered on this device. */
 export function GuideChecklist() {
   const t = useT().guide;
-  const [done, setDone] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    try {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- the saved ticks exist only in the browser
-      setDone(new Set(JSON.parse(localStorage.getItem(KEY) ?? "[]") as string[]));
-    } catch {
-      // No storage (private mode): the list still works for this visit.
-    }
-  }, []);
-
-  const toggle = (id: string) => {
-    setDone((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      try {
-        localStorage.setItem(KEY, JSON.stringify([...next]));
-      } catch {
-        // Not saved; nothing else to do.
-      }
-      return next;
-    });
-  };
+  const ticks = useSyncExternalStore(watchChecklist, snapshot, empty);
+  const done = new Set<string>(JSON.parse(ticks));
 
   const count = t.steps.filter((s) => done.has(s.id)).length;
   const total = t.steps.length;
@@ -55,7 +36,7 @@ export function GuideChecklist() {
                 role="checkbox"
                 aria-checked={checked}
                 aria-label={step.title}
-                onClick={() => toggle(step.id)}
+                onClick={() => updateChecklist({ step: step.id, done: !checked })}
                 className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 ${checked ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 text-slate-400 hover:border-brand-500"}`}
               >
                 {checked ? "✓" : i + 1}

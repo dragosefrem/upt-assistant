@@ -3,6 +3,7 @@ import { ApiError as GeminiApiError } from "@google/genai";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { chatMessages } from "@/db/schema";
+import { checklistIds } from "@/lib/guide-checklist";
 import { getUser } from "@/lib/auth";
 import { getLocale, getT } from "@/i18n/server";
 import type { Messages } from "@/i18n/messages";
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
     message?: unknown;
     spoken?: unknown;
+    checklist?: unknown;
     location?: { lat?: unknown; lng?: unknown };
   } | null;
   const message = typeof body?.message === "string" ? body.message.trim().slice(0, 2000) : "";
@@ -65,6 +67,8 @@ export async function POST(request: Request) {
   const lng = Number(body?.location?.lng);
   const ctx: ToolContext = {
     user,
+    origin: new URL(request.url).origin,
+    checklist: Array.isArray(body?.checklist) ? checklistIds(body.checklist) : undefined,
     location: Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null,
     changed: false,
     locale: await getLocale(),
@@ -130,6 +134,7 @@ export async function POST(request: Request) {
         links,
         open: reply ? ctx.open : undefined,
         locale: ctx.setLocale,
+        checklistEdits: ctx.checklistEdits,
         notice,
       });
       controller.close();

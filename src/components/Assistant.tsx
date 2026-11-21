@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { readChecklist, updateChecklist } from "@/lib/guide-checklist";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { setLocaleAction } from "@/app/actions/locale";
@@ -408,7 +409,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         const res = await fetch("/api/assistant", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ message, spoken, location: positionRef.current }),
+          body: JSON.stringify({ message, spoken, location: positionRef.current, checklist: readChecklist() }),
         });
         if (!res.ok || !res.body) throw new Error(res.status === 401 ? tr.errors.sessionExpired : tr.errors.unavailable);
         const reader = res.body.getReader();
@@ -430,7 +431,11 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             } else if (chunk.type === "done") {
               setEngine(chunk.engine);
               if (chunk.notice) setNotice(chunk.notice);
-              if (chunk.changed) window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+              if (Array.isArray(chunk.checklistEdits)) chunk.checklistEdits.forEach(updateChecklist);
+              if (chunk.changed) {
+                window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+                router.refresh();
+              }
               const choices = Array.isArray(chunk.choices) && chunk.choices.length ? (chunk.choices as AssistantChoice[]) : undefined;
               const preview = chunk.preview as DayPreview | undefined;
               if (choices) offered = choices;
@@ -640,8 +645,9 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             )}
             {m.links && m.links.length > 0 && (
               <div className="flex flex-wrap gap-2 pl-8">
-                {m.links.map((l) => (
-                  <Link
+                {m.links.map((l) => {
+                  const Destination = l.href.startsWith("/api/") ? "a" : Link;
+                  return <Destination
                     key={l.href}
                     href={l.href}
                     onClick={onClose}
@@ -649,8 +655,8 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
                   >
                     <span className="truncate">{l.label}</span>
                     <span aria-hidden>→</span>
-                  </Link>
-                ))}
+                  </Destination>;
+                })}
               </div>
             )}
           </div>

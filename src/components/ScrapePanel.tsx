@@ -1,5 +1,6 @@
 "use client";
 
+import { importDiagnostic } from "@/i18n/messages/import-diagnostics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useT } from "@/i18n/client";
@@ -155,7 +156,7 @@ export function ScrapePanel({ faculties, initialRuns }: { faculties: Array<{ id:
               {active.finishedAt ? t.took(Math.max(1, Math.round((+new Date(active.finishedAt) - +new Date(active.startedAt)) / 1000))) : ""}
             </p>
             <pre ref={logRef} className="h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-900 p-3 font-mono text-xs leading-relaxed text-slate-100">
-              {active.log || t.starting}
+              {importDiagnostic(active.log, locale) || t.starting}
             </pre>
           </>
         ) : (

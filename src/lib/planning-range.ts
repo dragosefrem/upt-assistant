@@ -1,3 +1,4 @@
+import type { FreeSlot } from "./schedule";
 import { z } from "zod";
 import { addDays, daysBetween } from "./time";
 
@@ -45,4 +46,35 @@ export function planningRange(today: string, params: { from?: unknown; to?: unkn
     to: addDays(range.from, Math.min(offset + PLANNING_PAGE_DAYS, totalDays) - 1),
   };
   return { range, visible, page, pageCount, totalDays, error };
+}
+
+export interface AvailabilityDay {
+  date: string;
+  slots: FreeSlot[];
+  freeMinutes: number;
+}
+
+/** Hour filters; the label is `contacts.availability.hours[id]`. */
+export const hourViews = [
+  { id: "full", startMin: 0, endMin: 1440 },
+  { id: "daytime", startMin: 480, endMin: 1080 },
+  { id: "evening", startMin: 1080, endMin: 1440 },
+] as const;
+
+export type CampusTime = { date: string; minutes: number };
+
+export function availabilityDays(range: DateRange, slots: FreeSlot[], asOf: CampusTime, hours: typeof hourViews[number] = hourViews[0]): AvailabilityDay[] {
+  const days = Array.from({ length: daysBetween(range.from, range.to) + 1 }, (_, i): AvailabilityDay => ({
+    date: addDays(range.from, i), slots: [], freeMinutes: 0,
+  }));
+  const nextQuarter = Math.ceil((asOf.minutes + 1) / 15) * 15;
+  for (const slot of slots) {
+    const startMin = Math.max(hours.startMin, slot.startMin, slot.date === asOf.date ? nextQuarter : 0);
+    const endMin = Math.min(hours.endMin, slot.endMin);
+    if (startMin >= endMin) continue;
+    const day = days[daysBetween(range.from, slot.date)];
+    day.slots.push({ date: slot.date, startMin, endMin });
+    day.freeMinutes += endMin - startMin;
+  }
+  return days;
 }
