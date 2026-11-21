@@ -22,6 +22,7 @@ export function AppShell({ user, children }: { user: User; children: React.React
           <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-sm sm:gap-1">
             <NavLink href="/" icon="📅">Calendar</NavLink>
             <NavLink href="/exams" icon="📝">Exams</NavLink>
+            <NavLink href="/attendance" icon="✅">Attendance</NavLink>
             <NavLink href="/settings" icon="⚙️">Settings</NavLink>
             {user.role === "admin" && <NavLink href="/admin" icon="🛠️">Admin</NavLink>}
           </nav>

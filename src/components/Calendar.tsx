@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CalEvent } from "@/lib/schedule";
 import { DAY_SHORT, addDays, formatDate, formatMinutes, formatTimeSlot, mondayOf, nowLocal, weekday } from "@/lib/time";
+import { kindStyle } from "@/lib/kinds";
 import { EventDialog } from "./EventDialog";
 import { PersonalEventDialog } from "./PersonalEventDialog";
 
@@ -11,19 +12,7 @@ type View = "day" | "week" | "month";
 /** Fired on `window` whenever the student's timetable changes (edits, assistant actions). */
 export const SCHEDULE_CHANGED = "upt:schedule-changed";
 
-const KIND_STYLE: Record<string, { block: string; dot: string; label: string }> = {
-  course: { block: "border-brand-500 bg-brand-50 text-brand-900", dot: "bg-brand-500", label: "Lecture" },
-  seminar: { block: "border-emerald-500 bg-emerald-50 text-emerald-900", dot: "bg-emerald-500", label: "Seminar" },
-  lab: { block: "border-amber-500 bg-amber-50 text-amber-900", dot: "bg-amber-500", label: "Lab" },
-  project: { block: "border-fuchsia-500 bg-fuchsia-50 text-fuchsia-900", dot: "bg-fuchsia-500", label: "Project" },
-  other: { block: "border-slate-400 bg-slate-100 text-slate-800", dot: "bg-slate-400", label: "Other" },
-  exam: { block: "border-red-500 bg-red-50 text-red-900", dot: "bg-red-500", label: "Exam" },
-  personal: { block: "border-violet-500 bg-violet-50 text-violet-900", dot: "bg-violet-500", label: "Personal" },
-};
-
-export function kindStyle(kind: string) {
-  return KIND_STYLE[kind] ?? KIND_STYLE.other;
-}
+export { kindStyle };
 
 const HOUR_PX = 56;
 /** Clicking or dragging on the grid snaps to half hours. */
@@ -31,6 +20,21 @@ const SNAP_MIN = 30;
 
 type NewEvent = { date: string; startMin?: number; endMin?: number };
 type Drag = { date: string; anchorMin: number; startMin: number; endMin: number; pointer: string; x: number; y: number; moved: boolean };
+
+/** Small ✓ / ✗ badge for occurrences the student has marked. */
+function AttendanceMark({ status, small = false, className = "" }: { status: CalEvent["attendance"]; small?: boolean; className?: string }) {
+  if (!status) return null;
+  const attended = status === "attended";
+  return (
+    <span
+      title={attended ? "Attended" : "Missed"}
+      aria-label={attended ? "Attended" : "Missed"}
+      className={`inline-flex shrink-0 items-center justify-center rounded-full font-bold ${small ? "h-3.5 w-3.5 text-[9px]" : "h-4 w-4 text-[10px]"} leading-none text-white ${attended ? "bg-emerald-600" : "bg-red-600"} ${className}`}
+    >
+      {attended ? "✓" : "✗"}
+    </span>
+  );
+}
 
 function rangeFor(view: View, anchor: string): { from: string; to: string } {
   if (view === "day") return { from: anchor, to: anchor };
@@ -324,7 +328,8 @@ export function Calendar({
                         className={`absolute flex flex-col items-stretch justify-start overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left text-xs shadow-sm transition hover:z-10 hover:shadow-md ${style.block}`}
                         style={{ top, height, left: `calc(${(col / cols) * 100}% + 2px)`, width: `calc(${100 / cols}% - 4px)` }}
                       >
-                        <span className="block truncate font-semibold leading-tight">
+                        <AttendanceMark status={event.attendance} className="absolute right-1 top-1" />
+                        <span className={`block truncate font-semibold leading-tight ${event.attendance ? "pr-4" : ""}`}>
                           {cols > 2 || (view === "week" && days.length > 5) ? (event.abbr ?? event.title) : event.title}
                         </span>
                         {height > 34 && (
@@ -426,6 +431,7 @@ function MonthGrid({
                 <span key={e.id} className="flex items-center gap-1 truncate">
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />
                   <span className="truncate text-slate-700">{formatMinutes(e.startMin)} {e.abbr ?? e.title}</span>
+                  <AttendanceMark status={e.attendance} small className="ml-auto" />
                 </span>
               ))}
               {dayEvents.length > 3 && <span className="block text-slate-400">+{dayEvents.length - 3} more</span>}
