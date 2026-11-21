@@ -202,7 +202,7 @@ export const APP_TOOLS: AssistantTool[] = [
   {
     name: "campus_route",
     description:
-      "A walkthrough INSIDE the campus, through the university's 360° tour: from a starting place to a room, lab, amphitheatre or building (\"B419\", \"A315\", \"D1\", \"the library\"). Returns turn-by-turn directions and puts a button under your reply that opens the walkthrough video. `to` may be \"next\" for the student's next class. If the student has not said where they are, call it without `from`: when it answers with a question, ask the student (a building entrance such as \"AC entrance\" is the usual answer). Use get_directions instead for travel across the city from the student's GPS position.",
+      "The way to a room, lab, amphitheatre or building on campus (\"B419\", \"A315\", \"D1\", \"the library\"), through the university's 360° tour. Without `from` it starts at the best building entrance for that room, chosen automatically, and the button it puts under your reply opens the whole journey: a Google map to that entrance, then the walkthrough video with turn-by-turn directions. `to` may be \"next\" for the student's next class. Pass `from` only when the student says where inside the campus they are starting. If it answers with a question (a room code that exists in two buildings), ask the student. Use get_directions instead for travel times across the city from the student's GPS position.",
     input_schema: {
       type: "object",
       properties: {
@@ -238,12 +238,13 @@ export const APP_TOOLS: AssistantTool[] = [
       return {
         route: answer.title,
         for_class: event,
+        starts_at: str(input.from) ? answer.start.name : `${answer.start.name} (chosen automatically: the entrance with the shortest walk to the room)`,
         video_reaches: answer.reach,
         notice: answer.notice ?? undefined,
         directions: answer.steps.map((s) => s.instruction).filter(Boolean).slice(0, 16),
         checkpoints: answer.steps.length,
         video_seconds: answer.durationSeconds,
-        note: "A button under your reply opens the walkthrough video with every step. Give the first two or three directions in your own words and mention the button; if video_reaches is not \"room\", say where the video ends.",
+        note: "A button under your reply opens the journey: a map from where the student is to that entrance, then the walkthrough video with every step. Say which entrance to go to, give the first two or three directions in your own words and mention the button; if video_reaches is not \"room\", say where the video ends.",
       };
     },
   },
