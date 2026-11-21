@@ -1,10 +1,11 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
+import nodemailer from "nodemailer";
 import { getDb } from "@/db";
 import { courses, entries, entryGroups, examSpecializations, exams, faculties, groups, semesters, specializations, users } from "@/db/schema";
 import type { User } from "@/lib/auth";
 import { exportItems } from "@/lib/export";
-import { calendarEmail } from "@/lib/export-email";
+import { calendarEmail, emailCalendar } from "@/lib/export-email";
 import { renewCalendarLink } from "@/app/(app)/settings/actions";
 import { GET as calendarFeed } from "@/app/api/ics/[token]/route";
 import { requireOnboardedUser } from "@/lib/auth";
@@ -97,5 +98,28 @@ describe("calendar export language", () => {
     expect(feed.headers.get("cache-control")).toContain("no-store");
     expect(await feed.text()).toContain("BEGIN:VCALENDAR");
     expect((await read("other-feed")).status).toBe(200);
+  });
+
+  it.each([
+    { to: "friend@example.com", rememberAddress: false, includesFeed: false, saved: "alternate@example.com" },
+    { to: "friend@example.com", rememberAddress: true, includesFeed: false, saved: "friend@example.com" },
+    { to: " ALTERNATE@example.com ", rememberAddress: false, includesFeed: true, saved: "alternate@example.com" },
+    { to: "s@example.com", rememberAddress: false, includesFeed: true, saved: "alternate@example.com" },
+  ])("sends a snapshot to $to and preserves the requested address preference ($rememberAddress)", async (test) => {
+    const db = getDb();
+    const account = db.update(users).set({ exportEmail: "alternate@example.com", calendarEmailedAt: null })
+      .where(eq(users.id, user.id)).returning().get();
+    const transport = nodemailer.createTransport({ jsonTransport: true });
+    const send = vi.spyOn(transport, "sendMail");
+    vi.stubEnv("APP_URL", "https://orar.example.org");
+    try {
+      expect(await emailCalendar(account, test.to, transport, "en", { rememberAddress: test.rememberAddress })).toMatchObject({ ok: true });
+      const [message] = send.mock.calls[0];
+      expect(message.attachments?.[0].content).toContain("BEGIN:VCALENDAR");
+      expect(String(message.text).includes(`/api/ics/${account.feedToken}`)).toBe(test.includesFeed);
+      expect(db.select().from(users).where(eq(users.id, user.id)).get()?.exportEmail).toBe(test.saved);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

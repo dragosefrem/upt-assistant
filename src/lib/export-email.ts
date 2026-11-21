@@ -6,7 +6,7 @@ import { users } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import { settings } from "@/i18n/messages/settings";
-import { isEmail, type User } from "./auth";
+import { isEmail, normalizeEmail, type User } from "./auth";
 import { exportItems, toICS } from "./export";
 import { mailConfigured, sendMail } from "./mail";
 import { currentSemester } from "./schedule";
@@ -50,7 +50,8 @@ export type EmailCalendarResult = { ok: true; sentTo: string } | { ok: false; st
 
 /**
  * E-mails the student's calendar to `to`, or to the address they used last time, or
- * to their sign-in address. A successful send remembers the address.
+ * to their sign-in address. Settings remembers a successful recipient. One-time shares
+ * can keep the existing preference, and a new recipient only receives the attachment.
  *
  * `locale` is the language of the e-mail, the calendar inside it and the error messages:
  * the account's language when it has one, else English. Callers serving a request pass
@@ -61,6 +62,7 @@ export async function emailCalendar(
   to?: string,
   transport?: Transporter,
   locale: Locale = user.locale ?? "en",
+  { rememberAddress = true }: { rememberAddress?: boolean } = {},
 ): Promise<EmailCalendarResult> {
   const t = settings[locale].export.errors;
   if (!transport && !mailConfigured()) {
@@ -74,11 +76,12 @@ export async function emailCalendar(
   // Claim the send slot atomically, so a double click or a retry cannot send twice.
   const db = getDb();
   const now = new Date();
+  const claimedAt = now.toISOString();
   const cutoff = new Date(now.getTime() - EMAIL_INTERVAL_MS).toISOString();
   const previous = db.select({ at: users.calendarEmailedAt }).from(users).where(eq(users.id, user.id)).get()?.at ?? null;
   const claimed = db
     .update(users)
-    .set({ calendarEmailedAt: now.toISOString() })
+    .set({ calendarEmailedAt: claimedAt })
     .where(and(eq(users.id, user.id), or(isNull(users.calendarEmailedAt), lt(users.calendarEmailedAt, cutoff))))
     .run();
   if (claimed.changes === 0) {
@@ -87,7 +90,8 @@ export async function emailCalendar(
   }
 
   const semester = currentSemester();
-  const base = publicBaseUrl();
+  const knownRecipient = [user.email, user.exportEmail].some((saved) => saved && normalizeEmail(saved) === normalizeEmail(address));
+  const base = knownRecipient ? publicBaseUrl() : null;
   const message = calendarEmail({
     ics: toICS(items),
     semester: semester ? common[locale].time.semester(semester.number, semester.academicYear) : null,
@@ -98,10 +102,12 @@ export async function emailCalendar(
     await sendMail({ to: address, ...message }, transport);
   } catch (err) {
     // Give the slot back, so the student can retry once the problem is fixed.
-    db.update(users).set({ calendarEmailedAt: previous }).where(eq(users.id, user.id)).run();
+    db.update(users).set({ calendarEmailedAt: previous }).where(and(eq(users.id, user.id), eq(users.calendarEmailedAt, claimedAt))).run();
     console.error("Calendar email failed", err);
     return { ok: false, status: 502, error: t.sendFailed };
   }
-  db.update(users).set({ exportEmail: address }).where(eq(users.id, user.id)).run();
+  if (rememberAddress) {
+    db.update(users).set({ exportEmail: address }).where(and(eq(users.id, user.id), eq(users.calendarEmailedAt, claimedAt))).run();
+  }
   return { ok: true, sentTo: address };
 }
