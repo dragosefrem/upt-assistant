@@ -5,11 +5,12 @@ import { personalEvents } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import { settings } from "@/i18n/messages/settings";
+import { sponsoredNote } from "@/i18n/messages/sponsored";
 import type { User } from "./auth";
 import { sharedEventsFor } from "./group-events";
 import { isPublicHoliday } from "./holidays";
 import { kindLabel } from "./kinds";
-import { currentSemester, examsForUser, occurrenceMoves, placeResolver, studentWeek, type Semester } from "./schedule";
+import { currentSemester, examsForUser, occurrenceMoves, placeResolver, savedSponsoredEvents, studentWeek, type Semester } from "./schedule";
 import { TIME_ZONE, addDays, describeWeeks, formatDate, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
 
 /**
@@ -134,6 +135,11 @@ export function exportItems(user: User, locale: Locale = user.locale ?? "en"): E
   for (const e of sharedEventsFor(user.id)) {
     items.push({ uid: `group-${e.id}`, title: e.title, location: e.location ?? "", description: common[locale].kinds.shared,
       date: e.date, startMin: e.startMin, endMin: e.endMin });
+  }
+  for (const e of savedSponsoredEvents(user.id)) {
+    items.push({ uid: `sponsored-${e.id}`, title: e.title, location: e.location,
+      date: e.date, startMin: e.startMin, endMin: e.endMin,
+      description: sponsoredNote(e, locale) });
   }
   return items;
 }

@@ -8,6 +8,7 @@ import { requireOnboardedUser } from "@/lib/auth";
 import { programmeTimetable } from "@/lib/catalog";
 import { holidaysBetween } from "@/lib/holidays";
 import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
+import { sponsoredOffers } from "@/lib/sponsored-events";
 import { addDays, mondayOf, nowLocal } from "@/lib/time";
 
 export async function generateMetadata() {
@@ -22,6 +23,8 @@ export default async function HomePage() {
   const { date: today } = nowLocal();
   const from = mondayOf(today);
   const to = addDays(from, 6);
+  const horizon = addDays(today, 14);
+  const upcoming = eventsBetween(user, from, horizon, locale);
   const semester = currentSemester();
   const group = describeGroup(user.groupId, locale);
   const pending = semester
@@ -49,9 +52,10 @@ export default async function HomePage() {
         </p>
       )}
       <div className="schedule-layout">
-        <NextUp initial={eventsBetween(user, today, addDays(today, 14), locale)} />
+        <NextUp initial={upcoming.filter((e) => e.date >= today)} />
         <Calendar
-          initialEvents={eventsBetween(user, from, to, locale)}
+          initialEvents={upcoming.filter((e) => e.date <= to)}
+          initialOffers={sponsoredOffers(user, today, horizon, upcoming)}
           initialHolidays={holidaysBetween(from, to, locale)}
           initialFrom={from}
           initialTo={to}

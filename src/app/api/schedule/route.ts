@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { entries, entryGroups, occurrenceOverrides, personalEvents, userOverrides } from "@/db/schema";
 import { getT } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
+import { respondToSponsoredEvent } from "@/lib/sponsored-events";
 
 /** A student's personal changes to their own timetable. */
 const Body = z.discriminatedUnion("action", [
@@ -32,6 +33,7 @@ const Body = z.discriminatedUnion("action", [
     location: z.string().trim().max(120).optional(),
   }),
   z.object({ action: z.literal("deletePersonal"), id: z.number().int() }),
+  z.object({ action: z.literal("sponsored"), id: z.hash("sha256"), choice: z.enum(["save", "hide", "undoHide", "remove"]) }),
 ]);
 
 export async function POST(request: Request) {
@@ -54,6 +56,11 @@ export async function POST(request: Request) {
       .get();
 
   switch (body.action) {
+    case "sponsored":
+      if (!respondToSponsoredEvent(user.id, body.id, body.choice)) {
+        return Response.json({ error: t.sponsored.errors.unavailable }, { status: 409 });
+      }
+      break;
     case "hide":
     case "move": {
       if (!ownsEntry(body.entryId)) return Response.json({ error: t.calendar.api.unknownClass }, { status: 404 });

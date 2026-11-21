@@ -20,6 +20,10 @@ works in Romanian and English.
   meetings). Romania's public holidays, including the movable Orthodox ones, are shown
   and classes do not take place on them (`src/lib/holidays.ts`). Click or drag to add personal events; hide a class, move it every week or
   for one week only. Changes affect only the student.
+- **Sponsored events.** In **Admin → Sponsored events**, choose faculties and years,
+  preview the student card, and check how many matching students are free. Students
+  can add a suggestion to their calendar or hide it. Cancelling an event removes it
+  from suggestions and from calendars where it was added.
 - **Labs this week.** A card on the home page answers "do I have lab this week?": the
   teaching week and its parity, the labs, seminars and projects that take place, and the
   ones that do not, with the date they come next.

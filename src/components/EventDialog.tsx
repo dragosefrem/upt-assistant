@@ -139,6 +139,14 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
         </form>
       )}
 
+      {event.sponsoredEventId && (
+        <div className="mt-4 border-t border-slate-100 pt-4">
+          <button className="btn-secondary" disabled={busy} onClick={() => send({ action: "sponsored", id: event.sponsoredEventId, choice: "remove" })}>
+            {messages.sponsored.remove}
+          </button>
+        </div>
+      )}
+
       {event.type === "personal" && event.personalId && (
         <div className="mt-4 border-t border-slate-100 pt-4">
           <button className="btn-danger" disabled={busy} onClick={() => send({ action: "deletePersonal", id: event.personalId })}>

@@ -11,6 +11,7 @@ import { guide } from "./guide";
 import { landing } from "./landing";
 import { onboarding } from "./onboarding";
 import { settings } from "./settings";
+import { sponsored } from "./sponsored";
 import { study } from "./study";
 
 /**
@@ -36,6 +37,7 @@ export const messages = {
     landing: landing.en,
     onboarding: onboarding.en,
     settings: settings.en,
+    sponsored: sponsored.en,
     study: study.en,
   },
   ro: {
@@ -52,6 +54,7 @@ export const messages = {
     landing: landing.ro,
     onboarding: onboarding.ro,
     settings: settings.ro,
+    sponsored: sponsored.ro,
     study: study.ro,
   },
 };
