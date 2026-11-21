@@ -37,6 +37,10 @@ yarn-error.log*
 # local database (accounts and scraped data)
 /data/
 
+# 360-tour route videos (generated)
+/output/
+*.webm
+
 # vercel
 .vercel
 

@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { personalEvents } from "@/db/schema";
 import type { User } from "./auth";
-import { currentSemester, examsForUser, placeResolver, studentWeek, type Semester } from "./schedule";
+import { currentSemester, examsForUser, occurrenceMoves, placeResolver, studentWeek, type Semester } from "./schedule";
 import { TIME_ZONE, addDays, describeWeeks, weekMatches, weekday } from "./time";
 
 /**
@@ -51,20 +51,35 @@ export function exportItems(user: User): ExportItem[] {
   const items: ExportItem[] = [];
 
   if (semester && user.groupId) {
+    const once = [...occurrenceMoves(user.id).values()];
     for (const e of studentWeek(user, semester)) {
       const r = recurring(semester, e.day, e.weeks);
       if (!r) continue;
+      const title = `${e.title}${KIND_LABEL[e.kind] ? ` (${KIND_LABEL[e.kind]})` : ""}`;
+      const moves = once.filter((o) => o.entryId === e.entryId);
       items.push({
         uid: `entry-${e.entryId}`,
-        title: `${e.title}${KIND_LABEL[e.kind] ? ` (${KIND_LABEL[e.kind]})` : ""}`,
+        title,
         description: [e.teacher, describeWeeks(e.weeks), e.note].filter(Boolean).join(" · "),
         location: where(e.room),
         date: r.first,
         startMin: e.startMin,
         endMin: e.endMin,
         until: r.until,
-        exdates: r.exdates,
+        // Weeks moved to another time are left out of the series and exported on their own.
+        exdates: [...r.exdates, ...moves.map((o) => o.date)].sort(),
       });
+      for (const o of moves) {
+        items.push({
+          uid: `entry-${e.entryId}-${o.date}`,
+          title,
+          description: [e.teacher, `moved from ${o.date}`].filter(Boolean).join(" · "),
+          location: where(o.room ?? e.room),
+          date: o.newDate,
+          startMin: o.startMin,
+          endMin: o.endMin,
+        });
+      }
     }
   }
   for (const x of examsForUser(user)) {

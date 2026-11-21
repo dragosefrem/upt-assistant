@@ -8,6 +8,34 @@
       "when": 1795195818938,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795250729312,
+      "tag": "0001_assistant_planning",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1795251712705,
+      "tag": "0002_calendar_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795254653739,
+      "tag": "0003_change_preview",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795255639469,
+      "tag": "0004_class_once",
+      "breakpoints": true
     }
   ]
 }

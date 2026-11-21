@@ -10,6 +10,7 @@ import {
   exams,
   faculties,
   groups,
+  occurrenceOverrides,
   personalEvents,
   semesters,
   specializations,
@@ -18,7 +19,7 @@ import {
   type EntryKind,
 } from "@/db/schema";
 import type { User } from "./auth";
-import { addDays, daysBetween, describeWeeks, mondayOf, weekMatches, weekday } from "./time";
+import { DAY_SHORT, addDays, daysBetween, describeWeeks, formatMinutes, mondayOf, weekMatches, weekday } from "./time";
 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
 export interface CalEvent {
@@ -39,6 +40,14 @@ export interface CalEvent {
   examId?: number;
   personalId?: number;
   moved?: boolean;
+  /** For a class moved for one week only: the date it would normally be on. */
+  originalDate?: string;
+}
+
+/** A student's single-occurrence class moves, keyed by "entryId:originalDate". */
+export function occurrenceMoves(userId: string) {
+  const rows = getDb().select().from(occurrenceOverrides).where(eq(occurrenceOverrides.userId, userId)).all();
+  return new Map(rows.map((o) => [`${o.entryId}:${o.date}`, o]));
 }
 
 export interface Place {
@@ -283,12 +292,15 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
 
   if (semester && user.groupId) {
     const week = studentWeek(user, semester);
+    const once = occurrenceMoves(user.id);
     for (let date = from; date <= to; date = addDays(date, 1)) {
       const n = teachingWeek(semester, date);
       if (n === null || date < semester.startDate || date > semester.endDate) continue;
       const day = weekday(date);
       for (const e of week) {
         if (e.day !== day || !weekMatches(e.weeks, n)) continue;
+        // Moved for this week only: it appears on its new date instead (below).
+        if (once.has(`${e.entryId}:${date}`)) continue;
         events.push({
           id: `e:${e.entryId}:${date}`,
           type: "class",
@@ -307,6 +319,30 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
           moved: e.moved,
         });
       }
+    }
+    const byEntry = new Map(week.map((e) => [e.entryId, e]));
+    for (const o of once.values()) {
+      const e = byEntry.get(o.entryId);
+      if (!e || o.newDate < from || o.newDate > to) continue;
+      const room = o.room ?? e.room;
+      events.push({
+        id: `e:${e.entryId}:${o.date}`,
+        type: "class",
+        kind: e.kind,
+        title: e.title,
+        abbr: e.abbr,
+        date: o.newDate,
+        startMin: o.startMin,
+        endMin: o.endMin,
+        room,
+        teacher: e.teacher,
+        note: `moved by you this week only (normally ${DAY_SHORT[weekday(o.date)]} ${o.date} ${formatMinutes(e.startMin)})`,
+        place: place(room),
+        entryId: e.entryId,
+        courseId: e.courseId,
+        moved: true,
+        originalDate: o.date,
+      });
     }
   }
 
@@ -382,12 +418,75 @@ export function freeSlots(
     const day = busy.filter((b) => b.date === date).sort((a, b) => a.startMin - b.startMin);
     let cursor = dayStart;
     for (const b of day) {
-      if (b.startMin - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: Math.min(b.startMin, dayEnd) });
+      // Clip to the working day, so an evening event cannot produce a slot ending before it starts.
+      const end = Math.min(b.startMin, dayEnd);
+      if (end - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: end });
       cursor = Math.max(cursor, b.endMin);
     }
     if (dayEnd - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: dayEnd });
   }
   return out;
+}
+
+/** Whether two time ranges on the same day overlap; back-to-back ranges do not. */
+export function overlaps(a: { startMin: number; endMin: number }, b: { startMin: number; endMin: number }): boolean {
+  return a.startMin < b.endMin && b.startMin < a.endMin;
+}
+
+export interface SlotQuery {
+  from: string;
+  to: string;
+  durationMin: number;
+  /** Earliest start on any day. Default 08:00. */
+  dayStart?: number;
+  /** Latest end on any day. Default 20:00. */
+  dayEnd?: number;
+  /** Nothing is offered before this moment (normally "now"). */
+  notBefore?: { date: string; minutes: number };
+  /** Allowed weekdays, 1 = Monday … 7 = Sunday. Empty or missing means every day. */
+  weekdays?: number[];
+  /** Start times already offered or turned down. */
+  exclude?: Array<{ date: string; startMin: number }>;
+  /** How many options to return. Default 3. */
+  count?: number;
+}
+
+/**
+ * Concrete options for an activity of a given length, earliest first. Starts are
+ * rounded up to the quarter hour, and every free gap contributes its earliest start
+ * before any gap contributes a second one, so a short list spreads over different
+ * parts of the week instead of offering 14:00, 15:00 and 16:00 of the same afternoon.
+ */
+export function suggestSlots(busy: Array<{ date: string; startMin: number; endMin: number }>, q: SlotQuery): FreeSlot[] {
+  const { durationMin, dayStart = 8 * 60, dayEnd = 20 * 60, count = 3 } = q;
+  const allowed = q.weekdays?.length ? new Set(q.weekdays) : null;
+  const excluded = new Set((q.exclude ?? []).map((x) => `${x.date} ${x.startMin}`));
+  const step = Math.max(durationMin, 60);
+
+  const perGap: FreeSlot[][] = [];
+  for (const gap of freeSlots(busy, q.from, q.to, { dayStart, dayEnd, minMinutes: durationMin, weekdaysOnly: false })) {
+    if (allowed && !allowed.has(weekday(gap.date))) continue;
+    let start = gap.startMin;
+    if (q.notBefore) {
+      if (gap.date < q.notBefore.date) continue;
+      if (gap.date === q.notBefore.date) start = Math.max(start, q.notBefore.minutes);
+    }
+    start = Math.ceil(start / 15) * 15;
+    const options: FreeSlot[] = [];
+    for (let s = start; s + durationMin <= gap.endMin; s += step) {
+      if (!excluded.has(`${gap.date} ${s}`)) options.push({ date: gap.date, startMin: s, endMin: s + durationMin });
+    }
+    if (options.length) perGap.push(options);
+  }
+
+  const picked: FreeSlot[] = [];
+  for (let pass = 0; picked.length < count && perGap.some((o) => o.length > pass); pass++) {
+    for (const options of perGap) {
+      if (picked.length >= count) break;
+      if (options[pass]) picked.push(options[pass]);
+    }
+  }
+  return picked.sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin);
 }
 
 /** Busy intervals of a whole group's shared timetable over a date range. */
