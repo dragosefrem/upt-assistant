@@ -1,0 +1,520 @@
+diff --git a/docs/IMAGINI.md b/docs/IMAGINI.md
+new file mode 100644
+index 0000000..d4cb091
+--- /dev/null
++++ b/docs/IMAGINI.md
+@@ -0,0 +1,60 @@
++# Imagini pentru UPT Orar: prompturi pentru ChatGPT și Gemini
++
++Interfața folosește acum o mascotă, **Poli**, un roboțel prietenos în albastrul UPT.
++Fișierul `public/images/mascot.svg` e doar o variantă provizorie desenată de mână.
++Generezi imaginile finale cu ChatGPT (generare de imagini) sau Gemini, apoi le pui în proiect.
++
++Prompturile sunt în engleză, pentru că ambele modele dau rezultate mai bune așa.
++
++## Reguli comune (adaugă-le la fiecare prompt dacă rezultatul iese inconsecvent)
++
++- Paletă: albastru `#2f5fe0` / `#1f48c4`, bleu foarte deschis `#eef4ff`, accent galben `#fbbf24`, obraji roz.
++- Fundal **transparent** (PNG), fără text în imagine, în afară de eticheta „UPT” de pe mascotă.
++- Același personaj în toate imaginile: după ce ai o mascotă care îți place, încarc-o ca referință
++  în conversație și cere „same character, same style”.
++
++## 1. Mascota principală (cea mai importantă)
++
++Fișier: `public/images/mascot.png` · 512×512 · fundal transparent
++
++```
++A cute, friendly robot mascot for a university student app, flat vector illustration,
++soft rounded shapes. Round-cornered blue head (#2f5fe0) with a pale blue face screen
++(#eef4ff), two big dark friendly eyes with white highlights, a small happy smile,
++pink blush cheeks, a short antenna with a yellow (#fbbf24) ball on top, small rounded
++ear-pieces on the sides. A small blue badge under the head with the letters "UPT".
++Front view, centered, simple and readable at 32 px, no outlines thicker than needed,
++no gradients or only very subtle ones, transparent background, no other text.
++```
++
++## 2. Mascota în alte poze (opțional)
++
++Același personaj, încarcă mascota de la pasul 1 ca referință. 512×512, transparent.
++
++| Fișier | Prompt (după „Same character and style as the reference image,”) |
++| --- | --- |
++| `mascot-wave.png` | `waving hello with one small hand, cheerful expression.` |
++| `mascot-thinking.png` | `thinking pose, looking up, a small yellow question mark above the antenna.` |
++| `mascot-calendar.png` | `holding a small blue calendar page, proud smile.` |
++| `mascot-sleep.png` | `sleeping peacefully with closed eyes and a small "z z", for an empty day.` |
++
++## 3. Ilustrație pentru ecranul de login (opțional)
++
++Fișier: `public/images/login-hero.png` · 1200×800
++
++```
++Soft flat illustration of a friendly university campus scene in Timișoara style,
++modern engineering buildings, a few students walking with backpacks, trees, light
++morning sky. Pastel palette based on blue (#2f5fe0, #eef4ff) with warm yellow accents
++(#fbbf24). Minimal detail, lots of empty space, calm and welcoming, no text, no logos.
++```
++
++## Cum le pui în aplicație
++
++1. Salvează mascota ca `public/images/mascot.png`.
++2. În `src/components/Mascot.tsx` schimbă `MASCOT_SRC` din `"/images/mascot.svg"` în `"/images/mascot.png"`.
++   Atât: mascota apare peste tot (antet, salut, chat, login).
++3. Pentru celelalte poze, trimite-mi fișierele și le leg eu în locurile potrivite
++   (de ex. `mascot-sleep` când nu ai ore, `mascot-thinking` cât timp răspunde asistentul).
++
++> Notă: nu folosi logo-ul oficial UPT în imaginile generate fără acordul universității.
+diff --git a/public/images/mascot.svg b/public/images/mascot.svg
+new file mode 100644
+index 0000000..a86f929
+--- /dev/null
++++ b/public/images/mascot.svg
+@@ -0,0 +1,18 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="Poli, asistentul UPT">
++  <!-- Placeholder mascot. Replace with the image generated in ChatGPT / Gemini (same file name, or change MASCOT_SRC in src/components/Mascot.tsx). -->
++  <line x1="60" y1="22" x2="60" y2="10" stroke="#1f48c4" stroke-width="4" stroke-linecap="round"/>
++  <circle cx="60" cy="9" r="6" fill="#fbbf24"/>
++  <rect x="18" y="22" width="84" height="72" rx="30" fill="#2f5fe0"/>
++  <rect x="28" y="34" width="64" height="44" rx="20" fill="#eef4ff"/>
++  <circle cx="46" cy="54" r="7" fill="#142457"/>
++  <circle cx="74" cy="54" r="7" fill="#142457"/>
++  <circle cx="48.5" cy="51.5" r="2.2" fill="#fff"/>
++  <circle cx="76.5" cy="51.5" r="2.2" fill="#fff"/>
++  <path d="M50 66 Q60 74 70 66" fill="none" stroke="#142457" stroke-width="3.5" stroke-linecap="round"/>
++  <circle cx="36" cy="66" r="4" fill="#fda4af" opacity=".8"/>
++  <circle cx="84" cy="66" r="4" fill="#fda4af" opacity=".8"/>
++  <rect x="10" y="50" width="10" height="20" rx="5" fill="#1f48c4"/>
++  <rect x="100" y="50" width="10" height="20" rx="5" fill="#1f48c4"/>
++  <rect x="40" y="94" width="40" height="16" rx="8" fill="#1f48c4"/>
++  <text x="60" y="106" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#fff">UPT</text>
++</svg>
+diff --git a/src/app/(app)/page.tsx b/src/app/(app)/page.tsx
+index 016e532..f02f78c 100644
+--- a/src/app/(app)/page.tsx
++++ b/src/app/(app)/page.tsx
+@@ -2,6 +2,7 @@ import Link from "next/link";
+ import { Assistant } from "@/components/Assistant";
+ import { Calendar } from "@/components/Calendar";
+ import { NextUp } from "@/components/NextUp";
++import { QuickActions } from "@/components/QuickActions";
+ import { requireOnboardedUser } from "@/lib/auth";
+ import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
+ import { addDays, mondayOf, nowLocal } from "@/lib/time";
+@@ -10,7 +11,7 @@ export const metadata = { title: "Calendar" };
+ 
+ export default async function HomePage() {
+   const user = await requireOnboardedUser();
+-  const { date: today } = nowLocal();
++  const { date: today, minutes } = nowLocal();
+   const from = mondayOf(today);
+   const to = addDays(from, 6);
+   const semester = currentSemester();
+@@ -20,8 +21,9 @@ export default async function HomePage() {
+     : [];
+ 
+   return (
+-    <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_23rem]">
++    <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-5 lg:grid-cols-[minmax(0,1fr)_23rem]">
+       <div className="flex min-w-0 flex-col gap-5">
++        <QuickActions name={user.name} hour={Math.floor(minutes / 60)} />
+         <NextUp initial={eventsBetween(user, today, addDays(today, 14))} />
+         {pending.length > 0 && (
+           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+diff --git a/src/app/(auth)/layout.tsx b/src/app/(auth)/layout.tsx
+index 6fb5cf0..1db1192 100644
+--- a/src/app/(auth)/layout.tsx
++++ b/src/app/(auth)/layout.tsx
+@@ -1,4 +1,5 @@
+ import { redirect } from "next/navigation";
++import { Mascot } from "@/components/Mascot";
+ import { getUser } from "@/lib/auth";
+ 
+ export default async function AuthLayout({ children }: LayoutProps<"/">) {
+@@ -7,9 +8,11 @@ export default async function AuthLayout({ children }: LayoutProps<"/">) {
+     <main className="flex flex-1 items-center justify-center px-4 py-12">
+       <div className="w-full max-w-sm">
+         <div className="mb-6 text-center">
+-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-lg font-bold text-white">U</div>
+-          <h1 className="text-2xl font-semibold tracking-tight">UPT Orar</h1>
+-          <p className="mt-1 text-sm text-slate-600">Your timetable, exams and study assistant at Politehnica Timișoara.</p>
++          <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white shadow-[0_8px_30px_-8px_rgba(31,72,196,0.35)]">
++            <Mascot size={72} wave />
++          </div>
++          <h1 className="text-2xl font-bold tracking-tight">Hi, I&apos;m Poli! 👋</h1>
++          <p className="mt-1 text-sm text-slate-600">Your timetable, exams and study buddy at Politehnica Timișoara.</p>
+         </div>
+         <div className="card p-6">{children}</div>
+       </div>
+diff --git a/src/app/globals.css b/src/app/globals.css
+index 0abef92..6421a8f 100644
+--- a/src/app/globals.css
++++ b/src/app/globals.css
+@@ -10,6 +10,19 @@
+   --color-brand-600: #1f48c4;
+   --color-brand-700: #1b3a9c;
+   --color-brand-900: #142457;
++
++  --animate-wiggle: wiggle 2.4s ease-in-out infinite;
++  --animate-pop: pop 0.25s ease-out both;
++  @keyframes wiggle {
++    0%, 70%, 100% { transform: rotate(0deg); }
++    78% { transform: rotate(-8deg); }
++    86% { transform: rotate(8deg); }
++    94% { transform: rotate(-4deg); }
++  }
++  @keyframes pop {
++    from { opacity: 0; transform: translateY(6px) scale(0.98); }
++    to { opacity: 1; transform: none; }
++  }
+ }
+ 
+ :root {
+@@ -17,13 +30,39 @@
+ }
+ 
+ body {
+-  background: #f6f7fb;
++  /* Soft, friendly backdrop: a pale blue wash with a warm corner. */
++  background:
++    radial-gradient(60rem 30rem at 100% 0%, #fff4dc 0%, transparent 60%),
++    radial-gradient(50rem 30rem at 0% 0%, #e6eeff 0%, transparent 60%),
++    #f7f8fc;
++  background-attachment: fixed;
+   color: #0f172a;
+ }
+ 
++/* Three bouncing dots while the assistant is thinking. */
++.typing-dots span {
++  display: inline-block;
++  width: 6px;
++  height: 6px;
++  margin-right: 3px;
++  border-radius: 9999px;
++  background: currentColor;
++  animation: typing 1s infinite ease-in-out;
++}
++.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
++.typing-dots span:nth-child(3) { animation-delay: 0.3s; }
++@keyframes typing {
++  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
++  30% { transform: translateY(-4px); opacity: 1; }
++}
++
++@media (prefers-reduced-motion: reduce) {
++  .typing-dots span, .animate-wiggle, .animate-pop { animation: none !important; }
++}
++
+ /* Custom utilities (Tailwind v4): unlike plain classes, these can be composed with @apply. */
+ @utility btn {
+-  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50;
++  @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50;
+ }
+ 
+ @utility btn-primary {
+@@ -43,7 +82,7 @@ body {
+ }
+ 
+ @utility field {
+-  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-2 focus:outline-brand-200;
++  @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-2 focus:outline-brand-200;
+ }
+ 
+ @utility label {
+@@ -51,5 +90,5 @@ body {
+ }
+ 
+ @utility card {
+-  @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
++  @apply rounded-3xl border border-slate-200/70 bg-white shadow-[0_2px_12px_-4px_rgba(31,72,196,0.12)];
+ }
+diff --git a/src/components/AppShell.tsx b/src/components/AppShell.tsx
+index 4e25820..fea8c91 100644
+--- a/src/components/AppShell.tsx
++++ b/src/components/AppShell.tsx
+@@ -2,6 +2,7 @@ import Link from "next/link";
+ import { logoutAction } from "@/app/(auth)/actions";
+ import type { User } from "@/lib/auth";
+ import { LocationProvider } from "./LocationProvider";
++import { Mascot } from "./Mascot";
+ import { NavLink } from "./NavLink";
+ 
+ /** Header and page frame shared by the student pages and the admin area. */
+@@ -11,16 +12,21 @@ export function AppShell({ user, children }: { user: User; children: React.React
+       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
+         <div className="mx-auto flex h-14 w-full max-w-[1500px] items-center gap-1 px-4">
+           <Link href="/" className="mr-1 flex shrink-0 items-center gap-2 font-semibold tracking-tight text-slate-900 sm:mr-3">
+-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600 text-sm font-bold text-white">U</span>
+-            <span className="hidden sm:inline">UPT Orar</span>
++            <Mascot size={34} />
++            <span className="hidden sm:inline">UPT <span className="text-brand-600">Orar</span></span>
+           </Link>
+           <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-sm sm:gap-1">
+-            <NavLink href="/">Calendar</NavLink>
+-            <NavLink href="/exams">Exams</NavLink>
+-            <NavLink href="/settings">Settings</NavLink>
+-            {user.role === "admin" && <NavLink href="/admin">Admin</NavLink>}
++            <NavLink href="/" icon="📅">Calendar</NavLink>
++            <NavLink href="/exams" icon="📝">Exams</NavLink>
++            <NavLink href="/settings" icon="⚙️">Settings</NavLink>
++            {user.role === "admin" && <NavLink href="/admin" icon="🛠️">Admin</NavLink>}
+           </nav>
+-          <span className="hidden text-sm text-slate-600 md:inline">{user.name}</span>
++          <span className="hidden items-center gap-2 text-sm text-slate-700 md:flex">
++            <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-800">
++              {user.name.trim().charAt(0).toUpperCase() || "?"}
++            </span>
++            {user.name}
++          </span>
+           <form action={logoutAction}>
+             <button className="btn-ghost whitespace-nowrap px-2 sm:px-3.5">Sign out</button>
+           </form>
+diff --git a/src/components/Assistant.tsx b/src/components/Assistant.tsx
+index 6fc0f5a..d5007f2 100644
+--- a/src/components/Assistant.tsx
++++ b/src/components/Assistant.tsx
+@@ -3,6 +3,7 @@
+ import { useCallback, useEffect, useRef, useState } from "react";
+ import { SCHEDULE_CHANGED } from "./Calendar";
+ import { useLocation } from "./LocationProvider";
++import { ASK_ASSISTANT, Mascot } from "./Mascot";
+ 
+ interface Message {
+   id: string;
+@@ -46,7 +47,13 @@ const TOOL_LABELS: Record<string, string> = {
+   remove_personal_event: "Updating your calendar…",
+ };
+ 
+-const SUGGESTIONS = ["What's next?", "Ce am mâine?", "Where is my next exam?", "When am I free this week?", "Cum ajung la sala următoare?"];
++const SUGGESTIONS = [
++  { emoji: "⏭️", text: "What's next?" },
++  { emoji: "📅", text: "Ce am mâine?" },
++  { emoji: "📝", text: "Where is my next exam?" },
++  { emoji: "☕", text: "When am I free this week?" },
++  { emoji: "🧭", text: "Cum ajung la sala următoare?" },
++];
+ 
+ /** Text prepared for speech: no URLs or markdown punctuation. */
+ function speakable(text: string): string {
+@@ -84,6 +91,7 @@ export function Assistant() {
+   const [voiceSupported, setVoiceSupported] = useState(false);
+   const recognition = useRef<SpeechRecognitionLike | null>(null);
+   const scroller = useRef<HTMLDivElement>(null);
++  const panel = useRef<HTMLElement>(null);
+   // Read at send time, so a question asked right after sharing uses the fresh fix.
+   const positionRef = useRef(position);
+   useEffect(() => {
+@@ -177,6 +185,19 @@ export function Assistant() {
+     [busy, speak, say],
+   );
+ 
++  // Questions asked from elsewhere on the page (the welcome card's quick buttons).
++  useEffect(() => {
++    const onAsk = (e: Event) => {
++      const question = (e as CustomEvent<string>).detail;
++      if (!question) return;
++      // On phones the chat sits below the calendar; bring it into view.
++      if (window.matchMedia("(max-width: 1023px)").matches) panel.current?.scrollIntoView({ behavior: "smooth", block: "start" });
++      void send(question);
++    };
++    window.addEventListener(ASK_ASSISTANT, onAsk);
++    return () => window.removeEventListener(ASK_ASSISTANT, onAsk);
++  }, [send]);
++
+   const toggleMic = () => {
+     if (listening) {
+       recognition.current?.stop();
+@@ -220,10 +241,14 @@ export function Assistant() {
+   };
+ 
+   return (
+-    <section className="card flex h-full min-h-0 flex-col overflow-hidden">
+-      <header className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
++    <section ref={panel} className="card flex h-full min-h-0 scroll-mt-20 flex-col overflow-hidden">
++      <header className="flex items-center gap-2 border-b border-slate-200 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
++        <span className="relative">
++          <Mascot size={36} />
++          <span aria-hidden className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${busy ? "bg-amber-400" : "bg-emerald-500"}`} />
++        </span>
+         <div className="min-w-0 flex-1">
+-          <h2 className="text-base font-semibold text-slate-900">Assistant</h2>
++          <h2 className="text-base font-semibold text-slate-900">Poli · Assistant</h2>
+           <p className="truncate text-xs text-slate-500">
+             {engine === "claude" ? "Powered by Claude" : engine === "basic" ? "Built-in assistant (Claude not connected)" : "Ask about classes, exams, free time, directions"}
+           </p>
+@@ -252,21 +277,38 @@ export function Assistant() {
+ 
+       <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
+         {!messages.length && (
+-          <div className="space-y-3 text-sm text-slate-600">
+-            <p>Ask in Romanian or English — by typing or with the microphone.</p>
+-            <div className="flex flex-wrap gap-2">
++          <div className="flex flex-col items-center gap-3 pt-4 text-center text-sm text-slate-600">
++            <Mascot size={88} wave />
++            <div>
++              <p className="font-semibold text-slate-900">Salut! What can I help you with?</p>
++              <p className="mt-0.5 text-xs">Ask in Romanian or English, by typing or with the microphone 🎤</p>
++            </div>
++            <div className="grid w-full gap-2">
+               {SUGGESTIONS.map((s) => (
+-                <button key={s} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700 hover:border-brand-500 hover:text-brand-700" onClick={() => send(s)}>
+-                  {s}
++                <button
++                  key={s.text}
++                  className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:text-brand-700 hover:shadow-sm"
++                  onClick={() => send(s.text)}
++                >
++                  <span aria-hidden className="text-base">{s.emoji}</span>
++                  {s.text}
+                 </button>
+               ))}
+             </div>
+           </div>
+         )}
+         {messages.map((m) => (
+-          <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+-            <div className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${m.role === "user" ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-900"}`}>
+-              {m.pending ? <span className="text-slate-500">{activity ?? "Thinking…"}</span> : <Linkified text={m.content} />}
++          <div key={m.id} className={`flex animate-pop items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
++            {m.role === "assistant" && <Mascot size={26} className="mb-0.5" />}
++            <div className={`max-w-[85%] whitespace-pre-wrap break-words px-3.5 py-2 text-sm leading-relaxed ${m.role === "user" ? "rounded-2xl rounded-br-md bg-brand-600 text-white" : "rounded-2xl rounded-bl-md bg-brand-50 text-slate-900"}`}>
++              {m.pending ? (
++                <span className="flex items-center gap-2 text-slate-500">
++                  <span className="typing-dots text-brand-500" aria-hidden><span /><span /><span /></span>
++                  {activity ?? "Thinking…"}
++                </span>
++              ) : (
++                <Linkified text={m.content} />
++              )}
+               {m.role === "assistant" && !m.pending && (
+                 <button className="ml-2 align-middle text-xs opacity-50 hover:opacity-100" onClick={() => say(m.content)} title="Read aloud" aria-label="Read aloud">🔊</button>
+               )}
+@@ -313,10 +355,10 @@ export function Assistant() {
+               void send(input);
+             }
+           }}
+-          placeholder={listening ? "Listening…" : "Ask about your timetable…"}
++          placeholder={listening ? "Listening… 👂" : "Ask Poli…"}
+           aria-label="Message"
+         />
+-        <button className="btn-primary h-10" disabled={busy || !input.trim()}>Send</button>
++        <button className="btn-primary h-10 rounded-full px-4" disabled={busy || !input.trim()} aria-label="Send">Send ➤</button>
+       </form>
+       {!voiceSupported && <p className="px-4 pb-2 text-[11px] text-slate-400">Voice input needs a browser with speech recognition (Chrome, Edge or Safari).</p>}
+     </section>
+diff --git a/src/components/Mascot.tsx b/src/components/Mascot.tsx
+new file mode 100644
+index 0000000..c056c95
+--- /dev/null
++++ b/src/components/Mascot.tsx
+@@ -0,0 +1,29 @@
++/* eslint-disable @next/next/no-img-element -- a small static picture; next/image adds nothing here */
++
++/**
++ * Poli, the app's mascot. The file in public/images is a placeholder: swap in the
++ * picture generated with ChatGPT or Gemini (see docs/IMAGINI.md) by replacing the file
++ * or changing this path.
++ */
++export const MASCOT_SRC = "/images/mascot.svg";
++
++export function Mascot({ size = 40, className = "", wave = false }: { size?: number; className?: string; wave?: boolean }) {
++  return (
++    <img
++      src={MASCOT_SRC}
++      alt=""
++      aria-hidden
++      width={size}
++      height={size}
++      className={`shrink-0 select-none ${wave ? "animate-wiggle" : ""} ${className}`}
++      draggable={false}
++    />
++  );
++}
++
++/** Lets any part of the page ask the assistant a question (quick actions, empty states). */
++export const ASK_ASSISTANT = "upt:ask-assistant";
++
++export function askAssistant(question: string) {
++  window.dispatchEvent(new CustomEvent(ASK_ASSISTANT, { detail: question }));
++}
+diff --git a/src/components/NavLink.tsx b/src/components/NavLink.tsx
+index 65d5757..7860e93 100644
+--- a/src/components/NavLink.tsx
++++ b/src/components/NavLink.tsx
+@@ -3,16 +3,19 @@
+ import Link from "next/link";
+ import { usePathname } from "next/navigation";
+ 
+-export function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
++export function NavLink({ href, icon, children }: { href: string; icon?: string; children: React.ReactNode }) {
+   const pathname = usePathname();
+   const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+   return (
+     <Link
+       href={href}
+       aria-current={active ? "page" : undefined}
+-      className={`whitespace-nowrap rounded-lg px-2.5 py-1.5 font-medium transition sm:px-3 ${active ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
++      title={typeof children === "string" ? children : undefined}
++      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1.5 font-medium transition sm:px-3.5 ${active ? "bg-brand-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"}`}
+     >
+-      {children}
++      {icon && <span aria-hidden className="text-base leading-none">{icon}</span>}
++      {/* On phones only the icon shows; the name stays for screen readers. */}
++      <span className={icon ? "max-sm:sr-only" : undefined}>{children}</span>
+     </Link>
+   );
+ }
+diff --git a/src/components/QuickActions.tsx b/src/components/QuickActions.tsx
+new file mode 100644
+index 0000000..a477064
+--- /dev/null
++++ b/src/components/QuickActions.tsx
+@@ -0,0 +1,49 @@
++"use client";
++
++import { Mascot, askAssistant } from "./Mascot";
++
++const ACTIONS = [
++  { emoji: "⏭️", label: "What's next?", question: "What's next?" },
++  { emoji: "📅", label: "Tomorrow", question: "Ce am mâine?" },
++  { emoji: "📝", label: "My exams", question: "Where is my next exam?" },
++  { emoji: "☕", label: "Free time", question: "When am I free this week?" },
++  { emoji: "🧭", label: "Directions", question: "Cum ajung la sala următoare?" },
++];
++
++function greeting(hour: number) {
++  if (hour < 12) return "Good morning";
++  if (hour < 18) return "Hi";
++  return "Good evening";
++}
++
++/** Friendly welcome card: a greeting from the mascot and one-tap questions for the assistant. */
++export function QuickActions({ name, hour }: { name: string; hour: number }) {
++  const first = name.split(/\s+/)[0] || name;
++  return (
++    <section className="card relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-500 p-4 text-white sm:p-5">
++      <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
++      <div aria-hidden className="pointer-events-none absolute -bottom-12 right-24 h-28 w-28 rounded-full bg-amber-300/20" />
++      <div className="relative flex items-center gap-4">
++        <div className="hidden rounded-2xl bg-white/15 p-2 sm:block">
++          <Mascot size={64} wave />
++        </div>
++        <div className="min-w-0 flex-1">
++          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{greeting(hour)}, {first}! 👋</h1>
++          <p className="mt-0.5 text-sm text-white/85">I&apos;m Poli. Tap a question, or ask me anything in the chat.</p>
++        </div>
++      </div>
++      <div className="relative mt-4 flex flex-wrap gap-2">
++        {ACTIONS.map((a) => (
++          <button
++            key={a.label}
++            onClick={() => askAssistant(a.question)}
++            className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-1.5 text-sm font-medium text-brand-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
++          >
++            <span aria-hidden>{a.emoji}</span>
++            {a.label}
++          </button>
++        ))}
++      </div>
++    </section>
++  );
++}
