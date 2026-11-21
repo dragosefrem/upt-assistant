@@ -1,5 +1,6 @@
 import "server-only";
 import { createHash, randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
+import { isIP } from "node:net";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -32,6 +33,66 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+export function isEmail(value: string): boolean {
+  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+export function registrationName(raw: string) {
+  const name = raw.normalize("NFC").replace(/\p{Cf}/gu, "").replace(/[\s\p{Cc}]+/gu, " ").trim();
+  const length = Array.from(name).length;
+  const error = length < 2 ? "needName" : length > 80 ? "longName" : null;
+  return { name, error } as const;
+}
+
+export function newFeedToken() {
+  return randomBytes(24).toString("base64url");
+}
+
+/** Railway sets X-Real-IP at ingress. Other trusted proxies can explicitly name the header they overwrite. */
+export function loginClientAddress(headers: Pick<Headers, "get">) {
+  const header = process.env.TRUSTED_CLIENT_IP_HEADER || (process.env.RAILWAY_ENVIRONMENT_ID && "x-real-ip")
+    || (process.env.NODE_ENV === "development" && "x-forwarded-for");
+  const address = header && headers.get(header)?.split(",").at(-1)?.trim();
+  return address && isIP(address) ? address : "unidentified";
+}
+
+// Single-process limits reset on restart. Several replicas would need a shared store.
+const failures = new Map<string, { count: number; until: number }>();
+const WINDOW_MS = 15 * 60_000;
+const EMAIL_LIMIT = 5;
+const CLIENT_LIMIT = 30;
+const DUMMY_HASH = `scrypt$${"00".repeat(16)}$${"00".repeat(64)}`;
+
+export function authenticate(email: string, password: string, client: string) {
+  const now = Date.now();
+  // Fixed windows expire in insertion order.
+  for (const [key, entry] of failures) {
+    if (entry.until > now) break;
+    failures.delete(key);
+  }
+  const address = normalizeEmail(email);
+  const keys = [[`email:${address}`, EMAIL_LIMIT], [`client:${client}`, CLIENT_LIMIT]] as const;
+  let until = 0;
+  for (const [key, limit] of keys) {
+    const entry = failures.get(key);
+    if (entry && entry.count >= limit) until = Math.max(until, entry.until);
+  }
+  if (until) return { status: "limited", minutes: Math.ceil((until - now) / 60_000) } as const;
+
+  const user = getDb().select().from(users).where(eq(users.email, address)).get();
+  const matches = verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
+  if (matches && user) {
+    failures.delete(keys[0][0]);
+    return { status: "signed-in", user } as const;
+  }
+  for (const [key] of keys) {
+    const entry = failures.get(key) ?? { count: 0, until: now + WINDOW_MS };
+    entry.count++;
+    failures.set(key, entry);
+  }
+  return { status: "invalid" } as const;
+}
+
 /**
  * Creates an account. The very first account, and any address listed in ADMIN_EMAILS,
  * becomes an administrator; everyone else is a student.
@@ -39,6 +100,8 @@ export function normalizeEmail(email: string): string {
 export function createUser(input: { email: string; name: string; password: string; locale?: "ro" | "en" }): User {
   const db = getDb();
   const email = normalizeEmail(input.email);
+  const { name, error } = registrationName(input.name);
+  if (error) throw new RangeError("A registration name must contain 2 to 80 characters");
   const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map(normalizeEmail).filter(Boolean);
   const [{ n }] = db.select({ n: count() }).from(users).all();
   return db
@@ -46,10 +109,10 @@ export function createUser(input: { email: string; name: string; password: strin
     .values({
       id: randomUUID(),
       email,
-      name: input.name.trim(),
+      name,
       passwordHash: hashPassword(input.password),
       role: n === 0 || admins.includes(email) ? "admin" : "student",
-      feedToken: randomBytes(24).toString("base64url"),
+      feedToken: newFeedToken(),
       locale: input.locale ?? null,
     })
     .returning()

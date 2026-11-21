@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
+import { renewCalendarLink } from "@/app/(app)/settings/actions";
 import { useLocale, useT } from "@/i18n/client";
 import { DATE_LOCALE } from "@/i18n/config";
 import { TIME_ZONE } from "@/lib/time";
@@ -47,6 +48,7 @@ export function ExportPanel({
     flash && x.flash[flash] ? { ok: flash === "synced", text: x.flash[flash] } : null,
   );
   const [copied, setCopied] = useState(false);
+  const [renewed, renew, renewing] = useActionState(renewCalendarLink, false);
 
   const sendEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +145,11 @@ export function ExportPanel({
             {copied ? x.file.copied : x.file.copy}
           </button>
         </div>
+        <form action={renew} className="mt-3">
+          <button className="btn-secondary" disabled={renewing} aria-describedby="renew-hint">{x.file.renew}</button>
+          <p id="renew-hint" className="mt-1 text-xs text-slate-600">{x.file.renewHint}</p>
+          <p role="status" className="mt-1 text-sm text-emerald-800">{renewed && !renewing && x.file.renewed}</p>
+        </form>
       </div>
 
       {(googleConfigured || connected) && (

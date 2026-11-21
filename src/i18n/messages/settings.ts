@@ -93,6 +93,9 @@ const en = {
       download: "Download .ics",
       copy: "Copy subscription link",
       copied: "Link copied",
+      renew: "Get a new link",
+      renewHint: "The old link stops working immediately. Use the new link to subscribe again.",
+      renewed: "Your new subscription link is ready to copy.",
     },
     google: {
       title: "Google Calendar",
@@ -238,6 +241,9 @@ const ro: typeof en = {
       download: "Descarcă .ics",
       copy: "Copiază linkul de abonare",
       copied: "Link copiat",
+      renew: "Generează un link nou",
+      renewHint: "Linkul vechi nu mai funcționează din acel moment. Abonează-te din nou cu linkul nou.",
+      renewed: "Poți copia acum noul link de abonare.",
     },
     google: {
       title: "Google Calendar",

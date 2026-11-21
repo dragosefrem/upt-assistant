@@ -2,16 +2,19 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { LOCALE_COOKIE } from "@/i18n/config";
 import { getLocale, getT } from "@/i18n/server";
-import { createUser, endSession, normalizeEmail, startSession, verifyPassword } from "@/lib/auth";
-import { requestPasswordReset, resetPassword } from "@/lib/password-reset";
+import { authenticate, createUser, endSession, isEmail, loginClientAddress, normalizeEmail, registrationName, startSession } from "@/lib/auth";
+import { requestPasswordReset, resetBaseUrl, resetPassword } from "@/lib/password-reset";
 
 export interface AuthState {
   error?: string;
+  field?: "name" | "email" | "password" | "repeat";
+  signInLink?: boolean;
   /** A neutral or good-news message (for example "the link is on its way"). */
   notice?: string;
   email?: string;
@@ -27,11 +30,12 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
   const t = (await getT()).auth;
   const email = normalizeEmail(String(form.get("email") ?? ""));
   const password = String(form.get("password") ?? "");
-  const user = getDb().select().from(users).where(eq(users.email, email)).get();
-  // One message for both cases, so the form does not reveal which addresses exist.
-  if (!user || !verifyPassword(password, user.passwordHash)) {
-    return { error: t.login.wrong, email };
-  }
+  if (!isEmail(email)) return { error: t.register.badEmail, field: "email", email };
+  if (!password) return { error: t.login.needPassword, field: "password", email };
+  const result = authenticate(email, password, loginClientAddress(await headers()));
+  if (result.status === "limited") return { error: t.login.tooMany(result.minutes), email };
+  if (result.status === "invalid") return { error: t.login.wrong, field: "password", email };
+  const { user } = result;
   await startSession(user.id);
   // The account remembers its language, so it follows the student to a new device.
   if (user.locale) (await cookies()).set(LOCALE_COOKIE, user.locale, { path: "/", maxAge: 365 * 86_400, sameSite: "lax" });
@@ -41,16 +45,17 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
 export async function registerAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   const t = (await getT()).auth.register;
   const email = normalizeEmail(String(form.get("email") ?? ""));
-  const name = String(form.get("name") ?? "").trim();
+  const { name, error } = registrationName(String(form.get("name") ?? ""));
   const password = String(form.get("password") ?? "");
   const keep = { email, name };
-  if (name.length < 2) return { ...keep, error: t.needName };
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { ...keep, error: t.badEmail };
-  if (password.length < 8) return { ...keep, error: t.shortPassword };
+  if (error) return { ...keep, error: t[error], field: "name" };
+  if (!isEmail(email)) return { ...keep, error: t.badEmail, field: "email" };
+  if (password.length < 8) return { ...keep, error: t.shortPassword, field: "password" };
+  const locale = await getLocale();
   if (getDb().select({ id: users.id }).from(users).where(eq(users.email, email)).get()) {
-    return { ...keep, error: t.exists };
+    return { ...keep, error: t.exists, field: "email", signInLink: true };
   }
-  const user = createUser({ email, name, password, locale: await getLocale() });
+  const user = createUser({ email, name, password, locale });
   await startSession(user.id);
   redirect(destination(form, "/onboarding"));
 }
@@ -60,24 +65,13 @@ export async function logoutAction() {
   redirect("/");
 }
 
-/** The app's own address, for links in e-mails: APP_URL when set, else where this request came in. */
-async function baseUrl(): Promise<string> {
-  const configured = process.env.APP_URL?.trim().replace(/\/+$/, "");
-  if (configured) return configured;
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
-  return `${h.get("x-forwarded-proto") ?? "http"}://${host}`;
-}
-
 /** "Forgot your password?": always answers the same way for known and unknown addresses. */
 export async function forgotPasswordAction(_prev: AuthState, form: FormData): Promise<AuthState> {
   const t = (await getT()).auth;
   const email = normalizeEmail(String(form.get("email") ?? ""));
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { email, error: t.register.badEmail };
-  const result = await requestPasswordReset(email, await baseUrl(), await getLocale());
+  if (!isEmail(email)) return { email, error: t.register.badEmail, field: "email" };
+  const result = requestPasswordReset(email, resetBaseUrl(await headers()), await getLocale(), after);
   if (result === "not-configured") return { email, error: t.forgot.notConfigured };
-  if (result === "too-many") return { email, error: t.forgot.tooMany };
-  if (result === "failed") return { email, error: t.forgot.failed };
   return { notice: t.forgot.sent };
 }
 
@@ -85,8 +79,8 @@ export async function resetPasswordAction(token: string, _prev: AuthState, form:
   const t = (await getT()).auth;
   const password = String(form.get("password") ?? "");
   const repeat = String(form.get("repeat") ?? "");
-  if (password.length < 8) return { error: t.register.shortPassword };
-  if (password !== repeat) return { error: t.reset.mismatch };
+  if (password.length < 8) return { error: t.register.shortPassword, field: "password" };
+  if (password !== repeat) return { error: t.reset.mismatch, field: "repeat" };
   if (!resetPassword(token, password)) return { error: t.reset.invalid };
   redirect("/login?reset=done");
 }

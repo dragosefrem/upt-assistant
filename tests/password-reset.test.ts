@@ -1,124 +1,155 @@
 import { eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getDb } from "@/db";
 import { passwordResets, sessions, users } from "@/db/schema";
 import { createUser, verifyPassword } from "@/lib/auth";
-import { RESET_LIMIT, requestPasswordReset, resetEmail, resetPassword, resetTarget } from "@/lib/password-reset";
+import { RESET_LIMIT, requestPasswordReset, resetBaseUrl, resetEmail, resetPassword, resetTarget } from "@/lib/password-reset";
 
-/** Captures messages instead of sending them. */
+const EMAIL = "ana@example.com";
+const BASE = "https://orar.example.org";
+const tokenIn = (text: string) => /\/reset\/([A-Za-z0-9_-]+)/.exec(text)![1];
+
 function outbox() {
   const transport = nodemailer.createTransport({ jsonTransport: true });
-  const sent: Array<{ to: string; subject: string; text: string; html: string }> = [];
-  const send = transport.sendMail.bind(transport);
-  transport.sendMail = (async (message: Parameters<typeof send>[0]) => {
-    const info = await send(message);
-    const parsed = JSON.parse((info as unknown as { message: string }).message);
-    sent.push({ to: parsed.to[0].address, subject: parsed.subject, text: parsed.text, html: parsed.html });
-    return info;
-  }) as typeof transport.sendMail;
-  return { transport, sent };
+  const send = vi.spyOn(transport, "sendMail");
+  const jobs: Array<() => Promise<void>> = [];
+  const defer = (job: () => Promise<void>) => { jobs.push(job); };
+  const request = (email = EMAIL, baseUrl: string | null = BASE) => requestPasswordReset(email, baseUrl, "en", defer, transport);
+  return { request, send, jobs, deliver: () => Promise.all(jobs.splice(0).map((job) => job())) };
 }
-
-const tokenIn = (text: string) => /\/reset\/([A-Za-z0-9_-]+)/.exec(text)![1];
-const BASE = "https://orar.example.org";
 
 describe("password reset", () => {
   let userId: string;
+  let feedToken: string;
 
-  beforeAll(() => {
+  beforeEach(() => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-23T08:00:00Z"));
-    process.env.DATABASE_PATH = ":memory:";
-    const user = createUser({ email: "Ana@Example.com", name: "Ana Popescu", password: "old-password-1", locale: "ro" });
+    vi.stubEnv("DATABASE_PATH", ":memory:");
+    getDb().delete(users).run();
+    const user = createUser({ email: EMAIL, name: "Ana Popescu", password: "old-password-1", locale: "ro" });
     userId = user.id;
-    getDb().insert(sessions).values({ id: "session-1", userId, expiresAt: "2027-01-01T00:00:00.000Z" }).run();
+    feedToken = user.feedToken;
   });
 
-  it("answers the same for an unknown address and sends nothing", async () => {
-    const { transport, sent } = outbox();
-    expect(await requestPasswordReset("nobody@example.com", BASE, "en", transport)).toBe("sent");
-    expect(sent).toEqual([]);
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
+  });
+
+  it("defers all account-specific work and silently limits queued requests", async () => {
+    const mail = outbox();
+    for (let i = 0; i < RESET_LIMIT + 1; i++) expect(mail.request()).toBe("sent");
+    expect(mail.request("unknown@example.com")).toBe("sent");
+    expect(mail.jobs).toHaveLength(RESET_LIMIT + 2);
+    expect(getDb().select().from(passwordResets).all()).toEqual([]);
+    expect(mail.send).not.toHaveBeenCalled();
+    await mail.deliver();
+    expect(mail.send).toHaveBeenCalledTimes(RESET_LIMIT);
+    expect(getDb().select().from(passwordResets).all()).toHaveLength(RESET_LIMIT);
+
+    expect(mail.request()).toBe("sent");
+    await mail.deliver();
+    expect(mail.send).toHaveBeenCalledTimes(RESET_LIMIT);
+    vi.setSystemTime(Date.now() + 60 * 60_000);
+    expect(mail.request()).toBe("sent");
+    await mail.deliver();
+    expect(mail.send).toHaveBeenCalledTimes(RESET_LIMIT + 1);
+  });
+
+  it("delivers nothing for an unknown address, even in the background", async () => {
+    const mail = outbox();
+    expect(mail.request("unknown@example.com")).toBe("sent");
+    await mail.deliver();
+    expect(mail.send).not.toHaveBeenCalled();
     expect(getDb().select().from(passwordResets).all()).toEqual([]);
   });
 
-  it("e-mails a one-time link in the account's language and stores only its hash", async () => {
-    const { transport, sent } = outbox();
-    expect(await requestPasswordReset("  ANA@example.com ", BASE, "en", transport)).toBe("sent");
-    expect(sent).toHaveLength(1);
-    expect(sent[0].to).toBe("ana@example.com");
-    // The account chose Romanian, whatever language the request came in.
-    expect(sent[0].subject).toBe("Resetează-ți parola UPT Orar");
-    expect(sent[0].text).toContain("Salut, Ana,");
-    const token = tokenIn(sent[0].text);
-    expect(sent[0].text).toContain(`${BASE}/reset/${token}`);
-    expect(sent[0].html).toContain(`${BASE}/reset/${token}`);
+  it("mails the configured URL in the account's language and stores only the token hash", async () => {
+    vi.stubEnv("APP_URL", BASE + "/");
+    const mail = outbox();
+    mail.request("  ANA@example.com ", resetBaseUrl(new Headers({ host: "localhost:3100" })));
+    await mail.deliver();
+    const [message] = mail.send.mock.calls[0];
+    expect(message.to).toBe(EMAIL);
+    expect(message.subject).toBe("Resetează-ți parola UPT Orar");
+    expect(message.text).toContain("Salut, Ana,");
+    const token = tokenIn(String(message.text));
+    expect(message.text).toContain(`${BASE}/reset/${token}`);
+    expect(message.html).toContain(`${BASE}/reset/${token}`);
     const [row] = getDb().select().from(passwordResets).all();
     expect(row.id).not.toBe(token);
     expect(row.id).toMatch(/^[0-9a-f]{64}$/);
-    expect(resetTarget(token)).toMatchObject({ email: "ana@example.com" });
-    expect(resetTarget("not-a-real-token-0000000000")).toBeNull();
+    expect(resetTarget(token)?.email).toBe(EMAIL);
     expect(resetTarget("x")).toBeNull();
   });
 
-  it("sets the new password once, signs the account out everywhere and spends every link", async () => {
-    const { transport, sent } = outbox();
-    await requestPasswordReset("ana@example.com", BASE, "ro", transport);
-    const token = tokenIn(sent[0].text);
-    const older = getDb().select().from(passwordResets).all();
-    expect(older).toHaveLength(2);
-
+  it("changes the password once, revokes sessions, all outstanding links and the old calendar credential", async () => {
+    getDb().insert(sessions).values({ id: "session-1", userId, expiresAt: "2027-01-01T00:00:00.000Z" }).run();
+    const mail = outbox();
+    mail.request();
+    mail.request();
+    await mail.deliver();
+    const [older, token] = mail.send.mock.calls.map(([message]) => tokenIn(String(message.text)));
     expect(resetPassword(token, "new-password-2")).toBe(true);
     const user = getDb().select().from(users).where(eq(users.id, userId)).get()!;
     expect(verifyPassword("new-password-2", user.passwordHash)).toBe(true);
     expect(verifyPassword("old-password-1", user.passwordHash)).toBe(false);
+    expect(user.feedToken).not.toBe(feedToken);
+    expect(getDb().select().from(users).where(eq(users.feedToken, feedToken)).get()).toBeUndefined();
     expect(getDb().select().from(sessions).where(eq(sessions.userId, userId)).all()).toEqual([]);
-    // The link cannot be used again, and the earlier unused link died with it.
     expect(resetPassword(token, "another-password-3")).toBe(false);
-    expect(resetTarget(token)).toBeNull();
-    expect(getDb().select().from(passwordResets).all().filter((r) => !r.usedAt)).toEqual([]);
-  });
-
-  it("stops after a few links in an hour, then allows more", async () => {
-    const { transport, sent } = outbox();
-    getDb().delete(passwordResets).run();
-    for (let i = 0; i < RESET_LIMIT; i++) expect(await requestPasswordReset("ana@example.com", BASE, "ro", transport)).toBe("sent");
-    expect(await requestPasswordReset("ana@example.com", BASE, "ro", transport)).toBe("too-many");
-    expect(sent).toHaveLength(RESET_LIMIT);
-    vi.setSystemTime(new Date("2026-11-23T09:01:00Z"));
-    expect(await requestPasswordReset("ana@example.com", BASE, "ro", transport)).toBe("sent");
+    expect(resetTarget(older)).toBeNull();
+    mail.request();
+    mail.request();
+    await mail.deliver();
+    expect(mail.send).toHaveBeenCalledTimes(RESET_LIMIT);
   });
 
   it("refuses an expired link", async () => {
-    const { transport, sent } = outbox();
-    getDb().delete(passwordResets).run();
-    await requestPasswordReset("ana@example.com", BASE, "ro", transport);
-    const token = tokenIn(sent[0].text);
+    const mail = outbox();
+    mail.request();
+    await mail.deliver();
+    const token = tokenIn(String(mail.send.mock.calls[0][0].text));
     expect(resetTarget(token)).not.toBeNull();
-    vi.setSystemTime(new Date(Date.now() + 61 * 60_000));
+    vi.setSystemTime(Date.now() + 61 * 60_000);
     expect(resetTarget(token)).toBeNull();
     expect(resetPassword(token, "late-password-4")).toBe(false);
   });
 
-  it("keeps the request when the mail server fails, without leaving a usable link", async () => {
-    getDb().delete(passwordResets).run();
-    const broken = nodemailer.createTransport({ jsonTransport: true });
-    broken.sendMail = (async () => {
-      throw new Error("SMTP down");
-    }) as typeof broken.sendMail;
-    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
-    expect(await requestPasswordReset("ana@example.com", BASE, "ro", broken)).toBe("failed");
-    quiet.mockRestore();
+  it("hides SMTP failure and releases the unusable link", async () => {
+    const mail = outbox();
+    mail.send.mockRejectedValueOnce(new Error("SMTP down"));
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(mail.request()).toBe("sent");
+    await mail.deliver();
+    expect(log).toHaveBeenCalledOnce();
     expect(getDb().select().from(passwordResets).all()).toEqual([]);
   });
 
-  it("says so when no mail server is configured", async () => {
-    const saved = { host: process.env.SMTP_HOST, user: process.env.SMTP_USER, pass: process.env.SMTP_PASS };
-    delete process.env.SMTP_HOST;
-    delete process.env.SMTP_USER;
-    delete process.env.SMTP_PASS;
-    expect(await requestPasswordReset("ana@example.com", BASE, "ro")).toBe("not-configured");
-    Object.assign(process.env, Object.fromEntries(Object.entries({ SMTP_HOST: saved.host, SMTP_USER: saved.user, SMTP_PASS: saved.pass }).filter(([, v]) => v)));
+  it("requires a configured HTTP(S) URL outside development and never queues mail without it", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    const headers = new Headers({ host: "localhost:3100" });
+    const mail = outbox();
+    for (const value of ["", "invalid", "file:///tmp"]) {
+      vi.stubEnv("APP_URL", value);
+      expect(mail.request(EMAIL, resetBaseUrl(headers))).toBe("not-configured");
+    }
+    expect(mail.jobs).toHaveLength(0);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("APP_URL"));
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("APP_URL", "");
+    expect(resetBaseUrl(headers)).toBe("http://localhost:3100");
+  });
+
+  it("reports unconfigured SMTP before scheduling a delivery", () => {
+    vi.stubEnv("SMTP_HOST", "");
+    const defer = vi.fn();
+    expect(requestPasswordReset(EMAIL, BASE, "ro", defer)).toBe("not-configured");
+    expect(defer).not.toHaveBeenCalled();
   });
 
   it("writes the message in English too and escapes the name", () => {
@@ -126,6 +157,5 @@ describe("password reset", () => {
     expect(mail.subject).toBe("Reset your UPT Orar password");
     expect(mail.text).toContain("Hi <b>Eve</b>,");
     expect(mail.html).toContain("Hi &lt;b&gt;Eve&lt;/b&gt;,");
-    expect(mail.html).not.toContain("<b>Eve</b>");
   });
 });

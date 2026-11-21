@@ -18,7 +18,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/ics/[token]"
   return new Response(toICS(exportItems(user, user.locale ?? DEFAULT_LOCALE)), {
     headers: {
       "content-type": "text/calendar; charset=utf-8",
-      "cache-control": "private, max-age=900",
+      "cache-control": "private, no-store",
       ...(download ? { "content-disposition": 'attachment; filename="upt-orar.ics"' } : {}),
     },
   });

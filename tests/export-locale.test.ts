@@ -1,10 +1,18 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { courses, entries, entryGroups, examSpecializations, exams, faculties, groups, semesters, specializations, users } from "@/db/schema";
 import type { User } from "@/lib/auth";
 import { exportItems } from "@/lib/export";
 import { calendarEmail } from "@/lib/export-email";
+import { renewCalendarLink } from "@/app/(app)/settings/actions";
+import { GET as calendarFeed } from "@/app/api/ics/[token]/route";
+import { requireOnboardedUser } from "@/lib/auth";
+import { messages } from "@/i18n/messages";
+
+vi.mock("@/lib/auth", { spy: true });
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+vi.mock("@/i18n/server", () => ({ getT: () => messages.en }));
 
 // A private in-memory database with the real migrations and seed data.
 process.env.DATABASE_PATH = ":memory:";
@@ -74,5 +82,20 @@ describe("calendar export language", () => {
     expect(ro.text).toContain("https://orar.example.ro/api/ics/abc.ics");
     expect(ro.text).not.toMatch(/Hi,|calendar today|Import & export/);
     expect(ro.attachments[0].filename).toBe("upt-orar.ics");
+  });
+
+  it("replaces only the signed-in student's subscription and serves the new link immediately", async () => {
+    const db = getDb();
+    db.insert(users).values({ id: "other", name: "Other", email: "other@example.com", passwordHash: "x", feedToken: "other-feed" }).run();
+    const read = (token: string) => calendarFeed(new Request(`https://orar.example.org/api/ics/${token}`), { params: Promise.resolve({ token }) });
+    expect((await read(user.feedToken)).status).toBe(200);
+    vi.mocked(requireOnboardedUser).mockResolvedValueOnce(user);
+    await renewCalendarLink();
+    const renewed = db.select().from(users).where(eq(users.id, user.id)).get()!;
+    expect((await read(user.feedToken + ".ics")).status).toBe(404);
+    const feed = await read(renewed.feedToken + ".ics");
+    expect(feed.headers.get("cache-control")).toContain("no-store");
+    expect(await feed.text()).toContain("BEGIN:VCALENDAR");
+    expect((await read("other-feed")).status).toBe(200);
   });
 });
