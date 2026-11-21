@@ -234,7 +234,14 @@ class Tour:
         raise RouteQuestion("ask.unknown", field, query=query)
 
     def plan(self, prompt, start=None, destination=None, lang="en", origin=None):
-        """Plan a route. A link or form can name the starting place apart from the request, as origin."""
+        """Plan a route. A link or form can name the starting place apart from the request, as origin.
+
+        start="auto" starts at the mapped building entrance nearest the destination, unless the
+        request or origin names a starting place.
+        """
+        automatic = start == "auto"
+        if automatic:
+            start = None
         if not isinstance(prompt, str) or len(prompt) > 1000 or not isinstance(origin, (str, type(None))) or len(origin or "") > 200:
             raise RouteQuestion("ask.length", "destination")
         origin_text, end_text = split_request(prompt)
@@ -255,7 +262,13 @@ class Tour:
         if room and room["coverage"] == "unmapped":
             return {"steps": [], "duration": 0, "lang": lang, "coverage": "unmapped", "destination": room,
                     "notice": say(lang, "notice.unmapped")}
-        origin = self.resolve(origin_text, "start", start)
+        if automatic and not origin_text:
+            origin = self.nearest_entrance(room["checkpoint"] if room else end, room)
+            if origin is None:
+                raise RouteQuestion("ask.disconnected", "start")
+        else:
+            automatic = False
+            origin = self.resolve(origin_text, "start", start)
         start_room = self.localized(self.classrooms.records.get(origin), lang)
         if start_room and start_room["checkpoint"] is None:
             raise RouteQuestion("ask.start_room", "start", choose=True)
@@ -291,11 +304,56 @@ class Tour:
                 last["caption"] = room["name"]
         elif waiting:
             notices.append(say(lang, "notice.already", place=self.mention(last["index"], lang)))
+        if automatic:
+            # The entrance chosen for the student, with its map pin for the walk outdoors.
+            route["origin"] = self.localized(self.records[origin], lang)
+            route["automatic"] = True
         if waiting:
             route["duration"] = 0
         if notices:
             route["notice"] = " ".join(notices)
         return route
+
+    def nearest_entrance(self, end, room=None):
+        """The checkpoint with a map pin from which the estimated walk to end is shortest.
+
+        Ties go to the walk with fewer checkpoints, then to the entrance of the room's own faculty
+        (Electro has one per faculty, all equally near). None when no pinned checkpoint reaches end.
+        The search runs backwards from end over the directed links, so one pass covers every pin.
+        """
+        if not hasattr(self, "_incoming"):
+            self._incoming = {index: [] for index in self.scenes}
+            for source, scene in self.scenes.items():
+                for edge in scene["links"]:
+                    if edge["to"] in self._incoming:
+                        self._incoming[edge["to"]].append(source)
+        best = {end: (0, 0)}
+        pending = [(0, 0, end)]
+        nearest, found = None, []
+        while pending:
+            metres, hops, current = heapq.heappop(pending)
+            if (metres, hops) > best[current]:
+                continue
+            if nearest is not None and (metres, hops) > nearest:
+                break
+            if "pin" in self.records[current]:
+                nearest = (metres, hops)
+                found.append(current)
+                continue
+            for source in self._incoming[current]:
+                cost = (metres + HOP_METRES[(source in self.outdoors) + (current in self.outdoors)], hops + 1)
+                if source not in best or cost < best[source]:
+                    best[source] = cost
+                    heapq.heappush(pending, (*cost, source))
+        if not found:
+            return None
+        faculty = terms(" ".join((room or {}).get("faculties", []))) - {"et"}
+
+        def shared(index):
+            record = self.records[index]
+            return len(faculty & terms(" ".join((record["area"], record["name"], record["pin"]["name"]))))
+
+        return min(found, key=lambda index: (-shared(index), index))
 
     def reach(self, start, end=None):
         """Predecessors on the shortest estimated walk to every checkpoint reachable from start (or until end)."""

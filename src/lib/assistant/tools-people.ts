@@ -2,10 +2,10 @@ import "server-only";
 import { InvitationError, answerContact, cancelContactRequest, contactList, inviteContact, removeContact } from "../contacts";
 import { myGroupEvents, respondToEvent } from "../group-events";
 import { createGroupEvent } from "../group-planning";
-import { availabilityAt, listPeople, matchPeople, ownBusyAt, personGroup, type Person } from "../people";
+import { availabilityAt, listPeople, matchPeople, ownBusyAt, personBusy, personGroup, type Person } from "../people";
 import { removeSavedContact } from "../saved-contacts";
-import { describeGroup, findGroups } from "../schedule";
-import { addDays, formatMinutes, nowLocal } from "../time";
+import { describeGroup, findGroups, ownCohort } from "../schedule";
+import { DAY_NAMES, addDays, formatMinutes, nowLocal, weekday } from "../time";
 import { addLink, dated, fold, isDate, num, parseClock, span, str, strList, type AssistantTool, type ToolContext } from "./toolkit";
 
 /** Tools about other people: contacts, who is free when, and group events. */
@@ -13,7 +13,7 @@ import { addLink, dated, fold, isDate, num, parseClock, span, str, strList, type
 /** A group named directly ("TI 3.2") stands in for "someone from that group". */
 function groupAsPerson(query: string, ctx: ToolContext): Person | null {
   if (!/\d/.test(query)) return null;
-  const [match] = findGroups(query, ctx.user.facultyId, ctx.user.year, 1);
+  const [match] = findGroups(query, ctx.user.facultyId, ctx.user.year, 1, ownCohort(ctx.user));
   const found = match ?? (ctx.user.facultyId ? findGroups(query, null, ctx.user.year, 1)[0] : undefined);
   const info = found ? describeGroup(found.group.id) : null;
   return info ? { kind: "saved", id: -info.group.id, name: `${info.spec.code ?? info.spec.name} ${info.label} (group)`, groupId: info.group.id } : null;
@@ -118,6 +118,38 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
         caveat: resolved.people.some((p) => p.kind === "saved")
           ? "For saved people and groups only the published timetable is known; they may have other plans."
           : undefined,
+      };
+    },
+  },
+  {
+    name: "contact_schedule",
+    description:
+      "What one contact has on a day or over a few days: \"what does Mihai have on Monday?\", \"when does Ana finish tomorrow?\". For a linked account it is their real calendar, with classes and exams by name and everything else as busy time (their private events are never named); for a saved person or a group it is the group's published timetable.",
+    input_schema: {
+      type: "object",
+      properties: {
+        person: { type: "string", description: "The contact's name, or a group such as \"TI 3.2\"." },
+        from: { type: "string", description: "First day, YYYY-MM-DD." },
+        to: { type: "string", description: "Last day, YYYY-MM-DD. Defaults to `from`; at most 7 days after it." },
+      },
+      required: ["person", "from"],
+    },
+    run(input, ctx) {
+      const name = str(input.person);
+      if (!name || !isDate(input.from)) return { error: "A person and a first day (YYYY-MM-DD) are needed." };
+      let to = isDate(input.to) && input.to >= input.from ? input.to : input.from;
+      if (to > addDays(input.from, 7)) to = addDays(input.from, 7);
+      const resolved = resolvePeople(ctx, [name]);
+      if (resolved.ambiguous.length) return { error: "Several contacts match; ask which one.", several_people_match: resolved.ambiguous };
+      const [person] = resolved.people;
+      if (!person) return { error: `"${name}" is not a contact or a group.`, hint: "See list_contacts. A friend's group can be stored with save_contact." };
+      const busy = personBusy(person, input.from, to).sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin);
+      return {
+        ...describePerson(person),
+        from: input.from,
+        to,
+        busy: busy.map((b) => ({ date: b.date, weekday: DAY_NAMES[weekday(b.date)], time: span(b.startMin, b.endMin), what: b.what ?? "busy (private)" })),
+        note: busy.length ? undefined : "Nothing in that period.",
       };
     },
   },

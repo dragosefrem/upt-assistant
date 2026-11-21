@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useT } from "@/i18n/client";
 import type { DayPreview } from "@/lib/assistant/choices";
-import { kindStyle } from "./Calendar";
+import { kindStyle } from "@/lib/kinds";
 
 const PX_PER_MIN = 0.6;
 const toMin = (hhmm: string) => {
@@ -19,6 +20,7 @@ function dayLabel(date: string, locale: string, opts: Intl.DateTimeFormatOptions
  * the new or moved event highlighted, its old place dashed, and anything it overlaps in red.
  */
 export function DayPreviewCard({ preview, locale, actions }: { preview: DayPreview; locale: string; actions?: ReactNode }) {
+  const tr = useT().assistant.preview;
   const start = toMin(preview.start);
   const end = toMin(preview.end);
   const ghost = preview.from && preview.from.date === preview.date ? { start: toMin(preview.from.start), end: toMin(preview.from.end) } : null;
@@ -41,20 +43,20 @@ export function DayPreviewCard({ preview, locale, actions }: { preview: DayPrevi
       <div className="flex items-baseline justify-between gap-2 border-b border-slate-100 px-3 py-2">
         <p className="text-sm font-semibold text-slate-900">
           {dayLabel(preview.date, locale)}
-          {preview.weekly && <span className="font-normal text-slate-500"> · every week</span>}
+          {preview.weekly && <span className="font-normal text-slate-500"> · {tr.everyWeek}</span>}
         </p>
         <span className={`shrink-0 text-[11px] font-medium uppercase tracking-wide ${accepted ? "text-emerald-700" : "text-slate-400"}`}>
-          {accepted ? "✓ Saved" : "Preview"}
+          {accepted ? tr.saved : tr.label}
         </span>
       </div>
       {preview.from && !ghost && (
         <p className="px-3 pt-2 text-xs text-slate-500">
-          Moving from {dayLabel(preview.from.date, locale, { weekday: "short", day: "numeric", month: "short" })}, {preview.from.start}–{preview.from.end}
+          {tr.movingFrom(dayLabel(preview.from.date, locale, { weekday: "short", day: "numeric", month: "short" }), `${preview.from.start}–${preview.from.end}`)}
         </p>
       )}
-      {earlier > 0 && <p className="px-3 pt-2 text-[11px] text-slate-400">{earlier} earlier that day</p>}
+      {earlier > 0 && <p className="px-3 pt-2 text-[11px] text-slate-400">{tr.earlier(earlier)}</p>}
 
-      <div className="relative mx-3 my-2" style={{ height: (hi - lo) * PX_PER_MIN }} aria-label={`Timeline from ${hours[0] / 60}:00`}>
+      <div className="relative mx-3 my-2" style={{ height: (hi - lo) * PX_PER_MIN }} aria-label={tr.timeline(`${hours[0] / 60}:00`)}>
         {hours.map((h) => (
           <div key={h} className="absolute inset-x-0 border-t border-slate-100" style={{ top: top(h) }}>
             <span className="absolute -top-2 left-0 bg-white pr-1 text-[10px] tabular-nums text-slate-400">{`${String(h / 60).padStart(2, "0")}:00`}</span>
@@ -79,7 +81,7 @@ export function DayPreviewCard({ preview, locale, actions }: { preview: DayPrevi
             className="absolute left-[42%] right-0 rounded-md border-2 border-dashed border-slate-300 bg-white/70 px-1.5 py-0.5 text-[11px] leading-tight text-slate-400"
             style={{ top: top(ghost.start), height: height(ghost.start, ghost.end) }}
           >
-            was {preview.from!.start}–{preview.from!.end}
+            {tr.was(`${preview.from!.start}–${preview.from!.end}`)}
           </div>
         )}
         <div
@@ -90,15 +92,15 @@ export function DayPreviewCard({ preview, locale, actions }: { preview: DayPrevi
         >
           <span className="block font-semibold">{preview.title}</span>
           <span className="opacity-90">
-            {preview.start}–{preview.end} · {preview.action === "add" ? "new" : "moved"}
+            {preview.start}–{preview.end} · {preview.action === "add" ? tr.isNew : tr.moved}
           </span>
         </div>
       </div>
 
-      {later > 0 && <p className="px-3 pb-1 text-[11px] text-slate-400">{later} later that day</p>}
+      {later > 0 && <p className="px-3 pb-1 text-[11px] text-slate-400">{tr.later(later)}</p>}
       {clashes.length > 0 && (
         <p className="mx-3 mb-2 rounded-md bg-red-50 px-2 py-1 text-xs text-red-800">
-          Overlaps {clashes.map((e) => `${e.title} (${e.start}–${e.end})`).join(", ")}
+          {tr.overlaps(clashes.map((e) => `${e.title} (${e.start}–${e.end})`).join(", "))}
         </p>
       )}
       {actions && <div className="flex flex-wrap gap-2 border-t border-slate-100 px-3 py-2">{actions}</div>}

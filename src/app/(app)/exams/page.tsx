@@ -2,11 +2,13 @@ import { and, asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { exams, sources } from "@/db/schema";
 import { ExamCard } from "@/components/ExamCard";
+import { StudyPlanCard } from "@/components/StudyPlanCard";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf } from "@/lib/catalog";
 import { examReminders } from "@/lib/reminders";
 import { placeResolver } from "@/lib/schedule";
+import { studyBlocks, upcomingExams } from "@/lib/study-plan";
 import { capitalize, formatDate, formatTimeSlot, nowLocal } from "@/lib/time";
 
 export async function generateMetadata() {
@@ -83,6 +85,8 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
         <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
         <p className="mt-1 text-sm text-slate-600">{t.intro(faculty?.shortName ?? null)}</p>
       </div>
+
+      <StudyPlanCard examCount={upcomingExams(user).length} savedBlocks={studyBlocks(user.id).length} />
 
       {mine.length ? (
         mine.map((e) => <ExamCard key={e.id} exam={e} />)

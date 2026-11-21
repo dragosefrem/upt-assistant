@@ -65,7 +65,7 @@ curl http://127.0.0.1:8765/api/routes \
   -d '{"prompt":"I want to go to sala B419","start":355}'
 ```
 
-Add `"from": "AC entrance"` to name the starting place apart from the request. Add `"lang": "ro"` to receive the directions, notices, checkpoint names and video captions in Romanian. English is the default, and `lang` is echoed in the response. The response includes ordered `steps` with timestamps and source links, the video duration in seconds, and a `video` object. When the closest mapped checkpoint is the starting point itself, `steps` holds that one checkpoint, `duration` is 0, `video` is `null` and `notice` explains what is known about the room. For a queued or rendering movie, poll `GET /api/videos/<key>` until `state` is `ready`, then open its `url`. A failed render can be retried by resubmitting the request.
+Add `"from": "AC entrance"` to name the starting place apart from the request. Send `"start": "auto"` to start at the mapped building entrance (a checkpoint with a map pin) from which the walk to the destination is shortest; the route then carries that entrance as `origin`, with its `pin`, and `"automatic": true`. A starting place named in the request or in `from` still wins. Add `"lang": "ro"` to receive the directions, notices, checkpoint names and video captions in Romanian. English is the default, and `lang` is echoed in the response. The response includes ordered `steps` with timestamps and source links, the video duration in seconds, and a `video` object. When the closest mapped checkpoint is the starting point itself, `steps` holds that one checkpoint, `duration` is 0, `video` is `null` and `notice` explains what is known about the room. For a queued or rendering movie, poll `GET /api/videos/<key>` until `state` is `ready`, then open its `url`. A failed render can be retried by resubmitting the request.
 
 The `GET` endpoints below and `GET /api/example` take the same choice as `?lang=ro`.
 
@@ -80,7 +80,7 @@ curl -G http://127.0.0.1:8765/api/qr -o b527.png -d format=png \
   --data-urlencode 'link=http://127.0.0.1:8765/?from=355&to=B527'
 ```
 
-The address must be a route of this app: the host the request came to, the home page, and no fields other than `from`, `to`, `dest` and `lang`. Anything else returns HTTP 400. Behind a proxy, pass the public host on in the `Host` header.
+The address must be a route of this app: the host the request came to, the home page or `/campus`, and no fields other than `from`, `to`, `dest` and `lang`. Anything else returns HTTP 400. Behind a proxy, pass the public host on in the `Host` header. An app that embeds the planner, such as UPT Orar, opens routes at `https://<its host>/campus?from=…&to=…`.
 
 ## Floors, doors and what is ahead
 

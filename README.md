@@ -1,75 +1,72 @@
 # UPT Orar
 
-A web app for students of Universitatea Politehnica Timișoara: a personal calendar of
-classes and exams built from the timetables the faculties publish, with calendar
-export by e-mail, directions to the next room, and a chat/voice assistant.
+A web app for students of Universitatea Politehnica Timișoara, built first of all for
+first-years: a personal calendar made from the timetables the faculties publish, the
+way to every room, an assistant (Poli) that answers and acts on the student's behalf,
+and the tools to plan time with colleagues and prepare for the exam session. Everything
+works in Romanian and English.
 
 ## What it does
 
-- **Accounts.** Students register, then pick faculty → cycle → year → specialization →
-  group. From year 3 they also choose which courses they follow, and for labs that run
-  in several slots, which slot they attend.
-- **Calendar home page.** Day / week / month views with today and the current time
-  marked, plus an "up next" card. Classes follow the semester's teaching weeks
-  (holidays, odd/even weeks, "weeks 1–7" courses).
-- **Exams.** A student's own exam bookings, and search across the faculty's.
-- **Contacts and group events.** Find people by account e-mail and exchange contact
-  requests. Open an accepted contact’s schedule to browse their classes, exams and
-  events you both attend. Other commitments appear as busy time. Select a group to see
-  shared free time over the next 7, 14 or 30 days, or choose your own dates. A calendar
-  shows free hours per day and an interactive timeline lets you pick an opening to book.
-  Both views can be narrowed to daytime or evening hours.
-  Everyone receives an in-app invitation.
-  The organizer counts as going. The event confirms when everyone accepts, or at the
-  organizer's deadline if at least two people have accepted. Later RSVP changes
-  update attendees' calendars.
-  An optional guest link lets people join without an account and save a private
-  link to change their own RSVP.
-- **Changing your timetable.** Hide a class, move it to another slot, add personal
-  events: click or drag on the calendar, or ask the assistant. Changes affect only you. A
-  class can be moved for every week, or for one week only ("move next Wednesday's lab
-  to Friday"); a one-week move shows as "this week only" and is exported that way.
-- **Directions.** With location sharing on, the app estimates how to reach the next
-  room (walk / bike / transit / car), when to leave, and links to Google Maps.
-- **Exam reminders.** The exams page shows each upcoming exam with a countdown, the
-  room and building, a map link and a few tips from Poli, plus a search across the
-  faculty's exams. A bell in the header lists exams in the next 30 days and can notify
-  the device a week, a day, 2 hours and 30 minutes before (while the app is open); the
-  Google Calendar and `.ics` exports carry alerts a day and 2 hours before each exam.
-- **Poli.** The assistant's mascot. Pressing any Poli opens the chat; it also greets the
-  student with one-tap questions on the calendar page. Placeholder images live in
-  `public/images`; `docs/IMAGINI.md` has prompts for the final artwork.
-- **Assistant.** Text chat and voice, in Romanian or English: "Unde am examenul la
-  AC?", "When is group TI 3.2 free on Monday?", "Hide the PM lecture". With Gemini, the
-  microphone records the question, stops by itself after a pause and Gemini transcribes
-  it, so voice works in every browser (Brave and some networks block the browser's own
-  speech service). Without Gemini, the browser's speech recognition is used. Answers are
-  read aloud with the device's voices.
-- **Planning with the assistant** (needs a Gemini or Claude key). "When's the earliest
-  I can play tennis?" or "When can I meet Mindy?" gets tappable time slots from the
-  student's free time; "Other times" or "not before 6" gets new ones. For a friend, the
-  assistant asks their group once and plans around that group's published timetable.
-- **Previews before changes.** Picking a slot, or "Move the appointment from 2 to 3",
-  shows that day's timeline with the new or moved event highlighted, its old place
-  dashed and any clash in red. Nothing is saved until the student taps **Accept**,
-  which saves exactly what the preview shows (or says yes by voice). Asked by voice,
-  options are read aloud and the microphone reopens for the answer.
-- **Export.** Under Settings, students enter an e-mail address and get their calendar
-  as an `.ics` attachment with instructions for Google Calendar, Apple Calendar and
-  Outlook. The assistant does the same when asked ("email me my calendar"). The `.ics`
-  file and a subscription link are also available directly.
+- **Welcome page and accounts.** Signed-out visitors get a public page that explains the
+  app; students register, sign in, and can reset a forgotten password through a
+  one-time link sent by e-mail.
+- **Onboarding.** Faculty → cycle and year → programme → group, with a step indicator
+  and help on what "grupă" and "semigrupă" mean. From year 3 (and wherever a lab runs in
+  several slots) students also choose their courses and lab slots. A short welcome tour
+  follows on the first visit.
+- **Calendar.** Day / week / month views of only the student's own classes, in the weeks
+  they really take place (holidays, odd and even weeks, "weeks 1–7" courses, dated
+  meetings). Click or drag to add personal events; hide a class, move it every week or
+  for one week only. Changes affect only the student.
+- **Labs this week.** A card on the home page answers "do I have lab this week?": the
+  teaching week and its parity, the labs, seminars and projects that take place, and the
+  ones that do not, with the date they come next.
+- **Make-up sessions.** From a lab in the calendar, "Find a make-up session" lists the
+  other groups' sessions of the same lab, the ones that fit the student's timetable first.
+- **Campus.** A door-to-door journey to a room: an embedded Google map from where the
+  student is to the best building entrance, then a video walkthrough through the
+  university's 360° tour from that entrance to the room, with step-by-step directions.
+  Built on Campuspath (`services/campuspath`), which also offers a classroom directory.
+- **Exams and study plan.** Exam dates, rooms, countdowns and reminders; a search across
+  the faculty's exams; and a study planner that works backwards from each exam and puts
+  study blocks into the student's free time.
+- **Attendance.** Mark each class as attended or missed and see the totals per course.
+- **Contacts and group events.** Link accounts with colleagues (requests are accepted
+  by the other person; real calendars then count as busy time), or save a friend as a
+  name plus a group. See shared free time over custom dates, book a group event, collect
+  answers, and invite people without an account through a guest link.
+- **Poli, the assistant.** Chat or talk in Romanian or English. Poli looks everything up
+  in the student's real data and can do whatever the interface can; see "The assistant"
+  below.
+- **Guide.** A first-week checklist, the semester at a glance, how to read a faculty
+  timetable, a glossary of the words first-years meet (serie, grupă, semigrupă,
+  restanță, …) and the buildings the student actually uses.
+- **Export.** The calendar by e-mail as an `.ics` file, a subscription link, or (when
+  configured) direct sync to a dedicated Google calendar. Exports are written in the
+  account's language.
 - **Admin.** A scraping engine reads the university structure from upt.ro and each
   faculty's timetable and exam documents, and replaces what is in the database.
 
 ## Getting started
 
-Requires Node.js 20.9 or newer. The timetable importer also uses Python 3.8 or newer and pdfplumber to read the five faculties that publish PDFs.
+Requires Node.js 20.9 or newer. Two optional parts use Python 3.11 or newer, each with its
+own virtual environment because their dependencies conflict: the timetable importer
+(for the faculties that publish PDFs) and Campuspath (walkthrough videos, which also
+need `ffmpeg` on the PATH).
 
 ```bash
 npm install
+cp .env.example .env.local   # optional — everything has a working default
+
+# timetable PDFs
 python3 -m venv .venv
 .venv/bin/python -m pip install -r scripts/requirements-timetables.txt
-cp .env.example .env.local   # optional — everything has a working default
+
+# campus walkthroughs
+python3 -m venv services/campuspath/.venv
+services/campuspath/.venv/bin/python -m pip install -r services/campuspath/requirements.txt
+
 npm run dev                  # http://localhost:3000
 ```
 
@@ -79,6 +76,8 @@ npm run dev                  # http://localhost:3000
 
 The SQLite database is created at `data/upt.db` on first start; migrations and seed
 data (the 2026–2027 academic calendar and campus buildings) are applied automatically.
+A database created from one of the earlier feature branches has a different migration
+history and has to be recreated.
 
 ### Commands
 
@@ -89,6 +88,9 @@ data (the 2026–2027 academic calendar and campus buildings) are applied automa
 | `npm test` | Unit tests, including parsers run against real UPT documents in `tests/fixtures` |
 | `npm run typecheck` / `npm run lint` | TypeScript / ESLint |
 | `npm run db:generate` | Generate a migration after editing `src/db/schema.ts` |
+| `cd services/campuspath && .venv/bin/python -m unittest discover -s tests` | Campuspath's own tests |
+
+The production setup and first-release steps are in [Deploying UPT to Railway](docs/railway.md).
 
 ### Configuration
 
@@ -98,8 +100,10 @@ All optional; see `.env.example`.
 | --- | --- |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Connects the assistant to Gemini (default model `gemini-4-hydrogen`). Takes precedence over Claude. |
 | `ANTHROPIC_API_KEY` | Connects the assistant to Claude instead. Without either key a built-in keyword assistant answers the common questions. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Lets students e-mail themselves their calendar. Without them the form is disabled and the `.ics` download still works. |
-| `APP_URL` | The app's public address. Calendar e-mails include a subscription link only when it is reachable from the internet (not localhost). |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing e-mail: password-reset links and "e-mail my calendar". Without them both say so and nothing else breaks. |
+| `APP_URL` | The app's public address, used in e-mailed links. Set it in production: without it reset links fall back to the address the request came to. Calendar e-mails include a subscription link only when it is reachable from the internet (not localhost). |
+| `CAMPUSPATH_URL`, `CAMPUSPATH_PORT`, `CAMPUSPATH_PYTHON` | Campus walkthroughs. By default the app starts `services/campuspath` itself on port 8765 with `services/campuspath/.venv`; set `CAMPUSPATH_URL` to use a service you run yourself. |
+| `GOOGLE_MAPS_EMBED_KEY` | A Maps Embed API key for the map on the Campus page. Without it the keyless Google Maps embed is used. |
 | `ADMIN_EMAILS` | Comma-separated addresses that become administrators when they register. |
 | `DATABASE_PATH` | Where the SQLite file lives (default `data/upt.db`). |
 | `TIMETABLE_PYTHON` | Python executable with pdfplumber installed. Defaults to the project's virtual environment, then to `python3`. |
@@ -107,33 +111,56 @@ All optional; see `.env.example`.
 **E-mail.** Any mailbox that allows SMTP works. With Gmail: turn on 2-Step
 Verification, create an app password at <https://myaccount.google.com/apppasswords>,
 then set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER` to the address and
-`SMTP_PASS` to the app password. Each account can send its calendar once a minute.
+`SMTP_PASS` to the app password. Each account can send its calendar once a minute and
+ask for three password links an hour.
 
-**Google Calendar sync (optional, off by default).** The older direct export still works
-if you set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: create an OAuth client (type
-"Web application") in Google Cloud, enable the Google Calendar API, and add
+**Passwords.** "Forgot your password?" e-mails a link that works once, for an hour.
+Only a hash of the link's token is stored. The form answers the same way for known and
+unknown addresses, and a successful reset signs the account out everywhere.
+
+**Google Calendar sync (optional, off by default).** The direct export works if you set
+`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: create an OAuth client (type "Web
+application") in Google Cloud, enable the Google Calendar API, and add
 `<APP_URL>/api/google/callback` as an authorised redirect URI. Without them its section
 is hidden.
 
-**Gemini.** `src/lib/assistant/gemini.ts` runs the tool loop in this app: each message
-is sent with the last 20 chat messages, Gemini calls the tools in
-`src/lib/assistant/tools.ts`, and the handlers answer from the local database. The
-default model was chosen by running the assistant's own planning and rescheduling
-questions on every model the key could use; `gemini-4-hydrogen` called the right tools
-and answered fastest (about 8 seconds a question).
+## Languages
 
-**Claude.** Used when only `ANTHROPIC_API_KEY` is set. It runs on Claude Managed
-Agents: Anthropic hosts the agent loop and this app answers its tool calls. The agent is
-created on first use and its id is stored in the `settings` table; each student gets
-their own session (`src/lib/assistant/claude.ts`). Both engines share the prompt in
-`src/lib/assistant/prompt.ts`.
+Every text of the interface lives in `src/i18n/messages/`, one file per area, with the
+Romanian object typed against the English one, so a missing key fails the type check.
+Server code reads `await getT()` (`src/i18n/server.ts`), client components `useT()`
+(`src/i18n/client.tsx`). The language follows the visitor's choice (a cookie, and the
+account once signed in), else the browser's preference, else Romanian. Dates, weekday
+names, week rules and plurals go through helpers in `src/lib/time.ts` and
+`src/i18n/config.ts`. Course names, room codes and people's names are data and are
+never translated.
 
-The planning tools are `find_meeting_slots`, `check_conflicts`, `save_contact`,
-`move_personal_event` and `show_choices`. `show_choices` turns the assistant's offers
-into buttons. `add_personal_event` and `move_personal_event` save nothing on their own:
-they produce a day preview, and the Accept button (`/api/assistant/accept`) applies the
-stored change directly, so what is saved is exactly what was shown. Saved contacts hold
-only a name and a group, never another account's calendar.
+## The assistant
+
+Poli runs on Gemini (`src/lib/assistant/gemini.ts`, the tool loop runs in this app) or,
+when only an Anthropic key is set, on Claude Managed Agents
+(`src/lib/assistant/claude.ts`). Both share the prompt in `src/lib/assistant/prompt.ts`
+and the tools, which answer from the local database. Without a key, a keyword assistant
+(`local.ts`) answers the common questions from the same tools.
+
+| Tools | What they cover |
+| --- | --- |
+| `tools.ts` | The calendar: schedule, next event, exams, free time, meeting slots, directions across the city, hiding and moving classes, personal events, calendar by e-mail |
+| `tools-study.ts` | Labs this week and week parity, make-up sessions, the exam study plan, attendance, the glossary, the semester calendar, the first-week checklist |
+| `tools-people.ts` | Contacts of both kinds, who is free in a time slot, contact requests, group events and invitations |
+| `tools-app.ts` | Campus walkthroughs, course and lab-slot choices, the student's group, the interface language, opening a page, the calendar link |
+
+A few rules keep it safe. Nothing that reaches other people or replaces data happens on
+the first call: creating a group event, removing a linked contact, changing the group
+and saving a study plan all return a summary first and act only with `confirmed: true`,
+after the student said yes. Adding or moving an event produces a day preview, and the
+Accept button (`/api/assistant/accept`) applies the stored change directly, so what is
+saved is exactly what was shown. A linked contact's calendar is shared the same way as
+on their schedule page: classes and exams by name, everything else as busy time.
+
+Under a reply the chat can show time-slot buttons (`show_choices`), a day preview, and
+buttons that open a page of the app (a walkthrough, a group event). The assistant can
+also switch the interface language and take the student to a page when asked.
 
 ## What the scraper covers
 
@@ -189,8 +216,13 @@ src/scraper/
   adapters/        per-faculty knowledge: where documents are, how sheets map to groups
   apply.ts         write to the database, replacing what a document supplied before
   engine.ts        orchestrates a run and records its log
-src/lib/           schedule resolution, exports, directions, auth, assistant
+src/lib/           schedule resolution, labs and make-up sessions, study plan, contacts,
+                   exports, directions, auth and password reset, assistant
+src/lib/campuspath/  client for the walkthrough service; starts it on demand
+src/i18n/          languages: configuration and the message catalogue
 src/app/           pages and API routes
+services/campuspath/  the walkthrough service (Python): routing through the 360° tour,
+                   classroom directory, directions in RO/EN, video rendering
 ```
 
 To add a faculty, write an adapter in `src/scraper/adapters/` (see `others.ts` for
@@ -207,8 +239,11 @@ or moved classes survive an update.
   the column helpers in `schema.ts`.
 - **Background scrapes** run inside the web process. On a serverless host, trigger
   `npm run scrape` from a scheduled job instead.
-- **Not built yet:** e-mail verification, password reset and sign-in rate limiting.
+- **Not built yet:** e-mail verification at sign-up and sign-in rate limiting.
   Google refresh tokens are stored unencrypted in the database.
+- **Walkthrough videos** are rendered on demand, one at a time, and cached on disk under
+  `services/campuspath/.cache`. Rendering a new route downloads panoramas from
+  visit360.upt.ro; the bundled example works offline.
 - **Academic calendar.** Semester dates for 2026–2027 are seeded from Senate decision
   HS 26/19.03.2026; next year's need adding to `src/db/seed.ts` (or the `semesters`
   table) and selecting under Admin → Semester.

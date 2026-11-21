@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Calendar } from "@/components/Calendar";
 import { NextUp } from "@/components/NextUp";
 import { QuickActions } from "@/components/QuickActions";
+import { WeekLabs } from "@/components/WeekLabs";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
 import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
@@ -36,6 +37,7 @@ export default async function HomePage() {
             <Link href="/settings#courses" className="font-semibold underline">{t.calendar.page.chooseSlots}</Link>
           </p>
         )}
+        <WeekLabs user={user} date={today} locale={locale} />
         <Calendar
           initialEvents={eventsBetween(user, from, to, locale)}
           initialFrom={from}

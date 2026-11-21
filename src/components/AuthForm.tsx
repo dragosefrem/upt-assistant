@@ -3,34 +3,51 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import type { AuthState } from "@/app/(auth)/actions";
+import { useT } from "@/i18n/client";
 
-export function AuthForm({
-  mode,
-  action,
-  invite,
-}: {
-  mode: "login" | "register";
-  action: (prev: AuthState, form: FormData) => Promise<AuthState>;
-  invite?: string;
-}) {
+type Action = (prev: AuthState, form: FormData) => Promise<AuthState>;
+
+function Feedback({ state }: { state: AuthState }) {
+  return (
+    <>
+      {state.error && (
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
+      )}
+      {state.notice && (
+        <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{state.notice}</p>
+      )}
+    </>
+  );
+}
+
+/** Sign in or create an account. `notice` shows good news from a previous step ("password changed"). */
+export function AuthForm({ mode, action, invite, notice }: { mode: "login" | "register"; action: Action; invite?: string; notice?: string }) {
+  const t = useT();
   const [state, formAction, pending] = useActionState(action, {});
   const register = mode === "register";
   const inviteQuery = invite ? `?invite=${encodeURIComponent(invite)}` : "";
   return (
     <form action={formAction} className="space-y-4">
       {invite && <input type="hidden" name="invite" value={invite} />}
+      {invite && !state.error && <p className="rounded-xl bg-brand-50 px-3 py-2 text-sm text-brand-900">{t.auth.register.invited}</p>}
+      {notice && !state.error && <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{notice}</p>}
       {register && (
         <div>
-          <label className="label" htmlFor="name">Name</label>
+          <label className="label" htmlFor="name">{t.auth.fields.name}</label>
           <input id="name" name="name" className="field" autoComplete="name" defaultValue={state.name} required />
         </div>
       )}
       <div>
-        <label className="label" htmlFor="email">E-mail</label>
+        <label className="label" htmlFor="email">{t.auth.fields.email}</label>
         <input id="email" name="email" type="email" className="field" autoComplete="email" defaultValue={state.email} required />
       </div>
       <div>
-        <label className="label" htmlFor="password">Password</label>
+        <div className="flex items-baseline justify-between gap-2">
+          <label className="label" htmlFor="password">{t.auth.fields.password}</label>
+          {!register && (
+            <Link className="text-xs font-medium text-brand-600 hover:underline" href="/forgot">{t.auth.login.forgot}</Link>
+          )}
+        </div>
         <input
           id="password"
           name="password"
@@ -40,21 +57,63 @@ export function AuthForm({
           minLength={register ? 8 : undefined}
           required
         />
-        {register && <p className="mt-1 text-xs text-slate-500">At least 8 characters.</p>}
+        {register && <p className="mt-1 text-xs text-slate-500">{t.auth.register.passwordHint}</p>}
       </div>
-      {state.error && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>
-      )}
+      <Feedback state={state} />
       <button className="btn-primary w-full" disabled={pending}>
-        {pending ? "Please wait…" : register ? "Create account" : "Sign in"}
+        {pending ? t.common.status.pleaseWait : register ? t.auth.register.submit : t.auth.login.submit}
       </button>
       <p className="text-center text-sm text-slate-600">
         {register ? (
-          <>Already have an account? <Link className="font-medium text-brand-600 hover:underline" href={`/login${inviteQuery}`}>Sign in</Link></>
+          <>{t.auth.register.haveAccount} <Link className="font-medium text-brand-600 hover:underline" href={`/login${inviteQuery}`}>{t.auth.register.signIn}</Link></>
         ) : (
-          <>New here? <Link className="font-medium text-brand-600 hover:underline" href={`/register${inviteQuery}`}>Create an account</Link></>
+          <>{t.auth.login.newHere} <Link className="font-medium text-brand-600 hover:underline" href={`/register${inviteQuery}`}>{t.auth.login.create}</Link></>
         )}
       </p>
+    </form>
+  );
+}
+
+/** "Forgot your password?": asks for the account's e-mail address. */
+export function ForgotForm({ action }: { action: Action }) {
+  const t = useT();
+  const [state, formAction, pending] = useActionState(action, {});
+  return (
+    <form action={formAction} className="space-y-4">
+      <p className="text-sm text-slate-600">{t.auth.forgot.intro}</p>
+      <div>
+        <label className="label" htmlFor="email">{t.auth.fields.email}</label>
+        <input id="email" name="email" type="email" className="field" autoComplete="email" defaultValue={state.email} required />
+      </div>
+      <Feedback state={state} />
+      <button className="btn-primary w-full" disabled={pending}>{pending ? t.common.status.pleaseWait : t.auth.forgot.submit}</button>
+      <p className="text-center text-sm">
+        <Link className="font-medium text-brand-600 hover:underline" href="/login">{t.auth.forgot.back}</Link>
+      </p>
+    </form>
+  );
+}
+
+/** Choosing a new password from an e-mailed link. */
+export function ResetForm({ action, email }: { action: Action; email: string }) {
+  const t = useT();
+  const [state, formAction, pending] = useActionState(action, {});
+  return (
+    <form action={formAction} className="space-y-4">
+      <p className="text-sm text-slate-600">{t.auth.reset.intro(email)}</p>
+      {/* Lets a password manager file the new password under the right account. */}
+      <input type="email" name="username" autoComplete="username" value={email} readOnly hidden />
+      <div>
+        <label className="label" htmlFor="password">{t.auth.fields.newPassword}</label>
+        <input id="password" name="password" type="password" className="field" autoComplete="new-password" minLength={8} required />
+        <p className="mt-1 text-xs text-slate-500">{t.auth.register.passwordHint}</p>
+      </div>
+      <div>
+        <label className="label" htmlFor="repeat">{t.auth.fields.repeatPassword}</label>
+        <input id="repeat" name="repeat" type="password" className="field" autoComplete="new-password" minLength={8} required />
+      </div>
+      <Feedback state={state} />
+      <button className="btn-primary w-full" disabled={pending}>{pending ? t.common.status.pleaseWait : t.auth.reset.submit}</button>
     </form>
   );
 }

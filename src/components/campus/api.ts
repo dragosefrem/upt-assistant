@@ -1,0 +1,65 @@
+"use client";
+
+import type { CampusPlace, Checkpoint, ClassroomPage, Coverage, Question, Route, VideoState } from "@/lib/campuspath/types";
+
+/** Calls to /api/campus/… from the campus page. Errors carry the server's translated message. */
+export class CampusApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    /** The walkthrough service is down (503). */
+    readonly unavailable = false,
+    /** The planner's question: it needs a choice before it can plan. */
+    readonly question: Question | null = null,
+  ) {
+    super(message);
+  }
+}
+
+async function call<T>(url: string, init?: RequestInit): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetch(url, init);
+  } catch {
+    // No answer at all: the page says to check the connection.
+    throw new CampusApiError("", 0);
+  }
+  const body = await response.json().catch(() => null);
+  if (response.ok) return body as T;
+  throw new CampusApiError(body?.error ?? body?.message ?? "", response.status, response.status === 503 || !!body?.unavailable);
+}
+
+export interface PlanBody {
+  prompt: string;
+  from?: string;
+  start?: number | string;
+  destination?: number | string;
+  hint?: string;
+}
+
+const get = { cache: "no-store" } as const;
+
+export const campusApi = {
+  /** A route, or throws with the planner's question in `question`. */
+  plan: async (body: PlanBody): Promise<Route> => {
+    const answer = await call<{ route: Route } | { question: Question }>("/api/campus/routes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if ("question" in answer) throw new CampusApiError(answer.question.message, 422, false, answer.question);
+    return answer.route;
+  },
+  example: () => call<Route>("/api/campus/example", get),
+  video: (key: string) => call<VideoState>(`/api/campus/videos/${encodeURIComponent(key)}`, get),
+  checkpoints: (q: string) => call<CampusPlace[]>(`/api/campus/checkpoints?${new URLSearchParams({ q, rooms: "1" })}`, get),
+  checkpoint: async (index: number) => (await call<CampusPlace[]>(`/api/campus/checkpoints?${new URLSearchParams({ q: `#${index}` })}`, get))[0] ?? null,
+  pins: () => call<Checkpoint[]>("/api/campus/checkpoints?pins=1"),
+  classrooms: (q: string, coverage: Coverage | "", offset: number, limit: number) =>
+    call<ClassroomPage>(
+      `/api/campus/classrooms?${new URLSearchParams({ q, offset: String(offset), limit: String(limit), ...(coverage ? { coverage } : {}) })}`,
+      get,
+    ),
+};
+
+export const qrUrl = (link: string, format: "svg" | "png") => `/api/campus/qr?${new URLSearchParams({ link, format })}`;

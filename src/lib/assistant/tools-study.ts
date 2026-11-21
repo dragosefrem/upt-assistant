@@ -1,7 +1,10 @@
 import "server-only";
+import { guide } from "@/i18n/messages/guide";
 import { attendanceRecords, markAttendance, summarizeAttendance } from "../attendance";
+import { searchGlossary } from "../glossary";
 import { makeupSessions, practicalsInWeek } from "../labs";
 import { currentSemester, eventsBetween } from "../schedule";
+import { semesterOverview } from "../semester-overview";
 import { clearStudyPlan, proposeStudyPlan, saveStudyPlan, studyBlocks } from "../study-plan";
 import { DAY_NAMES, addDays, describeWeeks, formatMinutes, nowLocal, weekday } from "../time";
 import { brief, dated, fold, isDate, num, parseClock, span, str, type AssistantTool } from "./toolkit";
@@ -110,7 +113,7 @@ export const STUDY_TOOLS: AssistantTool[] = [
   {
     name: "plan_exam_study",
     description:
-      "Builds a study plan for the exam session, working backwards from each exam: study blocks in the student's free time on the days before it, never on an exam day, the last block being a final review. Without `confirmed` nothing is saved: describe the proposal briefly (per exam: how many blocks and on which days) and ask whether to add it to the calendar. With confirmed: true the blocks are saved as the student's own events, replacing any earlier study plan. If the faculty has not published exam dates yet, ask the student for the dates they know and pass them in `extra_exams`.",
+      "Builds a study plan for the exam session, working backwards from each exam: study blocks in the student's free time on the days before it, never on an exam day, the last block being a final review. Each exam usually has two sittings; the plan prepares for the first and lists the later one. Without `confirmed` nothing is saved: describe the proposal briefly (per exam: how many blocks and on which days) and ask whether to add it to the calendar. With confirmed: true the blocks are saved as the student's own events, replacing any earlier study plan. If the faculty has not published exam dates yet, ask the student for the dates they know and pass them in `extra_exams`.",
     input_schema: {
       type: "object",
       properties: {
@@ -164,6 +167,7 @@ export const STUDY_TOOLS: AssistantTool[] = [
         return {
           course: x.course,
           exam: `${dated(x.date)} ${formatMinutes(x.startMin)}`,
+          later_sitting: x.alsoOn?.length ? x.alsoOn.map(dated) : undefined,
           study_blocks: blocks.map((s) => `${dated(s.date)} ${span(s.startMin, s.endMin)}${s.review ? " (final review)" : ""}`),
           hours: (blocks.length * plan.sessionMinutes) / 60,
         };
@@ -262,6 +266,53 @@ export const STUDY_TOOLS: AssistantTool[] = [
           missed_on: s.records.filter((r) => r.status === "missed").map((r) => r.date),
         })),
         note: summary.attended + summary.missed === 0 ? "Nothing is marked yet. The student marks attendance from a class in the calendar, or by telling you." : undefined,
+      };
+    },
+  },
+  {
+    name: "explain_term",
+    description:
+      "Explains a word or abbreviation from university life or the timetable to a new student: serie, grupă, semigrupă, curs / seminar / laborator / proiect (C, S, L, P), odd and even weeks, sesiune, restanță, credits, fișa disciplinei, teaching titles (prof., conf., ș.l., as.), secretariat, Campus Virtual, room codes, ID / IFR. Use it for \"what does semigrupă mean?\" instead of answering from memory; explain in the student's language, in your own words.",
+    input_schema: { type: "object", properties: { term: { type: "string", description: "The word or abbreviation as the student wrote it." } }, required: ["term"] },
+    run(input, ctx) {
+      const term = str(input.term);
+      if (!term) return { error: "Say which word." };
+      const locale = ctx.locale ?? ctx.user.locale ?? "ro";
+      const found = searchGlossary(guide[locale].entries, term).slice(0, 3);
+      if (!found.length) return { not_in_glossary: term, hint: "Say you are not sure what it means at UPT and suggest asking the year tutor or the faculty secretariat. The Guide page (open_page guide) has the full glossary." };
+      return { entries: found.map((e) => ({ term: e.term, meaning: e.short, details: e.body })), more: "The Guide page has the full glossary (open_page guide)." };
+    },
+  },
+  {
+    name: "semester_calendar",
+    description:
+      "The structure of the current semester: when classes run, the holiday, the exam session, which teaching week it is now (odd or even) and how many are left. Use it for \"when does the session start?\", \"when is the winter holiday?\", \"how many weeks are left?\".",
+    input_schema: { type: "object", properties: {} },
+    run() {
+      const semester = currentSemester();
+      if (!semester) return { error: "No semester configured." };
+      const o = semesterOverview(semester, nowLocal().date);
+      return {
+        semester: `${o.number} of ${o.academicYear}`,
+        now: o.state === "teaching" ? `teaching week ${o.week} of ${o.totalWeeks} (${o.parity})` : o.state,
+        classes_resume: o.state === "holiday" || o.state === "before" ? o.resumes : undefined,
+        teaching_weeks_left_after_this_one: o.weeksLeft,
+        classes: o.teaching.map((t) => `${t.from} to ${t.to} (${t.weeks} weeks)`),
+        holidays: o.holidays.map((h) => `${h.from} to ${h.to}`),
+        exam_session: o.session ? `${o.session.from} to ${o.session.to}` : "not set",
+      };
+    },
+  },
+  {
+    name: "first_week_guide",
+    description:
+      "The checklist for a new student's first week (check the group, find the rooms, which labs run this week, pick lab slots, put the timetable on the phone, add colleagues, read each course's rules). Use it when a student says they are new, asks where to start, or what they should do first. Walk them through it conversationally, a few steps at a time, and offer to do the steps you can do yourself.",
+    input_schema: { type: "object", properties: {} },
+    run(_input, ctx) {
+      const locale = ctx.locale ?? ctx.user.locale ?? "ro";
+      return {
+        steps: guide[locale].steps.map((s) => ({ step: s.title, why: s.body, page: s.href, question_poli_can_answer: s.ask })),
+        note: "The same checklist, with a glossary and how to read the timetable, is on the Guide page (open_page guide).",
       };
     },
   },

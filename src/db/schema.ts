@@ -507,6 +507,8 @@ export const chatMessages = sqliteTable(
     choices: text("choices"),
     /** JSON preview of a proposed calendar change that the student can accept. */
     preview: text("preview"),
+    /** JSON list of buttons that open a page of the app (a walkthrough, a group event). */
+    links: text("links"),
     createdAt: createdAt(),
   },
   (t) => [index("chat_user").on(t.userId, t.id)],

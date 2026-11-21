@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { userCourses, userOverrides, users } from "@/db/schema";
+import { occurrenceOverrides, userCourses, userOverrides, users } from "@/db/schema";
+import { getT } from "@/i18n/server";
 import { requireUser } from "@/lib/auth";
 import { courseChoices, currentSemester } from "@/lib/schedule";
 import { pickerData } from "@/lib/catalog";
@@ -17,6 +18,7 @@ export interface ProfileState {
 /** Saves faculty, specialization, year and group, then moves on to course choices. */
 export async function saveProfileAction(_prev: ProfileState, form: FormData): Promise<ProfileState> {
   const user = await requireUser();
+  const t = (await getT()).onboarding.profile.errors;
   const db = getDb();
   const facultyId = Number(form.get("facultyId"));
   const specializationId = Number(form.get("specializationId"));
@@ -25,19 +27,20 @@ export async function saveProfileAction(_prev: ProfileState, form: FormData): Pr
 
   const data = pickerData();
   const spec = data.specializations.find((s) => s.id === specializationId);
-  if (!spec || spec.facultyId !== facultyId) return { error: "Choose your faculty and specialization." };
-  if (!Number.isInteger(year) || year < 1 || year > 6) return { error: "Choose your year of study." };
+  if (!spec || spec.facultyId !== facultyId) return { error: t.programme };
+  if (!Number.isInteger(year) || year < 1 || year > 6) return { error: t.year };
   const { scheduled, other } = programmeOptions(data.specializations, data.groups, year);
-  if (![...scheduled, ...other].includes(spec)) return { error: "Choose a programme offered for this year." };
+  if (![...scheduled, ...other].includes(spec)) return { error: t.offered };
   const available = data.groups.filter((g) => g.specializationId === specializationId && g.year === year);
   if ((available.length || groupId !== null) && !available.some((g) => g.id === groupId)) {
-    return { error: "Choose a group from this year's timetable." };
+    return { error: t.group };
   }
 
   if (groupId !== user.groupId) {
     // Course picks and personal changes refer to the old group's timetable.
     db.delete(userCourses).where(eq(userCourses.userId, user.id)).run();
     db.delete(userOverrides).where(eq(userOverrides.userId, user.id)).run();
+    db.delete(occurrenceOverrides).where(eq(occurrenceOverrides.userId, user.id)).run();
   }
   db.update(users).set({ facultyId, specializationId, year, groupId }).where(eq(users.id, user.id)).run();
 
@@ -72,4 +75,11 @@ export async function saveCoursesAction(form: FormData) {
   if (first) db.update(users).set({ onboardedAt: new Date().toISOString() }).where(and(eq(users.id, user.id))).run();
   revalidatePath("/", "layout");
   redirect(first ? "/" : String(form.get("returnTo") ?? "/settings"));
+}
+
+/** The welcome tour was finished or skipped: do not show it again. */
+export async function finishWelcomeAction() {
+  const user = await requireUser();
+  if (!user.welcomeSeenAt) getDb().update(users).set({ welcomeSeenAt: new Date().toISOString() }).where(eq(users.id, user.id)).run();
+  revalidatePath("/", "layout");
 }

@@ -1,0 +1,17 @@
+*
+!package.json
+!package-lock.json
+!next.config.ts
+!tsconfig.json
+!src
+!public
+!drizzle
+!scripts
+!services
+**/.env*
+**/.venv
+**/__pycache__
+**/.cache
+**/node_modules
+**/.DS_Store
+services/campuspath/tests

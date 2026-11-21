@@ -58,6 +58,43 @@ class RoutingTests(unittest.TestCase):
         ac = next(r["index"] for r in choices if r["area"] == "Automatică și Calculatoare")
         self.assertEqual(self.tour.plan("From Hol Principal to B419", ac)["steps"][0]["index"], ac)
 
+    def test_automatic_start_is_the_nearest_mapped_entrance(self):
+        route = self.tour.plan("I want to go to sala B419", "auto")
+        self.assertEqual((route["steps"][0]["index"], route["steps"][-1]["index"]), (355, self.lab))
+        self.assertTrue(route["automatic"])
+        self.assertEqual(route["origin"]["index"], 355)
+        self.assertEqual(set(route["origin"]["pin"]), {"lat", "lon", "name"})
+        # The origin is named in the requested language, like the steps.
+        self.assertEqual(self.tour.plan("B419", "auto", lang="ro")["origin"]["name"], "Intrarea AC")
+        # A room in another building starts at that building's entrance.
+        aspc = self.tour.plan("", "auto", "room:aspc-a109")
+        self.assertEqual(aspc["origin"]["index"], 357)
+        self.assertEqual(aspc["destination"]["index"], "room:aspc-a109")
+        # One backward search agrees with walking forward from every pin.
+        pins = [index for index, record in self.tour.records.items() if "pin" in record]
+        for target in (self.lab, 34, 455):
+            chosen = self.tour.nearest_entrance(target)
+            walk = lambda start: len(self.tour.route(start, target)["steps"])
+            reachable = [p for p in pins if target in self.tour.reach(p)]
+            self.assertIn(chosen, reachable)
+            self.assertLessEqual(walk(chosen), min(walk(p) for p in reachable) + 1)
+
+    def test_automatic_start_keeps_named_starts_and_explains_gaps(self):
+        # A start written into the request or passed as origin still wins.
+        self.assertEqual(self.tour.plan("From Hol Principal to B419", "auto", origin="#392")["steps"][0]["index"], self.lab)
+        self.assertNotIn("automatic", self.tour.plan("From the AC entrance to B419", "auto"))
+        self.assertEqual(self.tour.plan("B419", self.entrance)["steps"][0]["index"], self.entrance)
+        # No pinned checkpoint reaches this one: the usual explanation.
+        pins = [index for index, record in self.tour.records.items() if "pin" in record]
+        reached = set().union(*(self.tour.reach(p) for p in pins))
+        stranded = next(index for index in self.tour.scenes if index not in reached)
+        self.assertIsNone(self.tour.nearest_entrance(stranded))
+        with self.assertRaisesRegex(RouteQuestion, "no connected ground route"):
+            self.tour.plan(f"#{stranded}", "auto")
+        # A room the tour does not reach needs no start at all.
+        unmapped = next(r for r in self.tour.classrooms.records.values() if r["coverage"] == "unmapped")
+        self.assertEqual(self.tour.plan("", "auto", unmapped["index"])["coverage"], "unmapped")
+
     def test_similar_room_code_and_aerial_start_never_substitute(self):
         for unknown in ("B4199", "B419A", "B9999"):
             with self.subTest(unknown=unknown), self.assertRaises(RouteQuestion):

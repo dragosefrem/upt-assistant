@@ -21,6 +21,9 @@ const DAY_WORDS: Array<[RegExp, number]> = [
   [/\b(sunday|duminica)\b/, 7],
 ];
 
+/** Short words of Romanian and English that are also course acronyms at UPT. */
+const EVERYDAY_WORDS = new Set(["am", "an", "as", "at", "be", "ce", "de", "do", "et", "in", "is", "it", "la", "pe", "sa", "se", "si", "to", "or", "on", "ai", "ag", "me", "my"]);
+
 type Any = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 function isRomanian(text: string): boolean {
@@ -60,7 +63,40 @@ export function askLocal(message: string, ctx: ToolContext): string {
   const semester = currentSemester();
   const week = semester ? studentWeek(ctx.user, semester) : [];
   const words = new Set(q.split(/[^a-z0-9]+/));
-  const course = week.find((e) => (e.abbr && words.has(fold(e.abbr))) || (fold(e.title).length > 4 && q.includes(fold(e.title))));
+  // An acronym that is also an everyday word ("AM" is "I have" in Romanian) only counts when typed in capitals.
+  const capitals = new Set(message.split(/[^A-Za-z0-9]+/).filter((w) => w.length >= 2 && w === w.toUpperCase()));
+  const named = (abbr: string) => words.has(fold(abbr)) && (!EVERYDAY_WORDS.has(fold(abbr)) || capitals.has(abbr.toUpperCase()));
+  const course = week.find((e) => (e.abbr && named(e.abbr)) || (fold(e.title).length > 4 && q.includes(fold(e.title))));
+
+  // "What does semigrupă mean?" — answered from the glossary.
+  const term = /\b(?:what does|what is an?|what is|ce inseamna|ce este|ce e)\s+(?:the\s+|un\s+|o\s+)?["„“”']?([a-z0-9 ./-]{1,30}?)["„“”']?(?:\s+mean)?\s*\??$/.exec(q)?.[1]?.trim();
+  if (term) {
+    // The word asked about is Romanian either way; the question's own wording decides the language.
+    const inEnglish = /\b(what does|what is)\b/.test(q);
+    const r = runTool("explain_term", { term }, { ...ctx, locale: inEnglish ? "en" : ro ? "ro" : "en" }) as Any;
+    if (r.entries?.length) return `${r.entries[0].term}: ${r.entries[0].meaning} ${r.entries[0].details}`;
+  }
+
+  // "Do I have lab this week?" and "is it an odd week?" — the classic first-year questions.
+  if (/\b(lab|labs|laborator|laboratoare|laboratorul|seminar|seminare|odd|even|para|impara|paritate)\b/.test(q) && !/\b(exam|examen|examene)\b/.test(q)) {
+    const nextWeek = /\b(next week|saptamana viitoare)\b/.test(q);
+    const labsOnly = /\b(lab|labs|laborator|laboratoare|laboratorul)\b/.test(q);
+    const r = runTool("labs_this_week", { date: nextWeek ? addDays(now.date, 7) : dayNamed ? date : now.date, course: course?.title, kinds: labsOnly ? ["lab"] : undefined }, ctx) as Any;
+    if (!r.error) {
+      const when = (e: Any) => `${formatDate(e.date, { weekday: "long", day: "numeric", month: "long" }, ro ? "ro" : "en")} ${e.start}–${e.end}${e.room ? `, ${e.room}` : ""}`;
+      const head = r.teaching_week
+        ? t(`Teaching week ${r.teaching_week}, an ${r.parity} week.`, `Săptămâna ${r.teaching_week}, ${r.parity === "odd" ? "impară" : "pară"}.`)
+        : t("There are no classes that week.", "În săptămâna aceea nu sunt ore.");
+      const running = (r.takes_place as Any[]).map((e) => `• ${e.title} (${e.kind}) — ${when(e)}`);
+      const skipped = (r.not_this_week as Any[]).map((e) => `• ${e.course} (${e.kind}) — ${t(`not this week; ${e.runs}; next on ${e.next_on}`, `nu săptămâna aceasta; următorul: ${e.next_on.replace(/^\w+ /, "")}`)}`);
+      return [
+        head,
+        running.length ? t("Taking place:", "Se țin:") : t("Nothing takes place.", "Nu se ține nimic."),
+        ...running,
+        ...(skipped.length ? [t("Not this week:", "Nu se țin săptămâna aceasta:"), ...skipped] : []),
+      ].join("\n");
+    }
+  }
 
   if (/\b(exam|exams|examen|examene|examenul|sesiune|sesiunea|colocviu)\b/.test(q)) {
     const acronym = /\b(?:exam(?:en(?:ul)?)?|la|for|at|de)\s+([a-z0-9]{2,8})\b/.exec(q)?.[1];
@@ -122,7 +158,7 @@ export function askLocal(message: string, ctx: ToolContext): string {
   }
 
   return t(
-    `I can answer: "What do I have tomorrow?", "What's next?", "Where is my exam?", "When am I free on ${DAY_NAMES[weekday(addDays(now.date, 1))]}?", "When is group TI 3.2 free?", "How do I get to room A204?" and "Hide <course>". For free-form questions, planning and schedule changes, an administrator can add a Gemini or Claude API key.`,
-    `Pot răspunde la: „Ce am mâine?", „Ce urmează?", „Unde am examenul?", „Când sunt liber?", „Când e liberă grupa TI 3.2?", „Cum ajung la sala A204?" și „Ascunde <materia>". Pentru întrebări libere, planificare și modificări ale orarului, un administrator poate adăuga o cheie API Gemini sau Claude.`,
+    `I can answer: "What do I have tomorrow?", "What's next?", "Do I have lab this week?", "Where is my exam?", "When am I free on ${DAY_NAMES[weekday(addDays(now.date, 1))]}?", "When is group TI 3.2 free?", "How do I get to room A204?", "What does semigrupă mean?" and "Hide <course>". For free-form questions, planning and schedule changes, an administrator can add a Gemini or Claude API key.`,
+    `Pot răspunde la: „Ce am mâine?”, „Ce urmează?”, „Am laborator săptămâna aceasta?”, „Unde am examenul?”, „Când sunt liber?”, „Când e liberă grupa TI 3.2?”, „Cum ajung la sala A204?”, „Ce înseamnă semigrupă?” și „Ascunde <materia>”. Pentru întrebări libere, planificare și modificări ale orarului, un administrator poate adăuga o cheie API Gemini sau Claude.`,
   );
 }

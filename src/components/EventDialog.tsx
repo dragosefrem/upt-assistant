@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useState } from "react";
 import type { AttendanceStatus } from "@/db/schema";
 import { useLocale, useT } from "@/i18n/client";
+import { campusJourneyHref } from "@/lib/campuspath/links";
 import { kindLabel } from "@/lib/kinds";
 import type { CalEvent } from "@/lib/schedule";
 import { capitalize, dayName, formatDate, formatMinutes, formatTimeSlot, nowLocal, weekday } from "@/lib/time";
 import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
+import { MakeupFinder } from "./MakeupFinder";
 import { Modal } from "./Modal";
 import { TripSuggestions } from "./TripSuggestions";
 
@@ -28,7 +30,12 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
   const [start, setStart] = useState(toClock(event.startMin));
   const [end, setEnd] = useState(toClock(event.endMin));
   const [room, setRoom] = useState(event.room ?? "");
+  const [makeup, setMakeup] = useState(false);
   const style = kindStyle(event.kind);
+  // Labs, seminars and projects are held per group, so another group's session can stand in for a missed one.
+  const canMakeUp = event.type === "class" && (event.kind === "lab" || event.kind === "seminar" || event.kind === "project");
+  // A room in a building (not "online") can be walked to on the Campus page.
+  const walkable = !!event.room && (event.type === "class" || event.type === "exam") && !!event.place;
 
   const send = async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -66,6 +73,28 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
       <AttendanceControl event={event} />
 
       {event.place && <TripSuggestions room={event.room} startMin={event.startMin} />}
+
+      {(walkable || canMakeUp) && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {walkable && (
+            <Link
+              href={campusJourneyHref({ to: event.room!, building: event.place?.name, course: event.title, at: event.date === nowLocal().date ? formatMinutes(event.startMin) : null })}
+              className="btn-secondary"
+              onClick={onClose}
+            >
+              <span aria-hidden>🧭</span>
+              {messages.guide.buildings.walkthrough}
+            </Link>
+          )}
+          {canMakeUp && (
+            <button type="button" className="btn-secondary" onClick={() => setMakeup(true)}>
+              <span aria-hidden>🔁</span>
+              {messages.study.makeup.open}
+            </button>
+          )}
+        </div>
+      )}
+      {makeup && <MakeupFinder course={event.title} kind={event.kind} onClose={() => setMakeup(false)} />}
 
       {event.groupEventId && <Link href={`/contacts/events/${event.groupEventId}`} className="btn-secondary">{t.groupLink}</Link>}
 

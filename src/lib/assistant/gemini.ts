@@ -3,6 +3,7 @@ import { GoogleGenAI, type Content, type FunctionDeclaration, type GenerateConte
 import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { chatMessages } from "@/db/schema";
+import { assistant } from "@/i18n/messages/assistant";
 import type { User } from "../auth";
 import { parseChoices, parsePreview } from "./choices";
 import { SYSTEM_PROMPT, contextLine, type AssistantChunk } from "./prompt";
@@ -125,6 +126,10 @@ export async function* askGemini(
     { role: "user", parts: [{ text: `${contextLine(user, ctx, spoken)}\n${message}` }] },
   ];
 
+  const t = assistant[ctx.locale ?? "en"].api;
+  // Whether the student already has an answer: Gemini often replies and shows buttons in
+  // one turn, then has nothing to add once the buttons are acknowledged.
+  let answered = false;
   for (let step = 0; step < MAX_STEPS; step++) {
     const response = await client.models.generateContent({ model: geminiModel(), contents, config });
     const candidate = response.candidates?.[0];
@@ -134,13 +139,16 @@ export async function* askGemini(
       .map((p) => p.text)
       .join("")
       .trim();
-    if (text) yield { type: "text", text };
+    if (text) {
+      answered = true;
+      yield { type: "text", text };
+    }
 
     const calls = parts.flatMap((p) => (p.functionCall?.name ? [p.functionCall] : []));
     if (!calls.length) {
-      if (!text) {
+      if (!answered) {
         const reason = response.promptFeedback?.blockReason ?? candidate?.finishReason ?? "no answer";
-        yield { type: "text", text: `Sorry, I couldn't answer that (Gemini stopped: ${String(reason).toLowerCase()}). Please rephrase it.` };
+        yield { type: "text", text: t.stopped(String(reason).toLowerCase()) };
       }
       return;
     }
@@ -154,5 +162,5 @@ export async function* askGemini(
     }
     contents.push({ role: "user", parts: results });
   }
-  yield { type: "text", text: "That needed more steps than I can take at once. Please ask again in smaller parts." };
+  yield { type: "text", text: t.tooManySteps };
 }

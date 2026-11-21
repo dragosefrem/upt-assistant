@@ -4,7 +4,9 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { chatMessages } from "@/db/schema";
 import { getUser } from "@/lib/auth";
-import { parseChoices, parsePreview, publicPreview } from "@/lib/assistant/choices";
+import { getLocale, getT } from "@/i18n/server";
+import type { Messages } from "@/i18n/messages";
+import { parseChoices, parseLinks, parsePreview, publicPreview } from "@/lib/assistant/choices";
 import { askClaude, claudeConfigured, forgetSession } from "@/lib/assistant/claude";
 import { askGemini, geminiConfigured } from "@/lib/assistant/gemini";
 import { askLocal } from "@/lib/assistant/local";
@@ -19,33 +21,37 @@ function activeEngine(): Engine {
 }
 
 /** A short explanation of why the AI engine failed, shown above the built-in assistant's answer. */
-function failureNotice(engine: Engine, err: unknown): string {
+function failureNotice(engine: Engine, err: unknown, t: Messages["assistant"]["api"]): string {
   if (engine === "gemini") {
     if (err instanceof GeminiApiError) {
-      if (err.status === 400 && /api key/i.test(err.message)) return "Gemini rejected the API key; using the built-in assistant.";
-      if (err.status === 401 || err.status === 403) return "Gemini rejected the API key; using the built-in assistant.";
-      if (err.status === 429) return "Gemini's rate limit or free quota is used up for now; using the built-in assistant.";
-      if (err.status === 404) return "That Gemini model is not available to this key (check GEMINI_MODEL); using the built-in assistant.";
-      return `Gemini returned an error (${err.status}); using the built-in assistant.`;
+      if (err.status === 400 && /api key/i.test(err.message)) return t.geminiKey;
+      if (err.status === 401 || err.status === 403) return t.geminiKey;
+      if (err.status === 429) return t.geminiQuota;
+      if (err.status === 404) return t.geminiModel;
+      return t.geminiError(err.status);
     }
-    return "Gemini could not be reached; using the built-in assistant.";
+    return t.geminiUnreachable;
   }
-  if (err instanceof Anthropic.AuthenticationError) return "Claude credentials were rejected; using the built-in assistant.";
-  if (err instanceof Anthropic.RateLimitError) return "Claude is rate-limited right now; using the built-in assistant.";
-  if (err instanceof Anthropic.APIError) return `Claude returned an error (${err.status ?? "network"}); using the built-in assistant.`;
-  return "Claude could not be reached; using the built-in assistant.";
+  if (err instanceof Anthropic.AuthenticationError) return t.claudeKey;
+  if (err instanceof Anthropic.RateLimitError) return t.claudeLimit;
+  if (err instanceof Anthropic.APIError) return t.claudeError(String(err.status ?? "network"));
+  return t.claudeUnreachable;
 }
 
 /**
  * Chat endpoint. Streams newline-delimited JSON:
  *   {"type":"tool","name":…}  the assistant is looking something up
  *   {"type":"text","text":…}  a piece of the reply
- *   {"type":"done","engine":"gemini"|"claude"|"basic","changed":bool,"choices"?:[…],"notice"?:…}
- * `choices` are tappable options (time slots, "Yes, add it") to show under the reply.
+ *   {"type":"done","engine":"gemini"|"claude"|"basic","changed":bool,"choices"?:[…],"links"?:[…],
+ *    "open"?:"/path","locale"?:"ro"|"en","notice"?:…}
+ * `choices` are tappable options (time slots, "Yes, add it") to show under the reply, `links`
+ * buttons that open a page of the app. `open` asks the browser to go to a page and `locale`
+ * to switch the interface language, when the student asked the assistant for that.
  */
 export async function POST(request: Request) {
+  const t = (await getT()).assistant.api;
   const user = await getUser();
-  if (!user) return Response.json({ error: "Not signed in" }, { status: 401 });
+  if (!user) return Response.json({ error: t.notSignedIn }, { status: 401 });
 
   const body = (await request.json().catch(() => null)) as {
     message?: unknown;
@@ -53,7 +59,7 @@ export async function POST(request: Request) {
     location?: { lat?: unknown; lng?: unknown };
   } | null;
   const message = typeof body?.message === "string" ? body.message.trim().slice(0, 2000) : "";
-  if (!message) return Response.json({ error: "Empty message" }, { status: 400 });
+  if (!message) return Response.json({ error: t.emptyMessage }, { status: 400 });
   const spoken = body?.spoken === true;
   const lat = Number(body?.location?.lat);
   const lng = Number(body?.location?.lng);
@@ -61,6 +67,7 @@ export async function POST(request: Request) {
     user,
     location: Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 ? { lat, lng } : null,
     changed: false,
+    locale: await getLocale(),
   };
 
   const db = getDb();
@@ -87,7 +94,7 @@ export async function POST(request: Request) {
           // Claude: start a fresh session next time; a stale one is the usual cause.
           if (ai === "claude") forgetSession(user);
           console.error(`Assistant: ${ai} request failed`, err);
-          notice = failureNotice(ai, err);
+          notice = failureNotice(ai, err, t);
         }
       }
       if (engine === "basic" && !reply) {
@@ -97,6 +104,7 @@ export async function POST(request: Request) {
       // Choices and previews only make sense next to the reply that offered them.
       const choices = engine !== "basic" && reply ? ctx.choices : undefined;
       const preview = engine !== "basic" && reply ? ctx.preview : undefined;
+      const links = engine !== "basic" && reply && ctx.links?.length ? ctx.links : undefined;
 
       const saved = reply
         ? db
@@ -107,11 +115,23 @@ export async function POST(request: Request) {
               content: reply,
               choices: choices ? JSON.stringify(choices) : null,
               preview: preview ? JSON.stringify(preview) : null,
+              links: links ? JSON.stringify(links) : null,
             })
             .returning({ id: chatMessages.id })
             .get()
         : undefined;
-      send({ type: "done", engine, changed: ctx.changed, messageId: saved?.id, choices, preview: publicPreview(preview), notice });
+      send({
+        type: "done",
+        engine,
+        changed: ctx.changed,
+        messageId: saved?.id,
+        choices,
+        preview: publicPreview(preview),
+        links,
+        open: reply ? ctx.open : undefined,
+        locale: ctx.setLocale,
+        notice,
+      });
       controller.close();
     },
   });
@@ -123,22 +143,22 @@ export async function POST(request: Request) {
 /** Recent conversation, oldest first. */
 export async function GET() {
   const user = await getUser();
-  if (!user) return Response.json({ error: "Not signed in" }, { status: 401 });
+  if (!user) return Response.json({ error: (await getT()).assistant.api.notSignedIn }, { status: 401 });
   const rows = getDb()
-    .select({ id: chatMessages.id, role: chatMessages.role, content: chatMessages.content, choices: chatMessages.choices, preview: chatMessages.preview })
+    .select({ id: chatMessages.id, role: chatMessages.role, content: chatMessages.content, choices: chatMessages.choices, preview: chatMessages.preview, links: chatMessages.links })
     .from(chatMessages)
     .where(eq(chatMessages.userId, user.id))
     .orderBy(desc(chatMessages.id))
     .limit(30)
     .all()
     .reverse()
-    .map((m) => ({ ...m, choices: parseChoices(m.choices), preview: publicPreview(parsePreview(m.preview)) }));
+    .map((m) => ({ ...m, choices: parseChoices(m.choices), preview: publicPreview(parsePreview(m.preview)), links: parseLinks(m.links) }));
   return Response.json({ messages: rows, engine: activeEngine() });
 }
 
 export async function DELETE() {
   const user = await getUser();
-  if (!user) return Response.json({ error: "Not signed in" }, { status: 401 });
+  if (!user) return Response.json({ error: (await getT()).assistant.api.notSignedIn }, { status: 401 });
   getDb().delete(chatMessages).where(and(eq(chatMessages.userId, user.id))).run();
   forgetSession(user);
   return Response.json({ ok: true });

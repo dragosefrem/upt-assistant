@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
+import { campusJourneyHref } from "@/lib/campuspath/links";
 import { kindLabel } from "@/lib/kinds";
 import type { CalEvent } from "@/lib/schedule";
 import { addDays, capitalize, formatDate, formatMinutes, formatTimeSlot, nowLocal } from "@/lib/time";
@@ -10,7 +12,8 @@ import { TripSuggestions } from "./TripSuggestions";
 
 /** "What day is it and what's next": today's date, the class in progress and the next one. */
 export function NextUp({ initial }: { initial: CalEvent[] }) {
-  const t = useT().calendar.nextUp;
+  const messages = useT();
+  const t = messages.calendar.nextUp;
   const locale = useLocale();
   const [events, setEvents] = useState(initial);
   const [now, setNow] = useState(() => nowLocal());
@@ -62,6 +65,15 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
           {e.room ? ` · ${e.room}` : ""}
           {e.place ? ` · ${e.place.name}` : ""}
         </p>
+        {e.room && e.place && (
+          <Link
+            href={campusJourneyHref({ to: e.room, building: e.place.name, course: e.title, at: e.date === now.date ? formatMinutes(e.startMin) : null })}
+            className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
+          >
+            <span aria-hidden>🧭</span>
+            {messages.guide.buildings.walkthrough}
+          </Link>
+        )}
       </div>
     </div>
   );

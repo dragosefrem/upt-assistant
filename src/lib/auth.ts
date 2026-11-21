@@ -36,7 +36,7 @@ export function normalizeEmail(email: string): string {
  * Creates an account. The very first account, and any address listed in ADMIN_EMAILS,
  * becomes an administrator; everyone else is a student.
  */
-export function createUser(input: { email: string; name: string; password: string }): User {
+export function createUser(input: { email: string; name: string; password: string; locale?: "ro" | "en" }): User {
   const db = getDb();
   const email = normalizeEmail(input.email);
   const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map(normalizeEmail).filter(Boolean);
@@ -50,6 +50,7 @@ export function createUser(input: { email: string; name: string; password: strin
       passwordHash: hashPassword(input.password),
       role: n === 0 || admins.includes(email) ? "admin" : "student",
       feedToken: randomBytes(24).toString("base64url"),
+      locale: input.locale ?? null,
     })
     .returning()
     .get();

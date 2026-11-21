@@ -598,8 +598,21 @@ export function describeGroup(groupId: number | null, locale: Locale = "en") {
   return { ...row, label };
 }
 
+/** The asker's own programme and series, for `findGroups` to prefer. */
+export function ownCohort(user: Pick<User, "specializationId" | "groupId">): { specializationId: number | null; series: string | null } {
+  const group = user.groupId ? getDb().select({ series: groups.series }).from(groups).where(eq(groups.id, user.groupId)).get() : undefined;
+  return { specializationId: user.specializationId, series: group?.series || null };
+}
+
 /** Finds groups by a loose text query ("TI 3.2", "calculatoare anul 3 grupa 1.1"). */
-export function findGroups(query: string, facultyId: number | null, preferYear: number | null = null, limit = 8) {
+export function findGroups(
+  query: string,
+  facultyId: number | null,
+  preferYear: number | null = null,
+  limit = 8,
+  /** The asker's own programme and series: "2.1" then means the 2.1 next door, not another programme's. */
+  prefer: { specializationId?: number | null; series?: string | null } = {},
+) {
   const all = getDb()
     .select({ group: groups, spec: specializations })
     .from(groups)
@@ -617,6 +630,9 @@ export function findGroups(query: string, facultyId: number | null, preferYear: 
       let score = tokens.reduce((n, t) => n + (words.includes(t) ? 2 : hay.includes(t) ? 1 : 0), 0);
       // "TI 3.2" exists in several years; a student most likely means their own.
       if (score > 0 && preferYear && r.group.year === preferYear) score += 0.5;
+      // Smaller nudges than the year's, so they only order groups that match the text equally well.
+      if (score > 0 && prefer.specializationId && r.spec.id === prefer.specializationId) score += 0.2;
+      if (score > 0 && prefer.series && r.group.series === prefer.series) score += 0.1;
       return { ...r, score };
     })
     .filter((r) => r.score > 0)

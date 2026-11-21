@@ -25,6 +25,8 @@ export interface PlanExam {
   date: string;
   startMin: number;
   endMin: number;
+  /** Later sittings of the same exam, which the plan does not target. */
+  alsoOn?: string[];
 }
 
 export interface StudySession {
@@ -151,18 +153,30 @@ export interface StudentStudyPlan extends StudyPlan {
 
 const slug = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-/** The student's upcoming exams: the published ones plus any they named themselves. */
+/**
+ * The student's upcoming exams: the published ones plus any they named themselves.
+ *
+ * Faculties publish each exam in two sittings a couple of weeks apart (and sometimes in
+ * several shifts on one day). The plan prepares for the first sitting of each course;
+ * the later ones are kept as `alsoOn` so the student knows about them.
+ */
 export function upcomingExams(user: User, extra: StudyRequest["extraExams"] = [], today = nowLocal().date): PlanExam[] {
-  const published: PlanExam[] = examsForUser(user, today).map((x) => ({
-    key: x.key,
-    course: x.courseName,
-    date: x.date,
-    startMin: x.startMin,
-    endMin: x.endMin > x.startMin ? x.endMin : x.startMin + 120,
-  }));
-  const named = new Set(published.map((x) => `${slug(x.course)}|${x.date}`));
+  const byCourse = new Map<string, PlanExam>();
+  for (const x of examsForUser(user, today)) {
+    const id = slug(x.courseName);
+    const first = byCourse.get(id);
+    if (!first) {
+      byCourse.set(id, { key: x.key, course: x.courseName, date: x.date, startMin: x.startMin, endMin: x.endMin > x.startMin ? x.endMin : x.startMin + 120, alsoOn: [] });
+    } else if (x.date !== first.date && !first.alsoOn!.includes(x.date)) {
+      first.alsoOn!.push(x.date);
+    } else if (x.date === first.date) {
+      // Several shifts on the day: keep the whole span busy, since the student's shift is not known.
+      first.endMin = Math.max(first.endMin, x.endMin > x.startMin ? x.endMin : x.startMin + 120);
+    }
+  }
+  const published = [...byCourse.values()];
   const manual: PlanExam[] = extra
-    .filter((x) => x.course.trim() && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && x.date >= today && !named.has(`${slug(x.course)}|${x.date}`))
+    .filter((x) => x.course.trim() && /^\d{4}-\d{2}-\d{2}$/.test(x.date) && x.date >= today && !byCourse.has(slug(x.course)))
     .map((x) => {
       const startMin = x.startMin ?? 9 * 60;
       return { key: `manual:${slug(x.course)}-${x.date}`, course: x.course.trim().slice(0, 100), date: x.date, startMin, endMin: startMin + 120 };

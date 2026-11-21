@@ -1,7 +1,12 @@
 "use client";
 
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AssistantChoice, DayPreview } from "@/lib/assistant/choices";
+import { setLocaleAction } from "@/app/actions/locale";
+import { useLocale, useT } from "@/i18n/client";
+import { DATE_LOCALE, isLocale } from "@/i18n/config";
+import type { AssistantChoice, AssistantLink, DayPreview } from "@/lib/assistant/choices";
 import { SCHEDULE_CHANGED } from "./Calendar";
 import { DayPreviewCard } from "./DayPreview";
 import { useLocation } from "./LocationProvider";
@@ -17,6 +22,8 @@ interface Message {
   choices?: AssistantChoice[];
   /** A proposed calendar change to accept. */
   preview?: DayPreview;
+  /** Buttons that open a page of the app. */
+  links?: AssistantLink[];
   /** The stored message's id, which accepting a preview refers to. */
   dbId?: number;
 }
@@ -42,36 +49,6 @@ function recognitionCtor(): (new () => SpeechRecognitionLike) | null {
   return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as (new () => SpeechRecognitionLike) | null;
 }
 
-const TOOL_LABELS: Record<string, string> = {
-  get_schedule: "Checking your timetable…",
-  get_next_event: "Checking what's next…",
-  find_exams: "Looking up exams…",
-  find_free_slots: "Finding free slots…",
-  find_meeting_slots: "Looking for times that work…",
-  check_conflicts: "Checking your calendar…",
-  save_contact: "Saving the contact…",
-  show_choices: "Preparing options…",
-  get_directions: "Working out the route…",
-  list_my_courses: "Reading your courses…",
-  hide_class: "Updating your timetable…",
-  move_class: "Updating your timetable…",
-  move_class_once: "Preparing the change…",
-  restore_class: "Updating your timetable…",
-  add_personal_event: "Adding to your calendar…",
-  move_personal_event: "Moving the event…",
-  remove_personal_event: "Updating your calendar…",
-  email_calendar: "Emailing your calendar…",
-};
-
-const SUGGESTIONS = [
-  { emoji: "⏭️", text: "What's next?" },
-  { emoji: "📅", text: "Ce am mâine?" },
-  { emoji: "🎾", text: "When's the earliest I can play tennis?" },
-  { emoji: "🤝", text: "When can I meet someone from TI 3.2?" },
-  { emoji: "📝", text: "Where is my next exam?" },
-  { emoji: "🧭", text: "Cum ajung la sala următoare?" },
-];
-
 /** The date badge of a slot card: day of month and short month name. */
 function DateBadge({ date, locale }: { date: string; locale: string }) {
   const d = new Date(`${date}T12:00:00Z`);
@@ -84,11 +61,11 @@ function DateBadge({ date, locale }: { date: string; locale: string }) {
   );
 }
 
-function Choices({ choices, locale, onPick }: { choices: AssistantChoice[]; locale: string; onPick: (c: AssistantChoice) => void }) {
+function Choices({ choices, locale, label, onPick }: { choices: AssistantChoice[]; locale: string; label: string; onPick: (c: AssistantChoice) => void }) {
   const slots = choices.filter((c) => c.date);
   const answers = choices.filter((c) => !c.date);
   return (
-    <div className="space-y-2" role="group" aria-label="Suggested answers">
+    <div className="space-y-2" role="group" aria-label={label}>
       {slots.length > 0 && (
         <div className="grid gap-2">
           {slots.map((c, i) => (
@@ -154,25 +131,23 @@ function pickVoice(voices: SpeechSynthesisVoice[], lang: VoiceLang): SpeechSynth
   return voices.find((v) => norm(v) === lang.toLowerCase()) ?? voices.find((v) => norm(v).startsWith(lang.slice(0, 2))) ?? null;
 }
 
-const RECOGNITION_ERRORS: Record<string, string> = {
-  "not-allowed": "Microphone access is blocked. Allow it with the icon in the address bar, and on a Mac also under System Settings → Privacy & Security → Microphone.",
-  "service-not-allowed": "This browser does not allow speech recognition here. In Safari, turn on Dictation or Siri in System Settings; or use Chrome or Edge.",
-  "audio-capture": "No microphone was found. Check that one is connected and selected in your system's sound settings.",
-  network: "Speech recognition could not reach its online service. Check your connection. Brave and some privacy settings block it, so use Chrome, Edge or Safari.",
-  "no-speech": "I didn't hear anything. Tap the microphone, wait for it to turn red, then speak.",
-};
+/** Shows **words** in bold; any other asterisks are left as they are. */
+function Emphasised({ text }: { text: string }) {
+  const parts = text.split(/\*\*([^*\n]+)\*\*/g);
+  return <>{parts.map((part, i) => (i % 2 ? <strong key={i} className="font-semibold">{part}</strong> : <span key={i}>{part}</span>))}</>;
+}
 
-function Linkified({ text }: { text: string }) {
+function Linkified({ text, mapLabel }: { text: string; mapLabel: string }) {
   const parts = text.split(/(https?:\/\/[^\s)]+)/g);
   return (
     <>
       {parts.map((part, i) =>
         /^https?:\/\//.test(part) ? (
           <a key={i} href={part} target="_blank" rel="noreferrer" className="font-medium underline">
-            {part.includes("google.com/maps") ? "Open map" : part}
+            {part.includes("google.com/maps") ? mapLabel : part}
           </a>
         ) : (
-          <span key={i}>{part}</span>
+          <Emphasised key={i} text={part} />
         ),
       )}
     </>
@@ -180,6 +155,10 @@ function Linkified({ text }: { text: string }) {
 }
 
 export function Assistant({ onClose }: { onClose?: () => void } = {}) {
+  const t = useT();
+  const tr = t.assistant;
+  const locale = useLocale();
+  const router = useRouter();
   const { position, status: locationStatus, enable: enableLocation, disable: disableLocation } = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -189,7 +168,13 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   const [engine, setEngine] = useState<"gemini" | "claude" | "basic" | null>(null);
   const [listening, setListening] = useState(false);
   const [speak, setSpeak] = useState(false);
-  const [lang, setLang] = useState<VoiceLang>("ro-RO");
+  // Voice follows the interface language unless the student switches it under the microphone.
+  const [lang, setLang] = useState<VoiceLang>(locale === "ro" ? "ro-RO" : "en-GB");
+  const [voiceLocale, setVoiceLocale] = useState(locale);
+  if (voiceLocale !== locale) {
+    setVoiceLocale(locale);
+    setLang(locale === "ro" ? "ro-RO" : "en-GB");
+  }
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [transcribing, setTranscribing] = useState(false);
   const recognition = useRef<SpeechRecognitionLike | null>(null);
@@ -220,8 +205,6 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- feature detection must wait for the browser
     setVoiceSupported(!!recognitionCtor() || recorderSupported());
-    // Listen in the browser's language unless the student switches it.
-    if (!navigator.language.toLowerCase().startsWith("ro")) setLang("en-GB");
     const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
     const loadVoices = () => {
       if (synth) voices.current = synth.getVoices();
@@ -234,7 +217,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         if (!data) return;
         setEngine(data.engine);
         setMessages(
-          data.messages.map((m: { id: number; role: Message["role"]; content: string; choices?: AssistantChoice[]; preview?: DayPreview }) => ({
+          data.messages.map((m: { id: number; role: Message["role"]; content: string; choices?: AssistantChoice[]; preview?: DayPreview; links?: AssistantLink[] }) => ({
             ...m,
             id: String(m.id),
             dbId: m.id,
@@ -268,7 +251,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   const say = useCallback(
     (text: string, then?: () => void) => {
       if (!("speechSynthesis" in window)) {
-        setNotice("This browser cannot read answers aloud.");
+        setNotice(tr.errors.cannotReadAloud);
         then?.();
         return;
       }
@@ -285,7 +268,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         utterance.lang = target;
         if (target === "ro-RO" && voices.current.length && !missingVoiceNoted.current) {
           missingVoiceNoted.current = true;
-          setNotice("No Romanian voice is installed on this device, so Romanian answers use the default voice. On a Mac, add one under System Settings → Accessibility → Spoken Content.");
+          setNotice(tr.errors.noRomanianVoice);
         }
       }
       utterance.onend = () => {
@@ -294,9 +277,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       utterance.onerror = (e) => {
         if (e.error === "interrupted" || e.error === "canceled") return;
         setNotice(
-          e.error === "not-allowed"
-            ? "The browser blocked reading aloud. Click 🔊 next to a message to hear it."
-            : `Reading aloud failed (${e.error}). Check that the device's sound is on.`,
+          e.error === "not-allowed" ? tr.errors.speechBlocked : tr.errors.speechFailed(e.error),
         );
         if (token === speechToken.current) then?.();
       };
@@ -311,7 +292,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       if (wasSpeaking) setTimeout(start, 150);
       else start();
     },
-    [lang, stopSpeaking],
+    [lang, stopSpeaking, tr],
   );
 
   /** Records a question and has the server transcribe it (Gemini), then sends it as spoken. */
@@ -324,7 +305,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         recording.current = null;
         setListening(false);
         if (!audio) {
-          setNotice(RECOGNITION_ERRORS["no-speech"]);
+          setNotice(tr.errors.recognition["no-speech"]);
           return;
         }
         setTranscribing(true);
@@ -332,29 +313,29 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
           const res = await fetch("/api/assistant/transcribe", { method: "POST", headers: { "content-type": audio.type }, body: audio });
           const data = await res.json().catch(() => ({}));
           const text = typeof data.text === "string" ? data.text.trim() : "";
-          if (!res.ok) setNotice(data.error ?? "The recording could not be transcribed. Please try again.");
-          else if (!text) setNotice(RECOGNITION_ERRORS["no-speech"]);
+          if (!res.ok) setNotice(data.error ?? tr.errors.transcribeFailed);
+          else if (!text) setNotice(tr.errors.recognition["no-speech"]);
           // A question asked by voice is answered by voice.
           else sendRef.current(text, true);
         } catch {
-          setNotice("The recording could not be sent. Check your connection and try again.");
+          setNotice(tr.errors.recordingNotSent);
         } finally {
           setTranscribing(false);
         }
       });
       setListening(true);
-      if (!recording.current.autoStops) setNotice("Tap the microphone again when you have finished speaking.");
+      if (!recording.current.autoStops) setNotice(tr.errors.tapAgain);
     } catch (err) {
       const name = (err as { name?: string }).name;
       setNotice(
         name === "NotAllowedError" || name === "SecurityError"
-          ? RECOGNITION_ERRORS["not-allowed"]
+          ? tr.errors.recognition["not-allowed"]
           : name === "NotFoundError"
-            ? RECOGNITION_ERRORS["audio-capture"]
-            : `The microphone could not start (${(err as Error).message}).`,
+            ? tr.errors.recognition["audio-capture"]
+            : tr.errors.micFailed((err as Error).message),
       );
     }
-  }, [stopSpeaking]);
+  }, [stopSpeaking, tr]);
 
   const listen = useCallback(() => {
     if (engineRef.current === "gemini" && recorderSupported()) {
@@ -384,10 +365,10 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       if (e.error === "aborted") return;
       failed = true;
       setNotice(
-        RECOGNITION_ERRORS[e.error] ??
+        (tr.errors.recognition as Record<string, string>)[e.error] ??
           (e.error === "language-not-supported"
-            ? `This browser cannot recognise ${lang === "ro-RO" ? "Romanian" : "English"}. Switch the voice language under the microphone.`
-            : `Voice input failed (${e.error}). Please try again.`),
+            ? tr.errors.cannotRecognise(tr.errors.languageNames[lang === "ro-RO" ? "ro" : "en"])
+            : tr.errors.voiceFailed(e.error)),
       );
     };
     rec.onend = () => {
@@ -397,7 +378,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       const question = (finalText || heard).trim();
       // A question asked by voice is answered by voice.
       if (question) sendRef.current(question, true);
-      else if (!failed) setNotice(RECOGNITION_ERRORS["no-speech"]);
+      else if (!failed) setNotice(tr.errors.recognition["no-speech"]);
     };
     recognition.current = rec;
     setListening(true);
@@ -407,9 +388,9 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
     } catch (err) {
       recognition.current = null;
       setListening(false);
-      setNotice(`The microphone could not start (${(err as Error).message}).`);
+      setNotice(tr.errors.micFailed((err as Error).message));
     }
-  }, [lang, stopSpeaking, record]);
+  }, [lang, stopSpeaking, record, tr]);
 
   const send = useCallback(
     async (text: string, spoken = false) => {
@@ -420,7 +401,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       setInput("");
       setBusy(true);
       setNotice(null);
-      setActivity("Thinking…");
+      setActivity(tr.thinking);
       let reply = "";
       let offered: AssistantChoice[] = [];
       try {
@@ -429,7 +410,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ message, spoken, location: positionRef.current }),
         });
-        if (!res.ok || !res.body) throw new Error(res.status === 401 ? "Your session has expired. Please sign in again." : "The assistant is unavailable right now.");
+        if (!res.ok || !res.body) throw new Error(res.status === 401 ? tr.errors.sessionExpired : tr.errors.unavailable);
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
@@ -442,7 +423,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
           for (const line of lines) {
             if (!line.trim()) continue;
             const chunk = JSON.parse(line);
-            if (chunk.type === "tool") setActivity(TOOL_LABELS[chunk.name] ?? "Working…");
+            if (chunk.type === "tool") setActivity((tr.tools as Record<string, string>)[chunk.name] ?? tr.working);
             else if (chunk.type === "text") {
               reply += (reply ? "\n\n" : "") + chunk.text;
               setMessages((m) => m.map((x) => (x.id === replyId ? { ...x, content: reply, pending: false } : x)));
@@ -453,12 +434,18 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
               const choices = Array.isArray(chunk.choices) && chunk.choices.length ? (chunk.choices as AssistantChoice[]) : undefined;
               const preview = chunk.preview as DayPreview | undefined;
               if (choices) offered = choices;
-              if (preview) offered = [{ label: "Accept", reply: "Yes" }];
-              setMessages((m) => m.map((x) => (x.id === replyId ? { ...x, choices, preview, dbId: chunk.messageId } : x)));
+              if (preview) offered = [{ label: tr.preview.accept, reply: "Yes" }];
+              const links = Array.isArray(chunk.links) && chunk.links.length ? (chunk.links as AssistantLink[]) : undefined;
+              setMessages((m) => m.map((x) => (x.id === replyId ? { ...x, choices, preview, links, dbId: chunk.messageId } : x)));
+              // Things Poli did to the app itself: switch the language, open a page.
+              if (isLocale(chunk.locale) && chunk.locale !== locale) {
+                void setLocaleAction(chunk.locale).then(() => router.refresh());
+              }
+              if (typeof chunk.open === "string" && /^\/(?!\/)/.test(chunk.open)) router.push(chunk.open);
             }
           }
         }
-        if (!reply) throw new Error("The assistant did not answer. Please try again.");
+        if (!reply) throw new Error(tr.errors.noAnswer);
         // In a spoken conversation, options read aloud are followed by listening for the pick.
         if (speak || spoken) say(reply, spoken && offered.length ? listen : undefined);
       } catch (err) {
@@ -469,7 +456,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         setActivity(null);
       }
     },
-    [busy, speak, say, listen],
+    [busy, speak, say, listen, tr, locale, router],
   );
 
   useEffect(() => {
@@ -529,7 +516,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setNotice(data.error ?? "The change could not be saved.");
+        setNotice(data.error ?? tr.errors.cannotSave);
         return;
       }
       const now = Date.now();
@@ -541,7 +528,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       if (data.changed) window.dispatchEvent(new Event(SCHEDULE_CHANGED));
       if (speak) say(data.reply);
     } catch {
-      setNotice("The server could not be reached. Please try again.");
+      setNotice(tr.errors.serverUnreachable);
     } finally {
       setBusy(false);
     }
@@ -566,22 +553,16 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         <div className="min-w-0 flex-1">
           <h2 className="whitespace-nowrap text-base font-semibold text-slate-900">Poli</h2>
           <p className="truncate text-xs text-slate-500">
-            {engine === "gemini"
-              ? "Powered by Gemini"
-              : engine === "claude"
-                ? "Powered by Claude"
-                : engine === "basic"
-                  ? "Built-in assistant (no AI key set)"
-                  : "Ask about classes, exams, free time, directions"}
+            {tr.engine[engine ?? "unknown"]}
           </p>
         </div>
         <button
           className={`btn px-2 text-xs ${position ? "bg-emerald-50 text-emerald-700" : "text-slate-500 hover:bg-slate-100"}`}
           onClick={position ? disableLocation : enableLocation}
-          title={position ? "Location shared — click to stop" : "Share my location for directions"}
+          title={position ? tr.location.titleOn : tr.location.titleOff}
           aria-pressed={!!position}
         >
-          {position ? "📍 On" : locationStatus === "asking" ? "📍 …" : "📍 Off"}
+          {position ? tr.location.on : locationStatus === "asking" ? tr.location.asking : tr.location.off}
         </button>
         <button
           className={`btn px-2 text-xs ${speak ? "bg-brand-50 text-brand-700" : "text-slate-500 hover:bg-slate-100"}`}
@@ -589,14 +570,14 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             if (speak) stopSpeaking();
             setSpeak(!speak);
           }}
-          title="Read answers aloud"
+          title={tr.speech.title}
           aria-pressed={speak}
         >
-          {speak ? "🔊 On" : "🔈 Off"}
+          {speak ? tr.speech.on : tr.speech.off}
         </button>
-        <button className="btn-ghost px-2 text-xs" onClick={clear} title="Clear conversation">Clear</button>
+        <button className="btn-ghost px-2 text-xs" onClick={clear} title={tr.clearTitle}>{tr.clear}</button>
         {onClose && (
-          <button className="btn-ghost px-2" onClick={onClose} aria-label="Close chat" title="Close chat">✕</button>
+          <button className="btn-ghost px-2" onClick={onClose} aria-label={tr.close} title={tr.close}>✕</button>
         )}
       </header>
 
@@ -605,11 +586,11 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
           <div className="flex flex-col items-center gap-3 pt-1 text-center text-sm text-slate-600">
             <Mascot size={72} wave />
             <div>
-              <p className="font-semibold text-slate-900">Salut! What can I help you with?</p>
-              <p className="mt-0.5 text-xs">Ask in Romanian or English, by typing or with the microphone 🎤</p>
+              <p className="font-semibold text-slate-900">{tr.empty.greeting}</p>
+              <p className="mt-0.5 text-xs">{tr.empty.hint}</p>
             </div>
             <div className="grid w-full gap-2">
-              {SUGGESTIONS.map((s) => (
+              {tr.suggestions.map((s) => (
                 <button
                   key={s.text}
                   className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:text-brand-700 hover:shadow-sm"
@@ -630,36 +611,51 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
                 {m.pending ? (
                   <span className="flex items-center gap-2 text-slate-500">
                     <span className="typing-dots text-brand-500" aria-hidden><span /><span /><span /></span>
-                    {activity ?? "Thinking…"}
+                    {activity ?? tr.thinking}
                   </span>
                 ) : (
-                  <Linkified text={m.content} />
+                  <Linkified text={m.role === "user" && m.content === "✓ Accepted" ? tr.preview.accepted : m.content} mapLabel={tr.openMap} />
                 )}
                 {m.role === "assistant" && !m.pending && (
-                  <button className="ml-2 align-middle text-xs opacity-50 hover:opacity-100" onClick={() => say(m.content)} title="Read aloud" aria-label="Read aloud">🔊</button>
+                  <button className="ml-2 align-middle text-xs opacity-50 hover:opacity-100" onClick={() => say(m.content)} title={tr.speech.readAloud} aria-label={tr.speech.readAloud}>🔊</button>
                 )}
               </div>
             </div>
             {m.preview && (
               <DayPreviewCard
                 preview={m.preview}
-                locale={lang}
+                locale={DATE_LOCALE[locale]}
                 actions={
                   // Only the latest proposal can be accepted; older ones are history.
                   m === last && m.preview.status === "pending" && !busy ? (
                     <>
-                      <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => void accept(m)}>Accept</button>
-                      <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => pick({ label: "Other time", reply: "Another time, please." })}>
-                        Other time
+                      <button type="button" className="btn-primary px-3 py-1.5 text-xs" onClick={() => void accept(m)}>{tr.preview.accept}</button>
+                      <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => pick({ label: tr.preview.otherTime, reply: tr.preview.otherTimeReply })}>
+                        {tr.preview.otherTime}
                       </button>
                     </>
                   ) : undefined
                 }
               />
             )}
+            {m.links && m.links.length > 0 && (
+              <div className="flex flex-wrap gap-2 pl-8">
+                {m.links.map((l) => (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    onClick={onClose}
+                    className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-brand-200 bg-white px-3 py-1.5 text-xs font-semibold text-brand-700 shadow-sm transition hover:border-brand-500 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-500"
+                  >
+                    <span className="truncate">{l.label}</span>
+                    <span aria-hidden>→</span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         ))}
-        {lastChoices && <Choices choices={lastChoices} locale={lang} onPick={pick} />}
+        {lastChoices && <Choices choices={lastChoices} locale={DATE_LOCALE[locale]} label={tr.choices} onPick={pick} />}
         {busy && activity && messages.at(-1)?.content && <p className="text-xs text-slate-400">{activity}</p>}
       </div>
 
@@ -678,7 +674,8 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
               type="button"
               onClick={toggleMic}
               className={`flex h-10 w-10 items-center justify-center rounded-full text-lg transition ${listening ? "animate-pulse bg-red-500 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-              aria-label={listening ? "Stop listening" : "Talk to the assistant"}
+              aria-label={listening ? tr.input.stopListening : tr.input.talk}
+              title={listening ? tr.input.stopListening : tr.input.talk}
               aria-pressed={listening}
               disabled={busy || transcribing}
             >
@@ -686,7 +683,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             </button>
             {/* Server transcription detects the language itself; the browser's needs telling. */}
             {!serverVoice && (
-              <button type="button" className="text-[10px] font-medium uppercase tracking-wide text-slate-500 hover:text-brand-600" onClick={() => setLang(lang === "ro-RO" ? "en-GB" : "ro-RO")} title="Voice language">
+              <button type="button" className="text-[10px] font-medium uppercase tracking-wide text-slate-500 hover:text-brand-600" onClick={() => setLang(lang === "ro-RO" ? "en-GB" : "ro-RO")} title={tr.input.voiceLanguage} aria-label={tr.input.voiceLanguage}>
                 {lang === "ro-RO" ? "RO" : "EN"}
               </button>
             )}
@@ -703,12 +700,12 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
               void send(input);
             }
           }}
-          placeholder={listening ? "Listening… pause or tap 🎤 when done" : transcribing ? "Transcribing…" : "Ask Poli…"}
-          aria-label="Message"
+          placeholder={listening ? tr.input.listening : transcribing ? tr.input.transcribing : tr.input.placeholder}
+          aria-label={tr.input.message}
         />
-        <button className="btn-primary h-10 rounded-full px-4" disabled={busy || !input.trim()} aria-label="Send">Send ➤</button>
+        <button className="btn-primary h-10 rounded-full px-4" disabled={busy || !input.trim()} aria-label={tr.input.send}>{tr.input.send} ➤</button>
       </form>
-      {!voiceSupported && <p className="px-4 pb-2 text-[11px] text-slate-400">This browser cannot use the microphone here.</p>}
+      {!voiceSupported && <p className="px-4 pb-2 text-[11px] text-slate-400">{tr.input.noMic}</p>}
     </section>
   );
 }

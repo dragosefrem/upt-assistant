@@ -14,6 +14,7 @@ import {
   freeSlots,
   groupBusy,
   overlaps,
+  ownCohort,
   placeResolver,
   studentWeek,
   suggestSlots,
@@ -22,8 +23,12 @@ import {
   type WeekEntry,
 } from "../schedule";
 import { DAY_NAMES, addDays, formatMinutes, nowLocal, weekday } from "../time";
+import { listPeople, personBusy } from "../people";
 import type { AssistantChoice, StoredPreview } from "./choices";
-import { brief, fold, isDate, num, parseClock, str, type AssistantTool, type ToolContext } from "./toolkit";
+import { APP_TOOLS } from "./tools-app";
+import { PEOPLE_TOOLS, resolvePeople } from "./tools-people";
+import { STUDY_TOOLS } from "./tools-study";
+import { brief, fold, isDate, num, parseClock, str, strList, type AssistantTool, type ToolContext } from "./toolkit";
 
 export type { AssistantTool, ToolContext } from "./toolkit";
 
@@ -145,37 +150,9 @@ const groupLabel = (info: GroupInfo) => `${info.spec.name}, year ${info.group.ye
 
 /** A group by loose name, preferring the student's own faculty. */
 function resolveGroup(query: string, user: User): GroupInfo | null {
-  const [match] = findGroups(query, user.facultyId, user.year, 1);
+  const [match] = findGroups(query, user.facultyId, user.year, 1, ownCohort(user));
   const found = match ?? (user.facultyId ? findGroups(query, null, user.year, 1)[0] : undefined);
   return found ? describeGroup(found.group.id) : null;
-}
-
-function myContacts(userId: string) {
-  return getDb().select().from(savedContacts).where(eq(savedContacts.userId, userId)).all();
-}
-
-/** The group whose timetable stands in for a person: a saved contact, or a group named directly. */
-function resolvePerson(user: User, who: string): { groupId: number; label: string } | { error: string; known_contacts?: string[]; hint: string } {
-  const key = fold(who);
-  const list = myContacts(user.id);
-  const contact =
-    list.find((c) => c.nameKey === key) ??
-    list.find((c) => c.nameKey.length >= 3 && key.length >= 3 && (c.nameKey.includes(key) || key.includes(c.nameKey)));
-  if (contact) {
-    const info = contact.groupId ? describeGroup(contact.groupId) : null;
-    if (!info) return { error: `${contact.name}'s group is no longer in the timetable.`, hint: "Ask which group they are in now and save it with save_contact." };
-    return { groupId: info.group.id, label: `${contact.name} (${groupLabel(info)})` };
-  }
-  // Only a query with a number in it ("TI 3.2") is read as a group; a bare name never is.
-  if (/\d/.test(who)) {
-    const info = resolveGroup(who, user);
-    if (info) return { groupId: info.group.id, label: groupLabel(info) };
-  }
-  return {
-    error: `Unknown person or group: "${who}".`,
-    known_contacts: list.map((c) => c.name),
-    hint: "Ask which group they are in (for example \"TI 3.2\") and store it with save_contact. If they are not a UPT student, search without `with`.",
-  };
 }
 
 function sanitizeChoices(v: unknown): AssistantChoice[] {
@@ -198,7 +175,7 @@ function sanitizeChoices(v: unknown): AssistantChoice[] {
   });
 }
 
-export const TOOLS: AssistantTool[] = [
+const CORE_TOOLS: AssistantTool[] = [
   {
     name: "get_schedule",
     description:
@@ -306,7 +283,7 @@ export const TOOLS: AssistantTool[] = [
       let busy: Array<{ date: string; startMin: number; endMin: number }>;
       const groupQuery = str(input.group);
       if (groupQuery) {
-        const [match] = findGroups(groupQuery, user.facultyId, user.year);
+        const [match] = findGroups(groupQuery, user.facultyId, user.year, 8, ownCohort(user));
         if (!match) return { error: `No group matches "${groupQuery}".` };
         const info = describeGroup(match.group.id)!;
         who = `${info.spec.name}, year ${info.group.year}, ${info.label}`;
@@ -331,14 +308,14 @@ export const TOOLS: AssistantTool[] = [
   {
     name: "find_meeting_slots",
     description:
-      "Concrete times when the student is free for an activity of a given length, earliest first and never in the past. Use it for \"when is the earliest I can…\", \"when can I meet <person>?\", or to plan sport, study or an appointment. With `with` (a saved contact's name, or a group such as \"TI 3.2\") it only returns times when that person's group has no classes either. Each option comes from a different free gap where possible; pass the options already offered in `exclude` to get new ones.",
+      "Concrete times when the student is free for an activity of a given length, earliest first and never in the past. Use it for \"when is the earliest I can…\", \"when can I meet <person>?\", \"when are Ana, Mihai and I all free?\", or to plan sport, study or an appointment. With `with` (one or more contacts by name, or groups such as \"TI 3.2\") it only returns times when those people are free too: a linked account is checked against that person's real calendar, a saved person or a group against the group's published timetable. Each option comes from a different free gap where possible; pass the options already offered in `exclude` to get new ones. To check one given time instead, use who_is_free.",
     input_schema: {
       type: "object",
       properties: {
         duration_minutes: { type: "number", description: "Length of the activity in minutes. Default 60." },
         from: { type: "string", description: "First day to search, YYYY-MM-DD. Default today." },
         to: { type: "string", description: "Last day to search, YYYY-MM-DD. Default 13 days after `from`; at most 31." },
-        with: { type: "string", description: "A person (saved contact) or a group to meet." },
+        with: { type: "array", items: { type: "string" }, description: "People to meet: contacts by name, or groups such as \"TI 3.2\"." },
         earliest: { type: "string", description: "Earliest start on any day, HH:MM. Default 08:00." },
         latest: { type: "string", description: "Time by which it must end on any day, HH:MM. Default 20:00." },
         weekdays: { type: "array", items: { type: "number" }, description: "Only these weekdays (1 = Monday … 7 = Sunday). Default every day." },
@@ -346,7 +323,8 @@ export const TOOLS: AssistantTool[] = [
         count: { type: "number", description: "How many options to return. Default 3, at most 6." },
       },
     },
-    run(input, { user }) {
+    run(input, ctx) {
+      const { user } = ctx;
       const now = nowLocal();
       const from = isDate(input.from) && input.from > now.date ? input.from : now.date;
       let to = isDate(input.to) && input.to >= from ? input.to : addDays(from, 13);
@@ -362,12 +340,21 @@ export const TOOLS: AssistantTool[] = [
 
       const busy: Array<{ date: string; startMin: number; endMin: number }> = [...eventsBetween(user, from, to)];
       let who = "you";
-      const other = str(input.with);
-      if (other) {
-        const person = resolvePerson(user, other);
-        if ("error" in person) return person;
-        who = `you and ${person.label}`;
-        busy.push(...groupBusy(person.groupId, from, to));
+      let caveat: string | undefined;
+      const others = strList(input.with);
+      if (others.length) {
+        const resolved = resolvePeople(ctx, others);
+        if (resolved.ambiguous.length) return { error: "Several contacts match a name; ask which one.", several_people_match: resolved.ambiguous };
+        if (resolved.unknown.length) {
+          return {
+            error: `Unknown person or group: ${resolved.unknown.map((n) => `"${n}"`).join(", ")}.`,
+            known_contacts: listPeople(user.id).map((p) => p.name),
+            hint: "Ask which group they are in (for example \"TI 3.2\") and store it with save_contact, or have the student invite them by e-mail (invite_contact). If they are not a UPT student, search without `with`.",
+          };
+        }
+        who = `you and ${resolved.people.map((p) => p.name).join(", ")}`;
+        for (const person of resolved.people) busy.push(...personBusy(person, from, to));
+        if (resolved.people.some((p) => p.kind === "saved")) caveat = "For saved people and groups only the published timetable is known; they may have other plans.";
       }
       const slots = suggestSlots(busy, { from, to, durationMin: duration, dayStart, dayEnd, notBefore: now, weekdays, exclude, count });
       return {
@@ -376,7 +363,7 @@ export const TOOLS: AssistantTool[] = [
         searched: `${from} to ${to}, ${formatMinutes(dayStart)}–${formatMinutes(dayEnd)}`,
         slots: slots.map((s) => ({ date: s.date, weekday: DAY_NAMES[weekday(s.date)], start: formatMinutes(s.startMin), end: formatMinutes(s.endMin) })),
         note: slots.length ? undefined : "No free time of that length in this period. Suggest other hours, days or a later week.",
-        caveat: other ? "The other person's availability is only their group's published timetable; they may have other plans." : undefined,
+        caveat,
       };
     },
   },
@@ -905,10 +892,10 @@ export const TOOLS: AssistantTool[] = [
   {
     name: "email_calendar",
     description:
-      "E-mail the student their calendar as a file (upt-orar.ics) they can import into Google Calendar, Apple Calendar or Outlook. It goes to the address saved under Settings > Export your calendar, or their sign-in address. Use it when they ask to export their calendar or get it by e-mail.",
-    input_schema: { type: "object", properties: {} },
-    async run(_input, { user }) {
-      const result = await emailCalendar(user);
+      "E-mail the student their calendar as a file (upt-orar.ics) they can import into Google Calendar, Apple Calendar or Outlook. Without `to` it goes to the address saved under Settings > Export your calendar, or their sign-in address; pass `to` only when the student gives another address of their own. Use it when they ask to export their calendar or get it by e-mail.",
+    input_schema: { type: "object", properties: { to: { type: "string", description: "Another e-mail address the student asked for." } } },
+    async run(input, { user, locale }) {
+      const result = await emailCalendar(user, str(input.to), undefined, user.locale ?? locale ?? "en");
       if (!result.ok) return { error: result.error };
       return {
         sent_to: result.sentTo,
@@ -917,6 +904,9 @@ export const TOOLS: AssistantTool[] = [
     },
   },
 ];
+
+/** Every tool the assistant can call: the calendar core, then studying, people and app settings. */
+export const TOOLS: AssistantTool[] = [...CORE_TOOLS, ...STUDY_TOOLS, ...PEOPLE_TOOLS, ...APP_TOOLS];
 
 /** Runs a tool; for an asynchronous tool the result is a promise, which callers await. */
 export function runTool(name: string, input: unknown, ctx: ToolContext): unknown {
