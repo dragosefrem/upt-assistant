@@ -7,7 +7,7 @@ import { attendance as attendanceText } from "@/i18n/messages/attendance";
 import { common } from "@/i18n/messages/common";
 import type { User } from "./auth";
 import { kindOrder } from "./kinds";
-import { currentSemester, eventsBetween, placeResolver, studentWeek, type Place } from "./schedule";
+import { attendanceOccurrenceKey, currentSemester, eventsBetween, placeResolver, studentWeek, type Place } from "./schedule";
 import { describeWeeks, weekday } from "./time";
 
 export type AttendanceRecord = typeof attendance.$inferSelect;
@@ -34,34 +34,41 @@ export function markAttendance(
 ): MarkResult {
   const t = attendanceText[locale].errors;
   if (!isMarkable(input.date, today)) return { ok: false, status: 400, error: t.notYet };
-  const event = eventsBetween(user, input.date, input.date).find((e) => e.id === input.eventId && e.date === input.date);
-  if (!event) return { ok: false, status: 404, error: t.notInCalendar };
+  return getDb().transaction<MarkResult>(tx => {
+    const day = eventsBetween(user, input.date, input.date);
+    const event = day.find(e => e.id === input.eventId && e.date === input.date);
+    if (!event) return { ok: false, status: 404, error: t.notInCalendar };
 
-  const db = getDb();
-  const where = and(eq(attendance.userId, user.id), eq(attendance.seriesKey, event.seriesKey), eq(attendance.date, event.date));
-  if (input.status === null) {
-    db.delete(attendance).where(where).run();
-    return { ok: true, status: null };
-  }
-  const values = {
-    status: input.status,
-    courseKey: event.courseKey,
-    title: event.title,
-    abbr: event.abbr,
-    kind: event.kind,
-    startMin: event.startMin,
-    endMin: event.endMin,
-    room: event.room,
-    teacher: event.teacher,
-  };
-  db.insert(attendance)
-    .values({ userId: user.id, seriesKey: event.seriesKey, date: event.date, ...values })
-    .onConflictDoUpdate({
-      target: [attendance.userId, attendance.seriesKey, attendance.date],
-      set: { ...values, updatedAt: new Date().toISOString() },
-    })
-    .run();
-  return { ok: true, status: input.status };
+    const seriesDay = and(eq(attendance.userId, user.id), eq(attendance.seriesKey, event.seriesKey), eq(attendance.date, event.date));
+    const legacy = day.find(e => e.seriesKey === event.seriesKey && e.legacyAttendance);
+    if (legacy) {
+      tx.update(attendance).set({ occurrenceKey: attendanceOccurrenceKey(legacy) })
+        .where(and(seriesDay, eq(attendance.occurrenceKey, ""))).run();
+    }
+    const occurrenceKey = attendanceOccurrenceKey(event);
+    if (input.status === null) {
+      tx.delete(attendance).where(and(seriesDay, eq(attendance.occurrenceKey, occurrenceKey))).run();
+      return { ok: true, status: null };
+    }
+    const values = {
+      status: input.status,
+      courseKey: event.courseKey,
+      title: event.title,
+      abbr: event.abbr,
+      kind: event.kind,
+      startMin: event.startMin,
+      endMin: event.endMin,
+      room: event.room,
+      teacher: event.teacher,
+    };
+    tx.insert(attendance)
+      .values({ userId: user.id, seriesKey: event.seriesKey, date: event.date, occurrenceKey, ...values })
+      .onConflictDoUpdate({
+        target: [attendance.userId, attendance.seriesKey, attendance.date, attendance.occurrenceKey],
+        set: { ...values, updatedAt: new Date().toISOString() },
+      }).run();
+    return { ok: true, status: input.status };
+  }, { behavior: "immediate" });
 }
 
 /** Every mark of a student, newest occurrence first. */

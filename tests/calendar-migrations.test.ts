@@ -15,6 +15,7 @@ it.each(["main", "two-way preview", "direction preview", "current calendar", "at
     };
     for (let i = 0; i < 6; i++) apply(i);
     sqlite.exec("INSERT INTO users (id,name,email,password_hash,feed_token,google_refresh_token) VALUES ('student','Student','p@example.test','x','feed','grant')");
+    sqlite.exec("INSERT INTO attendance (user_id,series_key,course_key,date,status,title,kind,start_min,end_min) VALUES ('student','e:physics-lab','physics','2026-11-20','attended','Physics','lab',600,660)");
     const hasRegistration = version === "main" || version === "current calendar" || version === "attendance goals";
     if (hasRegistration) {
       apply(6);
@@ -42,6 +43,8 @@ it.each(["main", "two-way preview", "direction preview", "current calendar", "at
     expect(sqlite.prepare("SELECT cursor FROM google_sync_state").pluck().get())
       .toBe(version === "direction preview" || version === "current calendar" ? "saved-cursor" : null);
     expect(sqlite.prepare("SELECT minimum FROM attendance_goals").pluck().all()).toEqual(version === "attendance goals" ? [4] : []);
+    expect(sqlite.prepare("SELECT status, start_min, occurrence_key FROM attendance").all())
+      .toEqual([{ status: "attended", start_min: 600, occurrence_key: "" }]);
     expect(sqlite.prepare("SELECT hash, created_at FROM __drizzle_migrations ORDER BY created_at").all())
       .toEqual(migrations.map(m => ({ hash: m.hash, created_at: m.folderMillis })));
     expect(sqlite.prepare("SELECT google_refresh_token FROM users").pluck().get()).toBe("grant");

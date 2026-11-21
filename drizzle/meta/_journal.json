@@ -71,6 +71,13 @@
       "when": 1795297069434,
       "tag": "0009_attendance_goals",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1795300080091,
+      "tag": "0010_attendance_occurrences",
+      "breakpoints": true
     }
   ]
 }

@@ -3,9 +3,10 @@ import { readFileSync, readdirSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { courses, entries, entryGroups, faculties, googleEventLinks, googleSyncState, groups, personalEvents, specializations, users } from "@/db/schema";
+import { attendance, courses, entries, entryGroups, faculties, googleEventLinks, googleSyncState, groups, personalEvents, specializations, users } from "@/db/schema";
 import { messages } from "@/i18n/messages";
 import { getUser, type User } from "@/lib/auth";
+import { markAttendance } from "@/lib/attendance";
 import { attendanceGoalOverview, setAttendanceGoal } from "@/lib/attendance-goals";
 import { attendanceActivityId } from "@/lib/kinds";
 import { calendarSlices } from "@/lib/calendar-timing";
@@ -272,6 +273,17 @@ describe("Poli and Google Calendar", () => {
       [a.date, 600, "My Design"], [c.date, 600, "My Design"], [c.date, 780, "Tutorial"],
     ]);
     expect(eventsBetween(other, a.date, c.date).map(e => e.title)).toEqual(["Design", "Design", "Design"]);
+    const sessions = () => eventsBetween(user, c.date, c.date);
+    const [regular, moved] = sessions();
+    // A mark saved before this merge only identifies the series, date and displayed time.
+    db.insert(attendance).values({ userId: user.id, seriesKey: regular.seriesKey, courseKey: regular.courseKey,
+      date: c.date, kind: regular.kind, title: regular.title, startMin: regular.startMin, endMin: regular.endMin, status: "attended" }).run();
+    expect(sessions().map(e => e.attendance)).toEqual(["attended", null]);
+    expect(markAttendance(user, { eventId: moved.id, date: c.date, status: "attended" }, c.date).ok).toBe(true);
+    expect(attendanceGoalOverview(user, sem, "en").goals[0].attended).toBe(2);
+    expect(markAttendance(user, { eventId: regular.id, date: c.date, status: null }, c.date).ok).toBe(true);
+    expect(sessions().map(e => e.attendance)).toEqual([null, "attended"]);
+    expect(attendanceGoalOverview(user, sem, "en").goals[0].attended).toBe(1);
     google.remove(master.id);
     await sync(); await sync();
     expect(eventsBetween(user, a.date, c.date)).toHaveLength(0);

@@ -465,8 +465,8 @@ export type AttendanceStatus = "attended" | "missed";
  * Whether a student attended one dated occurrence of a calendar event. No row means
  * "not marked yet".
  *
- * Timetable events are expanded on the fly, so rows are keyed by series + date rather
- * than referencing an event row. The series key is built from stable keys
+ * Timetable events are expanded on the fly, so rows identify the series, displayed date
+ * and occurrence. The series key is built from stable keys
  * (`entries.key`, `exams.key`) so marks survive re-scrapes, and title/kind/time are
  * snapshotted so history stays readable after a class or personal event disappears.
  */
@@ -482,6 +482,8 @@ export const attendance = sqliteTable(
     /** Groups a course's lecture, lab, … together: "c:<courses.key>", else the series key. */
     courseKey: text("course_key").notNull(),
     date: text("date").notNull(),
+    /** Earlier records have an empty key and retain the time at which the student marked them. */
+    occurrenceKey: text("occurrence_key").notNull().default(""),
     status: text("status").$type<AttendanceStatus>().notNull(),
     title: text("title").notNull(),
     abbr: text("abbr"),
@@ -494,7 +496,7 @@ export const attendance = sqliteTable(
       .notNull()
       .default(sql`(datetime('now'))`),
   },
-  (t) => [uniqueIndex("attendance_unique").on(t.userId, t.seriesKey, t.date), index("attendance_user_date").on(t.userId, t.date)],
+  (t) => [uniqueIndex("attendance_unique").on(t.userId, t.seriesKey, t.date, t.occurrenceKey), index("attendance_user_date").on(t.userId, t.date)],
 );
 
 /** One minimum per student, semester, course and teaching activity, across all its time slots. */

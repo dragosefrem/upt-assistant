@@ -232,6 +232,7 @@ describe("summarizeAttendance", () => {
     id: ++id,
     userId: "u",
     seriesKey: opts.seriesKey ?? `${courseKey}-${kind}`,
+    occurrenceKey: date,
     courseKey,
     kind,
     date,

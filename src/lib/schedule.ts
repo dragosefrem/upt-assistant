@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   attendance,
@@ -61,12 +61,20 @@ export interface CalEvent {
   originalDate?: string;
   /**
    * Identifies the recurring series this occurrence belongs to, built from stable keys
-   * so it survives re-scrapes. Together with `date` it identifies one occurrence.
+   * so it survives re-scrapes.
    */
   seriesKey: string;
   /** Groups the series of one course (lecture, lab, …); equals `seriesKey` otherwise. */
   courseKey: string;
   attendance: AttendanceStatus | null;
+  /** Original occurrence of a synced series whose sessions can share a displayed date. */
+  attendanceOccurrence?: string;
+  /** This mark predates occurrence keys and will be identified on the next attendance edit. */
+  legacyAttendance?: boolean;
+}
+
+export function attendanceOccurrenceKey(event: CalEvent) {
+  return event.attendanceOccurrence ?? event.originalDate ?? event.date;
 }
 
 /** A student's single-occurrence class moves, keyed by "entryId:originalDate". */
@@ -450,6 +458,7 @@ function originalEvents(
         abbr: null,
         date,
         startMin, endMin, allDay, occurrence,
+        attendanceOccurrence: timing?.recurrence?.length ? occurrence : undefined,
         personalEditor: { title: p.title, location: p.location ?? "", weekly: !!p.day || !!timing?.recurrence?.length, pattern: !!timing?.recurrence?.length, interval },
         room: p.location,
         teacher: null,
@@ -481,17 +490,28 @@ export function eventsBetween(
 ): CalEvent[] {
   const read = (first: string, last: string) => originalEvents(user, first, last, locale);
   const events = applyGoogleSchedule(user.id, from, to, read(from, to), read);
-  const marks = new Map(
-    getDb()
-      .select({ seriesKey: attendance.seriesKey, date: attendance.date, status: attendance.status })
-      .from(attendance)
-      .where(and(eq(attendance.userId, user.id), gte(attendance.date, from), lte(attendance.date, to)))
-      .all()
-      .map((m) => [`${m.seriesKey}|${m.date}`, m.status]),
-  );
+  const byDay = new Map<string, CalEvent[]>();
   for (const e of events) {
     e.title ||= calendarMessages[locale].personal.untitled;
-    e.attendance = marks.get(`${e.seriesKey}|${e.date}`) ?? null;
+    const key = `${e.seriesKey}|${e.date}`;
+    const day = byDay.get(key);
+    if (day) day.push(e);
+    else byDay.set(key, [e]);
+  }
+  const marks = getDb().select({ seriesKey: attendance.seriesKey, date: attendance.date, status: attendance.status,
+    occurrenceKey: attendance.occurrenceKey, startMin: attendance.startMin }).from(attendance)
+    .where(and(eq(attendance.userId, user.id), gte(attendance.date, from), lte(attendance.date, to)))
+    .orderBy(desc(attendance.occurrenceKey)).all(); // Match explicit keys before legacy rows.
+  for (const mark of marks) {
+    const day = byDay.get(`${mark.seriesKey}|${mark.date}`);
+    if (!day) continue;
+    const event = mark.occurrenceKey
+      ? day.find(e => attendanceOccurrenceKey(e) === mark.occurrenceKey)
+      : day.find(e => !e.attendance && e.startMin === mark.startMin) ?? day.find(e => !e.attendance);
+    if (event) {
+      event.attendance = mark.status;
+      if (!mark.occurrenceKey) event.legacyAttendance = true;
+    }
   }
 
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin || a.endMin - b.endMin);

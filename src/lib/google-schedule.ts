@@ -82,6 +82,7 @@ export function applyGoogleSchedule(userId: string, from: string, to: string, ra
       if (original) for (const slice of calendarSlices(edits.timing, from, to)) {
         if (excluded.has(slice.occurrence)) continue;
         result.push(applyText({ ...original, ...slice, originalDate: undefined, moved: true, privateCalendarEdit: true,
+          attendanceOccurrence: edits.timing.recurrence?.length ? slice.occurrence : undefined,
           id: original.seriesKey + ":" + slice.occurrence + ":" + slice.date }, edits));
       }
     } else {
@@ -94,10 +95,12 @@ export function applyGoogleSchedule(userId: string, from: string, to: string, ra
       if (event.status === "cancelled") continue;
       const slices = calendarSlices(timingOf(event), from, to);
       if (!slices.length) continue;
-      const original = template(campusDate(event.originalStartTime!));
+      const originalDate = campusDate(event.originalStartTime!);
+      const original = template(originalDate);
       if (!original) continue;
       for (const slice of slices) {
         result.push(applyText({ ...original, ...slice, originalDate: undefined, privateCalendarEdit: true,
+          attendanceOccurrence: original.personalEditor?.pattern || edits.timing?.recurrence?.length ? occurrenceKey(event.originalStartTime!) : originalDate,
           moved: original.moved, id: "google:" + event.id + ":" + slice.date }, { ...edits, summary: event.summary, location: event.location, description: event.description }));
       }
     }
