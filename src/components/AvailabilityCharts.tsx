@@ -16,12 +16,15 @@ export const hourViews = [
   { id: "evening", startMin: 1080, endMin: 1440 },
 ] as const;
 
-export function availabilityDays(range: DateRange, slots: FreeSlot[], hours: typeof hourViews[number] = hourViews[0]): AvailabilityDay[] {
+type CampusTime = { date: string; minutes: number };
+
+export function availabilityDays(range: DateRange, slots: FreeSlot[], asOf: CampusTime, hours: typeof hourViews[number] = hourViews[0]): AvailabilityDay[] {
   const days = Array.from({ length: daysBetween(range.from, range.to) + 1 }, (_, i): AvailabilityDay => ({
     date: addDays(range.from, i), slots: [], freeMinutes: 0,
   }));
+  const nextQuarter = Math.ceil((asOf.minutes + 1) / 15) * 15;
   for (const slot of slots) {
-    const startMin = Math.max(hours.startMin, slot.startMin);
+    const startMin = Math.max(hours.startMin, slot.startMin, slot.date === asOf.date ? nextQuarter : 0);
     const endMin = Math.min(hours.endMin, slot.endMin);
     if (startMin >= endMin) continue;
     const day = days[daysBetween(range.from, slot.date)];
@@ -48,7 +51,7 @@ interface ChartProps {
   days: AvailabilityDay[];
   selectedDay: AvailabilityDay;
   selectedSlot?: FreeSlot;
-  asOf: string;
+  asOf: CampusTime;
   hours: typeof hourViews[number];
   onSelect: (date: string, slot?: FreeSlot) => void;
 }
@@ -63,8 +66,7 @@ export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hour
   const last = days[days.length - 1].date;
   const weekStart = Math.floor(daysBetween(first, selectedDay.date) / 7) * 7;
   const week = days.slice(weekStart, weekStart + 7);
-  const today = asOf.slice(0, 10);
-  const elapsed = Number(asOf.slice(11, 13)) * 60 + Number(asOf.slice(14, 16)) + 1;
+  const { date: today, minutes: elapsed } = asOf;
   const span = hours.endMin - hours.startMin;
   const elapsedWidth = Math.min(span, Math.max(0, elapsed - hours.startMin)) / span * 100;
   const longest = days.flatMap((day) => day.slots).reduce<FreeSlot | undefined>((best, slot) =>
@@ -86,13 +88,16 @@ export function AvailabilityCharts({ days, selectedDay, selectedSlot, asOf, hour
           </button>;
         })}
       </div>
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
-        <span>{t.sharedFree}</span><span>{duration(0)}</span>
-        <span className="flex gap-0.5" aria-hidden="true">{[0, 0.25, 0.5, 0.75, 1].map((part) => <span key={part} className={`h-3 w-4 rounded-sm ${shade(part)}`} />)}</span>
-        <span>{duration(span)}</span>
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pr-24 text-xs text-slate-600 sm:pr-0">
+        <span>{t.sharedFree}</span>
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+          {duration(0)}
+          <span className="flex gap-0.5" aria-hidden="true">{[0, 0.25, 0.5, 0.75, 1].map((part) => <span key={part} className={`h-3 w-3 rounded-sm sm:w-4 ${shade(part)}`} />)}</span>
+          {duration(span)}
+        </span>
       </div>
       {longest && <div className="mt-auto pt-4">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-slate-200 pt-3 text-sm">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-t border-slate-200 pt-3 pr-24 text-sm sm:pr-0">
           <span className="font-medium text-slate-600">{t.longest}</span>
           <button type="button" className="font-medium text-brand-700 hover:underline" onClick={() => onSelect(longest.date, longest)}>
             {formatDate(longest.date, { weekday: "short", day: "numeric", month: "short" }, locale)} · {windowLabel(longest)}

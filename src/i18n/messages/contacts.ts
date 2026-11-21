@@ -12,7 +12,6 @@ const en = {
       emailLabel: "Account e-mail",
       emailPlaceholder: "name@example.com",
       button: "Find",
-      noAccount: "No account has that e-mail address.",
       yourself: "This is your account.",
       alreadyContact: "Already a contact",
       invitationSent: "Invitation sent",
@@ -40,9 +39,9 @@ const en = {
   /** "People without an account" on /contacts. */
   saved: {
     heading: "People without an account",
-    intro: "Save a friend’s name and group, and Poli can answer “when is Mindy free?” from that group’s published timetable. To share real calendars instead, send a contact request by e-mail.",
+    intro: "Save a friend’s name and group, and Poli can answer “When is Andreea free?” using the group’s published timetable. To share your calendars, send a contact request by e-mail.",
     nameLabel: "Name",
-    namePlaceholder: "Mindy",
+    namePlaceholder: "Andreea",
     groupLabel: "Group",
     groupPlaceholder: "TI 3.2",
     groupHint: "For example “TI 3.2” or “Calculatoare anul 2 2.1”.",
@@ -170,8 +169,7 @@ const en = {
     busy: "Busy",
     selected: "Selected",
     past: "Past",
-    /** Compact duration for calendar cells: "2h 30m". */
-    duration: (hours: number, minutes: number) => [hours && `${hours}h`, minutes && `${minutes}m`].filter(Boolean).join(" ") || "0h",
+    duration: (hours: number, minutes: number) => [hours && `${hours} hr`, minutes && `${minutes} min`].filter(Boolean).join(" ") || "0 hr",
     /** Spoken duration for screen readers: "2 hours 30 minutes". */
     durationLong: (hours: number, minutes: number) =>
       [hours && `${hours} ${hours === 1 ? "hour" : "hours"}`, minutes && `${minutes} ${minutes === 1 ? "minute" : "minutes"}`]
@@ -202,6 +200,7 @@ const en = {
    * is the English text, so logs and tests stay readable.
    */
   errors: {
+    invalidEmail: "Enter a valid e-mail address.",
     noAccount: "No account has that e-mail address.",
     notYourself: "Enter another person’s e-mail address.",
     chooseAction: "Choose a contact action.",
@@ -236,7 +235,6 @@ const ro: typeof en = {
       emailLabel: "E-mailul contului",
       emailPlaceholder: "nume@exemplu.ro",
       button: "Caută",
-      noAccount: "Niciun cont nu are adresa asta de e-mail.",
       yourself: "Acesta e contul tău.",
       alreadyContact: "Sunteți deja contacte",
       invitationSent: "Cerere trimisă",
@@ -263,9 +261,9 @@ const ro: typeof en = {
   },
   saved: {
     heading: "Persoane fără cont",
-    intro: "Salvează numele și grupa unui prieten, iar Poli îți poate spune „când e liberă Mindy?” după orarul publicat al grupei. Ca să vă vedeți calendarele reale, trimite-i în schimb o cerere de contact pe e-mail.",
+    intro: "Salvează numele și grupa unui prieten. Poți apoi să-l întrebi pe Poli „Când e liberă Andreea?”, iar el îți răspunde după orarul publicat al grupei. Ca să vă vedeți calendarele, trimite-i prietenului o cerere de contact pe e-mail.",
     nameLabel: "Nume",
-    namePlaceholder: "Mindy",
+    namePlaceholder: "Andreea",
     groupLabel: "Grupa",
     groupPlaceholder: "TI 3.2",
     groupHint: "De exemplu „TI 3.2” sau „Calculatoare anul 2 2.1”.",
@@ -389,7 +387,10 @@ const ro: typeof en = {
     busy: "Ocupat",
     selected: "Ales",
     past: "Trecut",
-    duration: (hours: number, minutes: number) => [hours && `${hours}h`, minutes && `${minutes}m`].filter(Boolean).join(" ") || "0h",
+    duration: (hours: number, minutes: number) => [
+      hours && plural("ro", hours, { one: "1 oră", few: `${hours} ore`, other: `${hours} de ore` }),
+      minutes && `${minutes} min`,
+    ].filter(Boolean).join(" ") || "0 ore",
     durationLong: (hours: number, minutes: number) =>
       [
         hours && plural("ro", hours, { one: "o oră", few: `${hours} ore`, other: `${hours} de ore` }),
@@ -416,6 +417,7 @@ const ro: typeof en = {
     createGuest: "Creează invitația",
   },
   errors: {
+    invalidEmail: "Scrie o adresă de e-mail validă.",
     noAccount: "Niciun cont nu are adresa asta de e-mail.",
     notYourself: "Scrie adresa de e-mail a altei persoane.",
     chooseAction: "Alege ce vrei să faci cu acest contact.",

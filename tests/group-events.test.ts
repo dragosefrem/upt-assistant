@@ -51,6 +51,8 @@ describe("contact requests", () => {
   it("uses exact normalized addresses and one request per pair, in either direction", () => {
     expect(findPerson("  BEA@EXAMPLE.ORG ")?.id).toBe("bea");
     expect(findPerson("bea")).toBeUndefined();
+    expect(() => inviteContact("alex", "not-an-email")).toThrow(/valid e-mail/);
+    expect(() => inviteContact("alex", "nobody@example.org")).toThrow(/No account/);
     expect(() => inviteContact("alex", host().email)).toThrow(/another person/);
     inviteContact("alex", "bea@example.org");
     inviteContact("bea", host().email);

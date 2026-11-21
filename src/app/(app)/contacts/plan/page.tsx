@@ -7,7 +7,7 @@ import { requireOnboardedUser } from "@/lib/auth";
 import { contactList } from "@/lib/contacts";
 import { groupAvailability } from "@/lib/group-planning";
 import { nextDays, PLANNING_PRESETS, planningRange, type DateRange } from "@/lib/planning-range";
-import { formatDateRange, formatMinutes, nowLocal } from "@/lib/time";
+import { formatDateRange, nowLocal } from "@/lib/time";
 
 export async function generateMetadata() {
   const t = await getT();
@@ -47,7 +47,7 @@ export default async function PlanPage({ searchParams }: PageProps<"/contacts/pl
   const stale = selected.length !== ids.length;
   const showTimes = params.find === "1" && !stale;
   const asOf = nowLocal();
-  const { date: today, minutes } = asOf;
+  const { date: today } = asOf;
   const { range, visible, page, pageCount, totalDays, error } = planningRange(today, params);
   const inputRange = error ? {
     from: typeof params.from === "string" ? params.from : "",
@@ -100,8 +100,7 @@ export default async function PlanPage({ searchParams }: PageProps<"/contacts/pl
               {page < pageCount && <Link className="btn-secondary" scroll={false} prefetch={false} href={plannerLink(ids, range, true, page + 1)}>{t.later}</Link>}
             </div>
           </nav>}
-          <BookingForm slots={groupAvailability(user, ids, visible, asOf)} range={visible} contactIds={ids}
-            earliestReply={`${today}T${formatMinutes(minutes)}`} />
+          <BookingForm slots={groupAvailability(user, ids, visible, asOf)} range={visible} contactIds={ids} asOf={asOf} />
         </>}
       </> : <Form action={planner} className="card space-y-5 p-5">
         <input name="find" value="1" type="hidden" />

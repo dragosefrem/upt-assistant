@@ -29,6 +29,13 @@ export function findPerson(email: string) {
   return getDb().select(person).from(users).where(eq(users.email, normalizeEmail(email))).get();
 }
 
+/** Use the same address format that registration accepts. */
+export function lookupContact(email: string) {
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return { error: "invalidEmail" } as const;
+  const person = findPerson(email);
+  return person ? { person } : { error: "noAccount" } as const;
+}
+
 const involving = (id: string) => or(eq(contacts.firstId, id), eq(contacts.secondId, id));
 const otherUser = (id: string) => eq(users.id, sql`case when ${contacts.firstId} = ${id} then ${contacts.secondId} else ${contacts.firstId} end`);
 
@@ -65,8 +72,8 @@ export function incomingContactCount(userId: string) {
 }
 
 export function inviteContact(userId: string, email: string) {
-  const recipient = findPerson(email);
-  if (!recipient) throw new InvitationError("noAccount");
+  const { person: recipient, error } = lookupContact(email);
+  if (error) throw new InvitationError(error);
   if (recipient.id === userId) throw new InvitationError("notYourself");
   getDb().insert(contacts).values({ ...pair(userId, recipient.id), requestedBy: userId })
     .onConflictDoNothing().run();

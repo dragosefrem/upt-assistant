@@ -8,7 +8,7 @@ import { describeGroup, findGroups } from "./schedule";
 
 /**
  * People without an account: a name and the group whose published timetable stands in for
- * them ("Mindy is in TI 3.2"). The assistant reads these to plan around a friend's classes.
+ * them ("Andreea is in TI 3.2"). The assistant reads these to plan around a friend's classes.
  */
 
 export const SAVED_NAME_MAX = 60;

@@ -7,7 +7,7 @@ import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
-import { contactList, findPerson } from "@/lib/contacts";
+import { contactList, lookupContact } from "@/lib/contacts";
 import { myGroupEvents } from "@/lib/group-events";
 import { listSavedContacts } from "@/lib/saved-contacts";
 import { capitalize, formatDate, formatMinutes, nowLocal } from "@/lib/time";
@@ -67,7 +67,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
   const { email: query } = await searchParams;
   const email = typeof query === "string" ? query.trim() : "";
   const people = contactList(user.id);
-  const found = email ? findPerson(email) : undefined;
+  const { person: found, error } = query === undefined ? {} : lookupContact(email);
   const connection = people.find((p) => p.id === found?.id);
   const contacts = people.filter((p) => p.accepted);
   const requests = people.filter((p) => !p.accepted);
@@ -90,20 +90,20 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
         <div className="space-y-5">
           <section className="card p-5">
             <h2 className="text-lg font-semibold">{page.find.heading}</h2>
-            <form action="/contacts" className="mt-3">
+            <form action="/contacts" noValidate className="mt-3">
               <label htmlFor="contact-email" className="label">{page.find.emailLabel}</label>
               <div className="flex gap-2">
                 <input id="contact-email" name="email" type="email" defaultValue={email} required className="field min-w-0" placeholder={page.find.emailPlaceholder} />
                 <button className="btn-secondary">{page.find.button}</button>
               </div>
             </form>
-            {email && <div className="mt-3 border-t border-slate-100 pt-3 text-sm" role="status">
-              {!found ? page.find.noAccount : found.id === user.id ? page.find.yourself :
+            {query !== undefined && <div className="mt-3 border-t border-slate-100 pt-3 text-sm" role="status">
+              {error ? t.contacts.errors[error] : found && (found.id === user.id ? page.find.yourself :
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <strong>{found.name}</strong>
                   {connection ? <span className="text-slate-600">{connection.accepted ? page.find.alreadyContact : connection.requestedBy === user.id ? page.find.invitationSent : page.find.seeIncoming}</span>
                     : <InvitationForm action={inviteAction.bind(null, found.email)}><button className="btn-primary">{page.find.sendRequest}</button></InvitationForm>}
-                </div>}
+                </div>)}
             </div>}
           </section>
           {requests.length > 0 && <section className="card p-5">

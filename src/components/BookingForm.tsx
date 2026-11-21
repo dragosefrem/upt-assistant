@@ -6,7 +6,7 @@ import { bookAction } from "@/app/(app)/contacts/actions";
 import { useLocale, useT } from "@/i18n/client";
 import type { DateRange } from "@/lib/planning-range";
 import type { FreeSlot } from "@/lib/schedule";
-import { formatDate, formatMinutes } from "@/lib/time";
+import { addDays, formatDate, formatMinutes } from "@/lib/time";
 import { AvailabilityCharts, availabilityDays, hourViews, windowLabel } from "./AvailabilityCharts";
 import { InvitationForm } from "./InvitationForm";
 
@@ -44,8 +44,8 @@ function BookingTime({ slot, earliestReply }: { slot: FreeSlot; earliestReply: s
 
 const slotKey = (slot: FreeSlot) => `${slot.date}-${slot.startMin}-${slot.endMin}`;
 
-export function BookingForm({ slots, range, contactIds, earliestReply }: {
-  slots: FreeSlot[]; range: DateRange; contactIds: string[]; earliestReply: string;
+export function BookingForm({ slots, range, contactIds, asOf }: {
+  slots: FreeSlot[]; range: DateRange; contactIds: string[]; asOf: { date: string; minutes: number };
 }) {
   const messages = useT().contacts;
   const t = messages.booking;
@@ -57,7 +57,8 @@ export function BookingForm({ slots, range, contactIds, earliestReply }: {
   const [location, setLocation] = useState("");
   const [share, setShare] = useState(contactIds.length === 0);
   const hours = hourViews[hourView];
-  const days = availabilityDays(range, slots, hours);
+  const days = availabilityDays(range, slots, asOf, hours);
+  const earliestReply = asOf.minutes === 1439 ? `${addDays(asOf.date, 1)}T00:00` : `${asOf.date}T${formatMinutes(asOf.minutes + 1)}`;
   const day = days.find((d) => d.date === choice?.date) ?? days.find((d) => d.slots.length > 0) ?? days[0];
   const selected = day.slots.find((s) => choice?.date === day.date && s.startMin === choice.start)
     ?? day.slots.find((s) => s.endMin - s.startMin >= 60) ?? day.slots[0];
@@ -73,7 +74,7 @@ export function BookingForm({ slots, range, contactIds, earliestReply }: {
         <p className="grow text-slate-600">{t.hint}</p>
         <button type="button" className="text-sm font-medium text-brand-700 hover:underline" onClick={() => router.refresh()}>{t.refresh}</button>
       </div>
-      <AvailabilityCharts days={days} selectedDay={day} selectedSlot={selected} asOf={earliestReply} hours={hours}
+      <AvailabilityCharts days={days} selectedDay={day} selectedSlot={selected} asOf={asOf} hours={hours}
         onSelect={(date, slot) => setChoice({ date, start: slot?.startMin })} />
       <section className="card space-y-4 p-4 sm:p-5" aria-labelledby="booking-day">
         <h2 id="booking-day" aria-live="polite" className="text-lg font-semibold tracking-tight">{t.openingsFor(heading)}</h2>

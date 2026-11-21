@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { availabilityDays, hourViews } from "@/components/AvailabilityCharts";
+import { contacts } from "@/i18n/messages/contacts";
 import { planningRange } from "@/lib/planning-range";
 import { addDays } from "@/lib/time";
 
@@ -36,14 +37,31 @@ describe("group planning dates", () => {
     const first = { date: today, startMin: 900, endMin: 960 };
     const second = { date: today, startMin: 1020, endMin: 1080 };
     const full = { date: "2026-11-23", startMin: 0, endMin: 1440 };
-    const days = availabilityDays({ from: today, to: full.date }, [first, second, full]);
+    const asOf = { date: today, minutes: 800 };
+    const days = availabilityDays({ from: today, to: full.date }, [first, second, full], asOf);
     expect(days).toEqual([
       { date: today, slots: [first, second], freeMinutes: 120 },
       { date: "2026-11-22", slots: [], freeMinutes: 0 },
       { date: full.date, slots: [full], freeMinutes: 1440 },
     ]);
-    const evenings = availabilityDays({ from: today, to: full.date }, [first, second, full], hourViews[2]);
+    const evenings = availabilityDays({ from: today, to: full.date }, [first, second, full], asOf, hourViews[2]);
     expect(evenings.map((day) => day.freeMinutes)).toEqual([0, 0, 360]);
     expect(evenings[2].slots).toEqual([{ date: full.date, startMin: 1080, endMin: 1440 }]);
+  });
+
+  it("starts today at the next quarter hour, leaving later commitments and tomorrow precise", () => {
+    const tomorrow = addDays(today, 1);
+    const range = { from: today, to: tomorrow };
+    const slots = [
+      { date: today, startMin: 903, endMin: 911 },
+      { date: today, startMin: 913, endMin: 977 },
+      { date: tomorrow, startMin: 903, endMin: 977 },
+    ];
+    const [first, second] = availabilityDays(range, slots, { date: today, minutes: 902 });
+    expect(first).toEqual({ date: today, slots: [{ date: today, startMin: 915, endMin: 977 }], freeMinutes: 62 });
+    expect(second.slots).toEqual([slots[2]]);
+    expect(availabilityDays(range, slots, { date: today, minutes: 1438 })[0].slots).toEqual([]);
+    expect(contacts.ro.availability.duration(8, 45)).toBe("8 ore 45 min");
+    expect(contacts.en.availability.duration(8, 45)).toBe("8 hr 45 min");
   });
 });
