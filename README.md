@@ -17,7 +17,8 @@ works in Romanian and English.
   follows on the first visit.
 - **Calendar.** Day / week / month views of only the student's own classes, in the weeks
   they really take place (holidays, odd and even weeks, "weeks 1–7" courses, dated
-  meetings). Click or drag to add personal events; hide a class, move it every week or
+  meetings). Romania's public holidays, including the movable Orthodox ones, are shown
+  and classes do not take place on them (`src/lib/holidays.ts`). Click or drag to add personal events; hide a class, move it every week or
   for one week only. Changes affect only the student.
 - **Labs this week.** A card on the home page answers "do I have lab this week?": the
   teaching week and its parity, the labs, seminars and projects that take place, and the
@@ -101,9 +102,10 @@ All optional; see `.env.example`.
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Connects the assistant to Gemini (default model `gemini-4-hydrogen`). Takes precedence over Claude. |
 | `ANTHROPIC_API_KEY` | Connects the assistant to Claude instead. Without either key a built-in keyword assistant answers the common questions. |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing e-mail: password-reset links and "e-mail my calendar". Without them both say so and nothing else breaks. |
-| `APP_URL` | The app's public address, used in e-mailed links. Set it in production: without it reset links fall back to the address the request came to. Calendar e-mails include a subscription link only when it is reachable from the internet (not localhost). |
+| `APP_URL` | The app's public address, used in e-mailed links. **Required in production for password reset**: without it no reset mail is sent, so a forged request can never point a link at another site (in development the request's own address is used). Calendar e-mails include a subscription link only when it is reachable from the internet (not localhost). |
 | `CAMPUSPATH_URL`, `CAMPUSPATH_PORT`, `CAMPUSPATH_PYTHON` | Campus walkthroughs. By default the app starts `services/campuspath` itself on port 8765 with `services/campuspath/.venv`; set `CAMPUSPATH_URL` to use a service you run yourself. |
 | `GOOGLE_MAPS_EMBED_KEY` | A Maps Embed API key for the map on the Campus page. Without it the keyless Google Maps embed is used. |
+| `TRUSTED_CLIENT_IP_HEADER` | Header your proxy overwrites with the visitor's address, used to limit sign-in attempts per client. On Railway `x-real-ip` is used automatically; without a trusted header all visitors share one counter. |
 | `ADMIN_EMAILS` | Comma-separated addresses that become administrators when they register. |
 | `DATABASE_PATH` | Where the SQLite file lives (default `data/upt.db`). |
 | `TIMETABLE_PYTHON` | Python executable with pdfplumber installed. Defaults to the project's virtual environment, then to `python3`. |
@@ -114,9 +116,16 @@ then set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER` to the address
 `SMTP_PASS` to the app password. Each account can send its calendar once a minute and
 ask for three password links an hour.
 
-**Passwords.** "Forgot your password?" e-mails a link that works once, for an hour.
-Only a hash of the link's token is stored. The form answers the same way for known and
-unknown addresses, and a successful reset signs the account out everywhere.
+**Passwords and sign-in.** "Forgot your password?" e-mails a link that works once, for
+an hour. Only a hash of the link's token is stored. The form answers the same way, and
+as quickly, for known and unknown addresses (the mail is sent after the response). A
+successful reset signs the account out everywhere and replaces the private calendar
+link. Sign-in allows five wrong passwords per address and thirty per client in fifteen
+minutes; the counters live in the server process, so they reset when it restarts.
+
+**The calendar link.** The `.ics` subscription link is a secret: anyone who has it can
+read the timetable. Students can replace it under Settings → Export ("Get a new link");
+the old one stops working at once.
 
 **Google Calendar sync (optional, off by default).** The direct export works if you set
 `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: create an OAuth client (type "Web
@@ -239,8 +248,9 @@ or moved classes survive an update.
   the column helpers in `schema.ts`.
 - **Background scrapes** run inside the web process. On a serverless host, trigger
   `npm run scrape` from a scheduled job instead.
-- **Not built yet:** e-mail verification at sign-up and sign-in rate limiting.
-  Google refresh tokens are stored unencrypted in the database.
+- **Not built yet:** e-mail verification at sign-up. Sign-in limits are kept in memory,
+  which suits a single server; several servers would need a shared store. Google
+  refresh tokens are stored unencrypted in the database.
 - **Walkthrough videos** are rendered on demand, one at a time, and cached on disk under
   `services/campuspath/.cache`. Rendering a new route downloads panoramas from
   visit360.upt.ro; the bundled example works offline.
