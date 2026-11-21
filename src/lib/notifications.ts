@@ -18,8 +18,12 @@ function dateAndTime(date: string, minutes: number, locale: Locale) {
 
 function scheduledNotice(event: CalEvent, today: string, now: number, locale: Locale): ScheduledNotice | null {
   const startTime = formatMinutes(event.startMin);
-  const startsAt = localInstant(`${event.date}T${startTime}`);
-  if (startsAt === null) return null;
+  const startsAt = event.occurrence && !event.allDay
+    ? Date.parse(event.occurrence)
+    : localInstant(`${event.occurrence ?? event.date}T${startTime}`);
+  if (startsAt === null || !Number.isFinite(startsAt)) return null;
+  // Google events can occupy several days in the timetable. Only their first day starts an occurrence.
+  if (event.occurrence && nowLocal(new Date(startsAt)).date !== event.date) return null;
   const exam = event.type === "exam";
   // Exams stay on the list while in progress. A start-only entry expires when it starts.
   let expiresAt = startsAt;
@@ -37,7 +41,7 @@ function scheduledNotice(event: CalEvent, today: string, now: number, locale: Lo
     : event.groupEventId ? `/contacts/events/${event.groupEventId}`
     : `/?${new URLSearchParams({ date: event.date, event: event.id })}`;
   return {
-    id: `${event.seriesKey}:${event.originalDate ?? event.date}`,
+    id: event.occurrence ? event.id : `${event.seriesKey}:${event.originalDate ?? event.date}`,
     kind: event.kind, category: kindLabel(event.kind, locale), title: event.title,
     date: event.date, startsAt, expiresAt, href,
     detail: [dateAndTime(event.date, event.startMin, locale), location, event.place?.name].filter(Boolean).join(" · "),

@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { attendance, attendanceGoals, type EntryKind } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import type { User } from "./auth";
+import { googleHiddenClasses } from "./google-schedule";
 import { attendanceActivityId, kindOrder } from "./kinds";
 import { currentSemester, studentWeek, type Semester } from "./schedule";
 
@@ -24,7 +25,9 @@ function semesterActivities(user: User, semester: Semester) {
   for (const { courseKey, kind, title, minimum } of saved) {
     activities.set(attendanceActivityId({ courseKey, kind }), { courseKey, kind, title, abbr: null, minimum, attended: 0, onTimetable: false });
   }
+  const hidden = new Set(googleHiddenClasses(user.id));
   for (const entry of studentWeek(user, semester)) {
+    if (hidden.has(entry.entryId)) continue;
     const courseKey = `c:${entry.courseKey}`;
     const id = attendanceActivityId({ courseKey, kind: entry.kind });
     activities.set(id, {

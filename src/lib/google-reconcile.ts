@@ -14,8 +14,16 @@ export const linkKey = (userId: string, uid: string) => and(eq(googleEventLinks.
 const personalKey = (userId: string, id: number) => and(eq(personalEvents.userId, userId), eq(personalEvents.id, id));
 const personalId = (uid: string) => /^personal-(\d+)$/.test(uid) ? Number(uid.slice(9)) : undefined;
 
-export function sourceFields(user: User, locale: Locale) {
-  return new Map(sourceItems(user, locale).map(item => [item.uid, localFields(item)]));
+export function sourceFields(user: User, locale: Locale, links: Link[]) {
+  const fields = new Map(sourceItems(user, locale).map(item => [item.uid, localFields(item)]));
+  for (const link of links) {
+    const local = fields.get(link.uid);
+    // Changing Poli's export default must preserve reminders the student manages in Google.
+    if (local && (link.origin === "google" || link.overrides?.reminders)) {
+      local.reminders = link.base.reminders;
+    }
+  }
+  return fields;
 }
 
 function personalPatch(fields: Partial<CalendarFields>) {
@@ -43,8 +51,8 @@ export function snapshot(e: GoogleEvent): GoogleEvent {
 /** A whole Google's page set is applied synchronously in the caller's SQLite transaction. */
 export function acceptChanges(user: User, locale: Locale, events: GoogleEvent[], full: boolean) {
   const db = getDb();
-  const sources = sourceFields(user, locale);
   const links = db.select().from(googleEventLinks).where(eq(googleEventLinks.userId, user.id)).all();
+  const sources = sourceFields(user, locale, links);
   const byId = new Map(links.map(link => [link.googleId, link]));
   const byUid = new Map(links.map(link => [link.uid, link]));
   const received = new Set(events.map(e => e.id));

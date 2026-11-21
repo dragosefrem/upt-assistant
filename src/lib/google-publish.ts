@@ -32,8 +32,8 @@ function occurrenceTiming(master: CalendarTiming, original: CalendarTime): Calen
 export async function publishCalendar(user: User, locale: Locale, inventory: GoogleEvent[], path: string, api: Api) {
   const db = getDb();
   const id = user.id;
-  const local = sourceFields(user, locale);
   const all = db.select().from(googleEventLinks).where(eq(googleEventLinks.userId, id)).all();
+  const local = sourceFields(user, locale, all);
   const links = new Map(all.map(l => [l.uid, l]));
   const byId = new Map(all.map(l => [l.googleId, l]));
   const remote = new Map(inventory.map(e => [e.id, e]));

@@ -6,6 +6,8 @@ import { getDb } from "@/db";
 import { courses, entries, entryGroups, faculties, googleEventLinks, googleSyncState, groups, personalEvents, specializations, users } from "@/db/schema";
 import { messages } from "@/i18n/messages";
 import { getUser, type User } from "@/lib/auth";
+import { attendanceGoalOverview, setAttendanceGoal } from "@/lib/attendance-goals";
+import { attendanceActivityId } from "@/lib/kinds";
 import { calendarSlices } from "@/lib/calendar-timing";
 import type { GoogleEvent } from "@/lib/calendar-types";
 import { connectGoogle, consentUrl, disconnectGoogle, googleSyncMode, setGoogleSyncMode, syncToGoogle } from "@/lib/google";
@@ -96,6 +98,30 @@ describe("Poli and Google Calendar", () => {
     await sync();
     expect(localRows()).toHaveLength(0);
     expect(google.live()).toHaveLength(0);
+  });
+
+  it("publishes Poli's 15-minute alert and preserves reminders the student chose in Google", async () => {
+    const custom = { useDefault: false, overrides: [{ method: "popup", minutes: 45 }] };
+    google.put({ ...atGoogle("custom"), reminders: custom });
+    google.put({ ...atGoogle("default"), reminders: { useDefault: true } });
+    await add("Poli appointment");
+    await sync();
+    await sync();
+    expect(google.events.get("custom")?.reminders).toEqual(custom);
+    expect(google.events.get("default")?.reminders).toEqual({ useDefault: true });
+    const published = google.live().find(e => e.summary === "Poli appointment")!;
+    expect(published.reminders).toEqual({ useDefault: false, overrides: [{ method: "popup", minutes: 15 }] });
+    expect(google.writes).toEqual(["POST"]);
+
+    google.put({ ...published, reminders: custom });
+    await sync();
+    // The calendar branch used the calendar default as the local baseline before 15-minute alerts shipped.
+    const link = db.select().from(googleEventLinks).where(eq(googleEventLinks.googleId, published.id)).get()!;
+    db.update(googleEventLinks).set({ base: { ...link.base, reminders: { useDefault: true } } })
+      .where(eq(googleEventLinks.googleId, published.id)).run();
+    await sync();
+    expect(google.events.get(published.id)?.reminders).toEqual(custom);
+    expect(exportItems(user).find(item => item.uid === link.uid)?.alarms).toEqual([45]);
   });
 
   it("merges independent changes, honors remote same-field edits and recovers an ETag race during upload", async () => {
@@ -229,6 +255,8 @@ describe("Poli and Google Calendar", () => {
     db.insert(entryGroups).values({ entryId: entry.id, groupId: group.id }).run();
     user = db.update(users).set({ facultyId: faculty.id, specializationId: spec.id, groupId: group.id, year: 1 }).where(eq(users.id, user.id)).returning().get();
     const other = { ...user, id: "colleague" };
+    const goalId = attendanceActivityId({ courseKey: "c:" + course.key, kind: entry.kind });
+    expect(setAttendanceGoal(user, goalId, 4)).toBeNull();
     await sync();
     const master = google.live().find(e => e.extendedProperties?.private?.uptOrar === "entry-" + entry.id)!;
     const first = master.start!.dateTime!.slice(0, 10);
@@ -250,10 +278,12 @@ describe("Poli and Google Calendar", () => {
     expect(eventsBetween(other, a.date, c.date)).toHaveLength(3);
     expect(db.select().from(googleEventLinks).where(eq(googleEventLinks.userId, user.id)).all()).toHaveLength(1);
     expect(hiddenClasses(user.id, sem.id).map(e => e.id)).toEqual([entry.id]);
+    expect(attendanceGoalOverview(user, sem, "en").goals).toMatchObject([{ minimum: 4, onTimetable: false }]);
     expect(unhideClass(user.id, entry.id)).toBe(true);
     await sync();
     expect(google.live().some(e => e.extendedProperties?.private?.uptOrar === "entry-" + entry.id)).toBe(true);
     expect(eventsBetween(user, a.date, c.date).map(e => e.title)).toEqual(["Design", "Design", "Design"]);
+    expect(attendanceGoalOverview(user, sem, "en").goals).toMatchObject([{ minimum: 4, onTimetable: true }]);
   });
 
   it("enforces account ownership for imported events", async () => {

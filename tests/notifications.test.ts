@@ -93,6 +93,26 @@ describe("the student notification feed", () => {
     expect(data.upcoming.filter((r) => r.title === "pending")).toMatchObject([{ kind: "shared", href: "/contacts/events/pending" }]);
   });
 
+  it("notifies once per Google calendar occurrence, including same-day repeats and overnight events", async () => {
+    const at = (date: string, time: string) => ({ dateTime: date + "T" + time + ":00+02:00", timeZone: "Europe/Bucharest" });
+    db.insert(personalEvents).values([
+      { userId: student.id, title: "Two check-ins", date: today, startMin: 720, endMin: 725, calendarTiming: {
+        start: at(today, "12:00"), end: at(today, "12:05"), recurrence: ["RRULE:FREQ=HOURLY;COUNT=2"],
+      } },
+      { userId: student.id, title: "Overnight trip", date: today, startMin: 1380, endMin: 1440,
+        calendarTiming: { start: at(today, "23:00"), end: at(tomorrow, "01:00") } },
+      { userId: student.id, title: "Conference", date: today, startMin: 0, endMin: 1440,
+        calendarTiming: { start: { date: today }, end: { date: "2026-11-26" } } },
+    ]).run();
+    const { upcoming } = await feed();
+    const checkIns = upcoming.filter(notice => notice.title === "Two check-ins");
+    expect(checkIns).toHaveLength(2);
+    expect(new Set(checkIns.map(notice => notice.id)).size).toBe(2);
+    expect(new Set(checkIns.map(notice => notice.href)).size).toBe(2);
+    expect(upcoming.filter(notice => notice.title === "Overnight trip")).toMatchObject([{ date: today }]);
+    expect(upcoming.filter(notice => notice.title === "Conference")).toEqual([]);
+  });
+
   it("returns only the current account's data and rejects signed-out requests", async () => {
     vi.mocked(getUser).mockResolvedValue(db.select().from(users).where(eq(users.id, "lia")).get()!);
     expect(await feed()).toMatchObject({ userId: "lia", upcoming: [], requests: [{ id: "contact:ana" }] });

@@ -137,8 +137,8 @@ async function syncAccount(id: string, requestLocale?: Locale): Promise<Result> 
         tx.update(googleSyncState).set({ cursor: next }).where(owns).run();
       });
       cursor = next;
-      const local = sourceFields(active, locale);
       const links = db.select().from(googleEventLinks).where(eq(googleEventLinks.userId, id)).all();
+      const local = sourceFields(active, locale, links);
       const linked = new Set(links.map(l => l.uid));
       for (const [uid, fields] of local) {
         if (linked.has(uid)) continue;
