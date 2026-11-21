@@ -156,7 +156,6 @@ const en = {
   journey: {
     forClass: (course: string, at: string | null) => (at ? `For ${course} at ${at}` : `For ${course}`),
     atTime: (at: string) => `Class at ${at}`,
-    progress: "Your journey",
     step1: (place: string) => `Get to ${place}`,
     step2: (room: string) => `Inside to ${room}`,
     leg1: "Get to the building",
@@ -353,7 +352,6 @@ const ro: typeof en = {
   journey: {
     forClass: (course: string, at: string | null) => (at ? `Pentru ${course}, la ${at}` : `Pentru ${course}`),
     atTime: (at: string) => `Ora începe la ${at}`,
-    progress: "Drumul tău",
     step1: (place: string) => `Ajungi la ${place}`,
     step2: (room: string) => `Înăuntru, până la ${room}`,
     leg1: "Până la clădire",

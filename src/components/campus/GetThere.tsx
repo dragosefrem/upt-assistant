@@ -22,13 +22,11 @@ export function GetThere({
   entrance,
   at,
   mapsKey,
-  onInside,
 }: {
   entrance: Entrance;
   /** Start of the class, "HH:MM", to say when to leave. */
   at: string | null;
   mapsKey: string | null;
-  onInside: () => void;
 }) {
   const messages = useT();
   const t = messages.campus.journey;
@@ -58,9 +56,9 @@ export function GetThere({
       <p className="flex flex-wrap items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
         <span aria-hidden>✅</span>
         <span className="min-w-0 flex-1">{t.youAreAt(entrance.name)}</span>
-        <button type="button" className="font-medium text-emerald-800 underline-offset-2 hover:underline" onClick={onInside}>
+        <a href="#campus-leg2" className="font-medium text-emerald-800 underline-offset-2 hover:underline">
           {t.nextInside} ↓
-        </button>
+        </a>
       </p>
     );
   }
