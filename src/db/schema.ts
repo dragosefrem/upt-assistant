@@ -1,3 +1,4 @@
+import type { CalendarFields, CalendarTiming, GoogleEvent } from "../lib/calendar-types";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -385,6 +386,32 @@ export const occurrenceOverrides = sqliteTable(
   (t) => [uniqueIndex("occurrence_unique").on(t.userId, t.entryId, t.date)],
 );
 
+export const googleSyncState = sqliteTable("google_sync_state", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+  cursor: text("cursor"),
+  lease: text("lease"),
+  leaseUntil: integer("lease_until").notNull().default(0),
+  nextAttempt: integer("next_attempt").notNull().default(0),
+  failures: integer("failures").notNull().default(0),
+});
+
+export const googleEventLinks = sqliteTable("google_event_links", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  uid: text("uid").notNull(),
+  googleId: text("google_id").notNull(),
+  base: text("base", { mode: "json" }).$type<CalendarFields>().notNull(),
+  remote: text("remote", { mode: "json" }).$type<GoogleEvent>(),
+  pending: text("pending", { mode: "json" }).$type<Partial<CalendarFields>>(),
+  overrides: text("overrides", { mode: "json" }).$type<Partial<CalendarFields>>(),
+}, (t) => [primaryKey({ columns: [t.userId, t.uid] }), uniqueIndex("google_link_resource").on(t.userId, t.googleId)]);
+
+export const googleExceptions = sqliteTable("google_exceptions", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  googleId: text("google_id").notNull(),
+  parentId: text("parent_id").notNull(),
+  event: text("event", { mode: "json" }).$type<GoogleEvent>().notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.googleId] }), index("google_exception_parent").on(t.userId, t.parentId)]);
+
 export const personalEvents = sqliteTable(
   "personal_events",
   {
@@ -404,6 +431,8 @@ export const personalEvents = sqliteTable(
      * "study:<exams.key>" for an exam study plan. Null for events the student added.
      */
     plan: text("plan"),
+    description: text("description"),
+    calendarTiming: text("calendar_timing", { mode: "json" }).$type<CalendarTiming>(),
     createdAt: createdAt(),
   },
   (t) => [index("personal_user").on(t.userId)],

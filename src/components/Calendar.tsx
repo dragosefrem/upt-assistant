@@ -204,8 +204,9 @@ export function Calendar({
   // Grid days: the whole week, so students can plan weekends too.
   const days = useMemo(() => (view === "day" ? [anchor] : Array.from({ length: 7 }, (_, i) => addDays(range.from, i))), [view, anchor, range.from]);
 
-  const startHour = Math.min(8, ...visible.map((e) => Math.floor(e.startMin / 60)));
-  const endHour = Math.max(20, ...visible.map((e) => Math.ceil(e.endMin / 60)));
+  const timed = visible.filter(e => !e.allDay);
+  const startHour = Math.min(8, ...timed.map((e) => Math.floor(e.startMin / 60)));
+  const endHour = Math.max(20, ...timed.map((e) => Math.ceil(e.endMin / 60)));
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
 
   /** Minute of the day under the pointer, rounded down to the snap grid. */
@@ -330,6 +331,13 @@ export function Calendar({
               </button>
             ))}
 
+            {visible.some(e => e.allDay) && <>
+              <span className="border-b border-slate-200 p-1 text-xs text-slate-500">{t.personal.allDay}</span>
+              {days.map(date => <div key={date} className="space-y-1 border-b border-l border-slate-200 p-1">
+                {visible.filter(e => e.allDay && e.date === date).map(e =>
+                  <button key={e.id} type="button" onClick={() => setSelected(e)} className="block w-full truncate rounded bg-brand-50 px-1.5 text-left text-xs font-medium text-brand-800">{e.title || t.personal.untitled}</button>)}
+              </div>)}
+            </>}
             <div className="relative" style={{ height: hours.length * HOUR_PX }}>
               {hours.map((h, i) => (
                 <span key={h} className="absolute right-2 -translate-y-1/2 text-[11px] tabular-nums text-slate-400" style={{ top: i * HOUR_PX }}>
@@ -338,7 +346,7 @@ export function Calendar({
               ))}
             </div>
             {days.map((d) => {
-              const dayEvents = visible.filter((e) => e.date === d);
+              const dayEvents = timed.filter((e) => e.date === d);
               const showNow = d === now.date && now.minutes >= startHour * 60 && now.minutes <= endHour * 60;
               return (
                 <div
@@ -464,8 +472,8 @@ function WeekAgenda({ days, today, events, holidayNames, onPickDay, onSelect }: 
                   <li key={event.id}>
                     <button type="button" onClick={() => onSelect(event)} className="agenda-event">
                       <span className="flex flex-col font-mono text-xs tabular-nums">
-                        <span>{formatMinutes(event.startMin)}</span>
-                        {event.endMin !== event.startMin && <span className="text-slate-500"><span className="sr-only">– </span>{formatMinutes(event.endMin)}</span>}
+                        <span>{event.allDay ? messages.calendar.personal.allDay : formatMinutes(event.startMin)}</span>
+                        {!event.allDay && event.endMin !== event.startMin && <span className="text-slate-500"><span className="sr-only">– </span>{formatMinutes(event.endMin)}</span>}
                       </span>
                       <span className={`h-7 w-1 shrink-0 rounded-full ${kindStyle(event.kind).dot}`} aria-hidden />
                       <span className="min-w-0 flex-1">

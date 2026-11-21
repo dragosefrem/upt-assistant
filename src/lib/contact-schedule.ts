@@ -39,7 +39,7 @@ export function contactWeek(viewerId: string, contactId: string, date?: string, 
   const busy = contacts[locale].schedule.busy;
   const sharedWithViewer = new Set(sharedEventsFor(viewerId, from, to).map((e) => e.id));
   const events: ContactEvent[] = eventsBetween(contact, from, to, locale).map((event) => {
-    if (event.type === "class" || event.type === "exam" || (event.groupEventId && sharedWithViewer.has(event.groupEventId))) {
+    if (!event.privateCalendarEdit && (event.type === "class" || event.type === "exam" || (event.groupEventId && sharedWithViewer.has(event.groupEventId)))) {
       const { date, startMin, endMin, title, kind, room } = event;
       return { date, startMin, endMin, title, kind, room };
     }

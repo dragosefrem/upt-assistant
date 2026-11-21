@@ -76,12 +76,12 @@ const en = {
 
   /** ExportPanel and the export API routes. */
   export: {
-    title: "Export your calendar",
+    title: "Calendar sync and export",
     flash: {
-      synced: "Connected. Your timetable is now in the “Poli” calendar in Google Calendar.",
-      denied: "Google access was not granted, so nothing was exported.",
+      synced: "Connected. Your Poli calendar now syncs both ways.",
+      denied: "Google Calendar connection cancelled.",
       failed: "Connecting to Google failed. Please try again.",
-      unconfigured: "Google Calendar export is not configured on this server.",
+      unconfigured: "Google Calendar sync is not configured on this server.",
     } as Record<string, string>,
     email: {
       title: "Send to your e-mail",
@@ -108,14 +108,17 @@ const en = {
     },
     google: {
       title: "Google Calendar",
-      hint: "Creates a separate calendar called “Poli” in your Google account with your classes, exams, personal events and confirmed group events you’re attending. The app can only see and change that one calendar.",
-      exportAgain: "Export again",
-      exporting: "Exporting…",
+      hint: "Connect the “Poli” calendar in your Google account. Add, edit or delete personal events in either app. Google changes to a class, exam or group event appear on your own timetable.",
+      syncNow: "Sync now",
+      syncing: "Syncing…",
       disconnect: "Disconnect",
       connect: "Connect Google Calendar",
-      lastExport: (when: string) => `Last export ${when}`,
-      refreshHint: "Export again after your timetable or group RSVPs change to update your Google calendar.",
-      exported: (n: number) => `Exported ${n} ${n === 1 ? "item" : "items"} to Google Calendar.`,
+      lastSync: (when: string) => `Last synced ${when}`,
+      refreshHint: "Changes usually sync within a minute, even when Poli is closed.",
+      upToDate: "Your calendars are up to date.",
+      delayed: "The last sync failed. Your changes are saved and Poli will try again automatically.",
+      inProgress: "Your calendars are already syncing.",
+      tryAgain: "Your calendar changed during sync. Please try again.",
       unreachable: "Google Calendar could not be reached.",
       disconnected: "Disconnected. The calendar already in your Google account was left in place.",
       notConnected: "Google Calendar is not connected.",
@@ -152,7 +155,7 @@ const en = {
     apple: "- iPhone, iPad or Mac: open the attachment and choose Add All.",
     outlook: "- Outlook: open the attachment and add it to your calendar.",
     snapshot:
-      "The file is a snapshot of your calendar today. After you change your group, courses or events, send it again from Settings > Export your calendar.",
+      "The file is a snapshot of your calendar today. After you change your group, courses or events, send it again from Settings > Calendar sync and export.",
     subscribe:
       "To stay in sync automatically instead, subscribe to this link (in Google Calendar: Other calendars > + > From URL). Anyone with the link can see your timetable, so keep it to yourself:",
     signature: "Poli",
@@ -233,12 +236,12 @@ const ro: typeof en = {
   },
 
   export: {
-    title: "Exportă calendarul",
+    title: "Sincronizare și export",
     flash: {
-      synced: "Gata, conectat. Orarul tău e acum în calendarul „Poli” din Google Calendar.",
-      denied: "Nu ai dat acces la Google, așa că nu s-a exportat nimic.",
+      synced: "Conectat. Calendarul Poli se sincronizează acum în ambele sensuri.",
+      denied: "Conectarea la Google Calendar a fost anulată.",
       failed: "Conectarea la Google nu a reușit. Încearcă din nou.",
-      unconfigured: "Exportul în Google Calendar nu e configurat pe acest server.",
+      unconfigured: "Sincronizarea cu Google Calendar nu e configurată pe acest server.",
     },
     email: {
       title: "Trimite pe e-mail",
@@ -265,15 +268,17 @@ const ro: typeof en = {
     },
     google: {
       title: "Google Calendar",
-      hint: "Creează în contul tău Google un calendar separat, „Poli”, cu orele, examenele, evenimentele personale și evenimentele de grup confirmate la care participi. Aplicația poate vedea și modifica doar acel calendar.",
-      exportAgain: "Exportă din nou",
-      exporting: "Se exportă…",
+      hint: "Conectează calendarul „Poli” din contul tău Google. Poți adăuga, modifica sau șterge evenimente personale în oricare dintre aplicații. Modificările făcute în Google la ore, examene sau evenimente de grup apar în orarul tău personal.",
+      syncNow: "Sincronizează acum",
+      syncing: "Se sincronizează…",
       disconnect: "Deconectează",
       connect: "Conectează Google Calendar",
-      lastExport: (when: string) => `Ultimul export: ${when}`,
-      refreshHint: "Exportă din nou după ce se schimbă orarul sau răspunsurile la evenimentele de grup, ca să se actualizeze calendarul Google.",
-      exported: (n: number) =>
-        `Am exportat ${n === 1 ? "un eveniment" : n < 20 ? `${n} evenimente` : `${n} de evenimente`} în Google Calendar.`,
+      lastSync: (when: string) => `Ultima sincronizare la ${when}`,
+      refreshHint: "Modificările se sincronizează de obicei într-un minut, chiar și când Poli este închis.",
+      upToDate: "Calendarele tale sunt la zi.",
+      delayed: "Ultima sincronizare a eșuat. Modificările sunt salvate, iar Poli va încerca din nou automat.",
+      inProgress: "Calendarele tale se sincronizează deja.",
+      tryAgain: "Calendarul s-a modificat în timpul sincronizării. Încearcă din nou.",
       unreachable: "Google Calendar nu a putut fi contactat.",
       disconnected: "Deconectat. Calendarul deja existent în contul tău Google a rămas neatins.",
       notConnected: "Google Calendar nu e conectat.",
@@ -309,7 +314,7 @@ const ro: typeof en = {
     apple: "- iPhone, iPad sau Mac: deschide atașamentul și alege Adaugă tot.",
     outlook: "- Outlook: deschide atașamentul și adaugă-l în calendar.",
     snapshot:
-      "Fișierul surprinde calendarul tău de azi. După ce îți schimbi grupa, disciplinele sau evenimentele, trimite-l din nou din Setări > Exportă calendarul.",
+      "Fișierul surprinde calendarul tău de azi. După ce îți schimbi grupa, disciplinele sau evenimentele, trimite-l din nou din Setări > Sincronizare și export.",
     subscribe:
       "Dacă vrei să rămână la zi automat, abonează-te la linkul de mai jos (în Google Calendar: Alte calendare > + > Din adresa URL). Oricine are linkul îți poate vedea orarul, așa că păstrează-l doar pentru tine:",
     signature: "Poli",

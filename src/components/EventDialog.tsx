@@ -11,6 +11,7 @@ import { capitalize, dayName, formatDate, formatMinutes, formatTimeSlot, nowLoca
 import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
 import { MakeupFinder } from "./MakeupFinder";
 import { Modal } from "./Modal";
+import { PersonalEventDialog } from "./PersonalEventDialog";
 import { TripSuggestions } from "./TripSuggestions";
 
 const toClock = (min: number) => formatMinutes(min);
@@ -24,6 +25,7 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
   const t = messages.calendar.event;
   const locale = useLocale();
   const [moving, setMoving] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [day, setDay] = useState(weekday(event.date));
@@ -54,15 +56,16 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
     }
   };
 
+  if (editing) return <PersonalEventDialog event={event} defaultDate={event.date} defaultStartMin={event.startMin} defaultEndMin={event.endMin} onClose={onClose} />;
   return (
-    <Modal title={event.title} onClose={onClose}>
+    <Modal title={event.title || messages.calendar.personal.untitled} onClose={onClose}>
       <p className="mb-3 flex flex-wrap items-center gap-2 text-sm">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">
           <span className={`h-2 w-2 rounded-full ${style.dot}`} />
           {kindLabel(event.kind, locale)}
         </span>
         <span className="text-slate-700">
-          {capitalize(formatDate(event.date, undefined, locale))} · {formatTimeSlot(event.startMin, event.endMin)}
+          {capitalize(formatDate(event.date, undefined, locale))} · {event.allDay ? messages.calendar.personal.allDay : formatTimeSlot(event.startMin, event.endMin)}
         </span>
       </p>
       <dl className="mb-4 grid grid-cols-[minmax(5.5rem,auto)_1fr] gap-x-3 gap-y-1.5 text-sm">
@@ -140,9 +143,10 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
       )}
 
       {event.type === "personal" && event.personalId && (
-        <div className="mt-4 border-t border-slate-100 pt-4">
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">
+          <button className="btn-secondary" onClick={() => setEditing(true)}>{event.personalEditor?.weekly ? messages.calendar.personal.editSeries : messages.calendar.personal.edit}</button>
           <button className="btn-danger" disabled={busy} onClick={() => send({ action: "deletePersonal", id: event.personalId })}>
-            {event.note === messages.common.time.everyWeek ? t.deleteAll : t.delete}
+            {event.personalEditor?.weekly ? t.deleteAll : t.delete}
           </button>
         </div>
       )}

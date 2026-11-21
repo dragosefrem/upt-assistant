@@ -365,7 +365,7 @@ export const APP_TOOLS: AssistantTool[] = [
   },
   {
     name: "google_calendar",
-    description: "Check the Google Calendar connection, open the student's consent screen, re-export to their dedicated calendar, or disconnect it. Ask before syncing or disconnecting.",
+    description: "Check the Google Calendar connection, open the student's consent screen, sync changes in both directions with their dedicated Poli calendar, or disconnect it. Ask before syncing or disconnecting.",
     input_schema: { type: "object", properties: {
       action: { type: "string", enum: ["status", "connect", "sync", "disconnect"] }, confirmed: { type: "boolean" },
     }, required: ["action"] },
@@ -374,14 +374,14 @@ export const APP_TOOLS: AssistantTool[] = [
       const configured = googleConfigured();
       const connected = !!user.googleRefreshToken;
       const t = settings[ctx.locale ?? user.locale ?? "en"].export.google;
-      if (input.action === "status") return { configured, connected, last_export: user.googleSyncedAt };
+      if (input.action === "status") return { configured, connected, last_sync: user.googleSyncedAt };
       if (input.action === "connect" && configured) {
         addLink(ctx, t.connect, "/api/google/connect");
         return { note: "The student can open Google's consent screen with the button." };
       }
       if (!connected) return { error: configured ? t.notConnected : "Google Calendar is not configured." };
       if (input.action !== "disconnect" && input.action !== "sync") return { error: "Choose sync or disconnect for an existing connection." };
-      if (input.confirmed !== true) return { needs_confirmation: input.action === "sync" ? "Replace the app-managed events in your Google calendar with your current timetable?" : "Disconnect Google Calendar? The existing Google calendar will remain in your account." };
+      if (input.confirmed !== true) return { needs_confirmation: input.action === "sync" ? "Sync changes between Poli and your Poli calendar in Google?" : "Disconnect Google Calendar? The existing Google calendar will remain in your account." };
       if (input.action === "disconnect") {
         disconnectGoogle(user.id);
         ctx.changed = true;
@@ -389,7 +389,7 @@ export const APP_TOOLS: AssistantTool[] = [
       }
       const { events } = await syncToGoogle(user, ctx.locale ?? user.locale ?? "en");
       ctx.changed = true;
-      return { exported_events: events };
+      return { synced: true, uploaded_events: events };
     },
   },
   {
@@ -406,7 +406,7 @@ export const APP_TOOLS: AssistantTool[] = [
       addLink(ctx, t.download, `${path}?download`);
       return base
         ? { subscription_link: `${base}${path}`, how: "Google Calendar: Other calendars → From URL. Apple Calendar: File → New Calendar Subscription. Outlook: Add calendar → Subscribe from web." }
-        : { note: "This server has no public address, so a subscription link would not work from outside. The student can download the file or copy the link under Settings → Export your calendar.", page: "calendar_export" };
+        : { note: "This server has no public address, so a subscription link would not work from outside. The student can download the file or copy the link under Settings → Calendar sync and export.", page: "calendar_export" };
     },
   },
 ];

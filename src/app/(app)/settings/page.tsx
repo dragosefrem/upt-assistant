@@ -8,7 +8,7 @@ import { ProfilePicker } from "@/components/ProfilePicker";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf, pickerData } from "@/lib/catalog";
-import { googleConfigured } from "@/lib/google";
+import { googleConfigured, googleSyncDelayed } from "@/lib/google";
 import { kindLabel } from "@/lib/kinds";
 import { mailConfigured } from "@/lib/mail";
 import { courseChoices, currentSemester, hiddenClasses } from "@/lib/schedule";
@@ -84,6 +84,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           googleConfigured={googleConfigured()}
           connected={!!user.googleRefreshToken}
           syncedAt={user.googleSyncedAt}
+          syncDelayed={Boolean(user.googleRefreshToken) && googleSyncDelayed(user.id)}
           feedPath={`/api/ics/${user.feedToken}.ics`}
           flash={typeof params.google === "string" ? params.google : null}
         />

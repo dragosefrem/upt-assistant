@@ -90,12 +90,16 @@ describe("calendar export language", () => {
         updates.push(JSON.parse(String(init.body)));
         return Response.json({ id: "connected" });
       }
-      if (url.includes("/calendars/connected/events")) return Response.json({ items: [] });
+      if (url.includes("/calendars/connected/events")) {
+        if (init?.method === "POST") return Response.json({ ...JSON.parse(String(init.body)), etag: '"v1"' });
+        return Response.json({ items: [], nextSyncToken: "v1" });
+      }
       throw new Error("Unexpected Google Calendar endpoint");
     });
     vi.stubGlobal("fetch", fake);
     try {
-      const result = await syncToGoogle({ ...user, googleRefreshToken: "test", googleCalendarId: "connected" });
+      getDb().update(users).set({ googleRefreshToken: "test", googleCalendarId: "connected" }).where(eq(users.id, user.id)).run();
+      const result = await syncToGoogle(user);
       expect(result.calendarId).toBe("connected");
       expect(updates).toEqual(summary === "UPT Orar" ? [{ summary: "Poli" }] : []);
     } finally {

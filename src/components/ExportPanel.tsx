@@ -25,6 +25,7 @@ export function ExportPanel({
   googleConfigured,
   connected,
   syncedAt,
+  syncDelayed,
   feedPath,
   flash,
 }: {
@@ -33,6 +34,7 @@ export function ExportPanel({
   googleConfigured: boolean;
   connected: boolean;
   syncedAt: string | null;
+  syncDelayed: boolean;
   feedPath: string;
   flash: string | null;
 }) {
@@ -79,7 +81,7 @@ export function ExportPanel({
     try {
       const res = await fetch("/api/google/sync", { method: "POST" });
       const data = await res.json();
-      setMessage(res.ok ? { ok: true, text: x.google.exported(data.events) } : { ok: false, text: data.error });
+      setMessage(res.ok ? { ok: true, text: x.google.upToDate } : { ok: false, text: data.error });
       router.refresh();
     } catch {
       setMessage({ ok: false, text: x.google.unreachable });
@@ -90,16 +92,46 @@ export function ExportPanel({
 
   const disconnect = async () => {
     setBusy(true);
-    await fetch("/api/google/sync", { method: "DELETE" }).catch(() => {});
-    setBusy(false);
-    setMessage({ ok: true, text: x.google.disconnected });
-    router.refresh();
+    try {
+      const res = await fetch("/api/google/sync", { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setMessage({ ok: true, text: x.google.disconnected });
+      router.refresh();
+    } catch {
+      setMessage({ ok: false, text: x.google.unreachable });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const feedUrl = typeof window === "undefined" ? feedPath : `${window.location.origin}${feedPath}`;
 
   return (
     <div className="space-y-5">
+      {(googleConfigured || connected) && (
+        <div className="border-b border-slate-100 pb-5">
+          <h3 className="text-sm font-semibold text-slate-900">{x.google.title}</h3>
+          <p className="mt-1 text-sm text-slate-600">{x.google.hint}</p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {connected ? (
+              <>
+                <button className="btn-primary" onClick={sync} disabled={busy}>{busy ? x.google.syncing : x.google.syncNow}</button>
+                <button className="btn-ghost" onClick={disconnect} disabled={busy}>{x.google.disconnect}</button>
+                {syncedAt && (
+                  <span className="text-xs text-slate-500">
+                    {x.google.lastSync(new Date(syncedAt).toLocaleString(DATE_LOCALE[locale], { dateStyle: "medium", timeStyle: "short", timeZone: TIME_ZONE }))}
+                  </span>
+                )}
+              </>
+            ) : (
+              <a className="btn-primary" href="/api/google/connect">{x.google.connect}</a>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-slate-500">{x.google.refreshHint}</p>
+          {syncDelayed && <p className="mt-2 text-sm text-amber-800">{x.google.delayed}</p>}
+        </div>
+      )}
+      <StatusLine status={message} />
       <div>
         <h3 className="text-sm font-semibold text-slate-900">{x.email.title}</h3>
         <p className="mt-1 text-sm text-slate-600">{x.email.hint}</p>
@@ -151,30 +183,6 @@ export function ExportPanel({
           <p role="status" className="mt-1 text-sm text-emerald-800">{renewed && !renewing && x.file.renewed}</p>
         </form>
       </div>
-
-      {(googleConfigured || connected) && (
-        <div className="border-t border-slate-100 pt-5">
-          <h3 className="text-sm font-semibold text-slate-900">{x.google.title}</h3>
-          <p className="mt-1 text-sm text-slate-600">{x.google.hint}</p>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {connected ? (
-              <>
-                <button className="btn-primary" onClick={sync} disabled={busy}>{busy ? x.google.exporting : x.google.exportAgain}</button>
-                <button className="btn-ghost" onClick={disconnect} disabled={busy}>{x.google.disconnect}</button>
-                {syncedAt && (
-                  <span className="text-xs text-slate-500">
-                    {x.google.lastExport(new Date(syncedAt).toLocaleString(DATE_LOCALE[locale], { dateStyle: "medium", timeStyle: "short", timeZone: TIME_ZONE }))}
-                  </span>
-                )}
-              </>
-            ) : (
-              <a className="btn-primary" href="/api/google/connect">{x.google.connect}</a>
-            )}
-          </div>
-          <p className="mt-2 text-xs text-slate-500">{x.google.refreshHint}</p>
-        </div>
-      )}
-      <StatusLine status={message} />
     </div>
   );
 }

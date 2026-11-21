@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, eq, gte, lte } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   attendance,
@@ -22,10 +22,13 @@ import {
 } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
+import { calendar as calendarMessages } from "@/i18n/messages/calendar";
 import type { User } from "./auth";
 import { campusRoomCode } from "./campuspath/known-room";
 import { sharedEventsFor } from "./group-events";
 import { isPublicHoliday } from "./holidays";
+import { calendarSlices, editorInterval } from "./calendar-timing";
+import { applyGoogleSchedule, googleHiddenClasses, resetGoogleClass } from "./google-schedule";
 import { addDays, dayName, daysBetween, describeWeeks, formatMinutes, mondayOf, occursInWeek, weekday } from "./time";
 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
@@ -46,6 +49,11 @@ export interface CalEvent {
   courseId?: number;
   examId?: number;
   personalId?: number;
+  allDay?: boolean;
+  privateCalendarEdit?: boolean;
+  occurrence?: string;
+  personalEditor?: { title: string; location: string; weekly: boolean; pattern: boolean;
+    interval?: { date: string; endDate: string; startMin: number; endMin: number; allDay: boolean } };
   groupEventId?: string;
   campusRoom?: string;
   moved?: boolean;
@@ -317,7 +325,7 @@ export function examsForUser(user: Pick<User, "specializationId" | "year">, from
  * of the short notes on each event ("odd weeks", "moved by you"); data for the assistant
  * model stays in English.
  */
-export function eventsBetween(
+function originalEvents(
   user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">,
   from: string,
   to: string,
@@ -430,19 +438,22 @@ export function eventsBetween(
       const first = (p.day - weekday(from) + 7) % 7;
       for (let i = first; i <= span; i += 7) dates.push(addDays(from, i));
     }
-    for (const date of dates) {
+    const timing = p.calendarTiming;
+    const interval = timing ? editorInterval(timing) : undefined;
+    const slices = timing ? calendarSlices(timing, from, to) : dates.map(date => ({ date, startMin: p.startMin, endMin: p.endMin, allDay: false, occurrence: undefined }));
+    for (const { date, startMin, endMin, allDay, occurrence } of slices) {
       events.push({
-        id: `p:${p.id}:${date}`,
+        id: occurrence ? `p:${p.id}:${date}:${occurrence}` : `p:${p.id}:${date}`,
         type: "personal",
         kind: "personal",
         title: p.title,
         abbr: null,
         date,
-        startMin: p.startMin,
-        endMin: p.endMin,
+        startMin, endMin, allDay, occurrence,
+        personalEditor: { title: p.title, location: p.location ?? "", weekly: !!p.day || !!timing?.recurrence?.length, pattern: !!timing?.recurrence?.length, interval },
         room: p.location,
         teacher: null,
-        note: p.date ? null : t.everyWeek,
+        note: p.description || (p.day ? t.everyWeek : null),
         place: null,
         personalId: p.id,
         seriesKey: `p:${p.id}`,
@@ -461,6 +472,15 @@ export function eventsBetween(
     });
   }
 
+  return events;
+}
+
+export function eventsBetween(
+  user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">,
+  from: string, to: string, locale: Locale = "en",
+): CalEvent[] {
+  const read = (first: string, last: string) => originalEvents(user, first, last, locale);
+  const events = applyGoogleSchedule(user.id, from, to, read(from, to), read);
   const marks = new Map(
     getDb()
       .select({ seriesKey: attendance.seriesKey, date: attendance.date, status: attendance.status })
@@ -469,7 +489,10 @@ export function eventsBetween(
       .all()
       .map((m) => [`${m.seriesKey}|${m.date}`, m.status]),
   );
-  for (const e of events) e.attendance = marks.get(`${e.seriesKey}|${e.date}`) ?? null;
+  for (const e of events) {
+    e.title ||= calendarMessages[locale].personal.untitled;
+    e.attendance = marks.get(`${e.seriesKey}|${e.date}`) ?? null;
+  }
 
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin || a.endMin - b.endMin);
 }
@@ -649,17 +672,28 @@ export function findGroups(
 
 /** Individual hidden classes offered for restoration in Settings and by Poli. */
 export function hiddenClasses(userId: string, semesterId?: number) {
-  return semesterId ? getDb()
+  if (!semesterId) return [];
+  const db = getDb();
+  const hidden = db
     .select({ id: entries.id, name: courses.name, kind: entries.kind, day: entries.day, time: entries.startMin,
       movedDay: userOverrides.day, movedTime: userOverrides.startMin })
     .from(userOverrides)
     .innerJoin(entries, eq(entries.id, userOverrides.entryId))
     .innerJoin(courses, eq(courses.id, entries.courseId))
     .where(and(eq(userOverrides.userId, userId), eq(userOverrides.hidden, true), eq(entries.semesterId, semesterId)))
-    .orderBy(entries.day, entries.startMin).all() : [];
+    .orderBy(entries.day, entries.startMin).all();
+  const ids = googleHiddenClasses(userId).filter(id => !hidden.some(e => e.id === id));
+  if (ids.length) {
+    const remote = db.select({ id: entries.id, name: courses.name, kind: entries.kind, day: entries.day, time: entries.startMin })
+      .from(entries).innerJoin(courses, eq(courses.id, entries.courseId))
+      .where(and(eq(entries.semesterId, semesterId), inArray(entries.id, ids))).all();
+    hidden.push(...remote.map(row => ({ ...row, movedDay: null, movedTime: null })));
+  }
+  return hidden;
 }
 
 export function unhideClass(userId: string, entryId: number) {
   const ownClass = and(eq(userOverrides.userId, userId), eq(userOverrides.entryId, entryId), eq(userOverrides.hidden, true));
-  return getDb().update(userOverrides).set({ hidden: false, updatedAt: new Date().toISOString() }).where(ownClass).run().changes > 0;
+  const restored = resetGoogleClass(userId, entryId, true);
+  return getDb().update(userOverrides).set({ hidden: false, updatedAt: new Date().toISOString() }).where(ownClass).run().changes > 0 || restored;
 }

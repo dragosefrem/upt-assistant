@@ -44,7 +44,7 @@ works in Romanian and English.
   timetable, a glossary of the words first-years meet (serie, grupă, semigrupă,
   restanță, …) and the buildings the student actually uses.
 - **Export.** The calendar by e-mail as an `.ics` file, a subscription link, or (when
-  configured) direct sync to a dedicated Google calendar. Exports are written in the
+  configured) two-way sync with the dedicated **Poli** Google calendar. Exports are written in the
   account's language.
 - **Admin.** A scraping engine reads the university structure from upt.ro and each
   faculty's timetable and exam documents, and replaces what is in the database.
@@ -93,6 +93,23 @@ history and has to be recreated.
 
 The production setup and first-release steps are in [Deploying UPT to Railway](docs/railway.md).
 
+### Two-way Google Calendar sync
+
+In Settings, choose **Connect Google Calendar**. When creating an event in Google, select
+the **Poli** calendar. Personal events, including recurring and all-day events, appear in
+both apps. Edits to a class, exam or shared meeting in Google change the student's own
+view. The university timetable and other participants retain their schedules.
+
+The Node server checks connected accounts about once a minute. **Sync now** runs the same
+operation immediately. Edits to different fields are combined. When both apps change the
+same field between syncs, the Google edit takes precedence. Deletions propagate. Disconnecting
+stops updates, and reconnecting to the same account resumes the existing calendar.
+
+To check a deployment’s OAuth client against Google, set its client ID and secret and a
+`GOOGLE_CALENDAR_TEST_REFRESH_TOKEN` from a consenting test account in the shell. Run
+`npm test -- tests/google-live.test.ts`. It creates a temporary secondary calendar, exercises
+both directions, and removes that test calendar on completion.
+
 ### Configuration
 
 All optional; see `.env.example`.
@@ -104,6 +121,7 @@ All optional; see `.env.example`.
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing e-mail: password-reset links and "e-mail my calendar". Without them both say so and nothing else breaks. |
 | `APP_URL` | The app's public address, used in e-mailed links. **Required in production for password reset**: without it no reset mail is sent, so a forged request can never point a link at another site (in development the request's own address is used). Calendar e-mails include a subscription link only when it is reachable from the internet (not localhost). |
 | `CAMPUSPATH_URL`, `CAMPUSPATH_PORT`, `CAMPUSPATH_PYTHON` | Campus walkthroughs. By default the app starts `services/campuspath` itself on port 8765 with `services/campuspath/.venv`; set `CAMPUSPATH_URL` to use a service you run yourself. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth web client. Enable the Google Calendar API and register `<APP_URL>/api/google/callback` as an authorized redirect URI. |
 | `GOOGLE_MAPS_EMBED_KEY` | A Maps Embed API key for the map on the Campus page. Without it the keyless Google Maps embed is used. |
 | `TRUSTED_CLIENT_IP_HEADER` | Header your proxy overwrites with the visitor's address, used to limit sign-in attempts per client. On Railway `x-real-ip` is used automatically; without a trusted header all visitors share one counter. |
 | `ADMIN_EMAILS` | Comma-separated addresses that become administrators when they register. |
@@ -124,14 +142,8 @@ link. Sign-in allows five wrong passwords per address and thirty per client in f
 minutes; the counters live in the server process, so they reset when it restarts.
 
 **The calendar link.** The `.ics` subscription link is a secret: anyone who has it can
-read the timetable. Students can replace it under Settings → Export ("Get a new link");
+read the timetable. Students can replace it under Settings → Calendar sync and export ("Get a new link");
 the old one stops working at once.
-
-**Google Calendar sync (optional, off by default).** The direct export works if you set
-`GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: create an OAuth client (type "Web
-application") in Google Cloud, enable the Google Calendar API, and add
-`<APP_URL>/api/google/callback` as an authorised redirect URI. Without them its section
-is hidden.
 
 ## Languages
 

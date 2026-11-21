@@ -4,8 +4,19 @@ import { getDb } from "@/db";
 import { entries, entryGroups, occurrenceOverrides, personalEvents, userOverrides } from "@/db/schema";
 import { getT } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
+import { queueGoogleSync } from "@/lib/google-worker";
+import { resetGoogleClass } from "@/lib/google-schedule";
+import { editedInterval, personalTimes } from "@/lib/calendar-timing";
 
 /** A student's personal changes to their own timetable. */
+const personal = {
+  title: z.string().trim().min(1).max(1024),
+  location: z.string().trim().max(2048).optional(),
+  date: z.iso.date().optional(), endDate: z.iso.date().optional(),
+  day: z.number().int().min(1).max(7).optional(),
+  startMin: z.number().int().min(0).max(1439).optional(), endMin: z.number().int().min(0).max(1440).optional(),
+  allDay: z.boolean().optional(),
+};
 const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("hide"), entryId: z.number().int() }),
   z.object({
@@ -22,15 +33,8 @@ const Body = z.discriminatedUnion("action", [
     // Undo a one-week move only: the date the class normally takes place on.
     date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   }),
-  z.object({
-    action: z.literal("addPersonal"),
-    title: z.string().trim().min(1).max(120),
-    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-    day: z.number().int().min(1).max(7).optional(),
-    startMin: z.number().int().min(0).max(1439),
-    endMin: z.number().int().min(1).max(1440),
-    location: z.string().trim().max(120).optional(),
-  }),
+  z.object({ action: z.literal("addPersonal"), ...personal }),
+  z.object({ action: z.literal("updatePersonal"), id: z.number().int(), ...personal }),
   z.object({ action: z.literal("deletePersonal"), id: z.number().int() }),
 ]);
 
@@ -80,30 +84,42 @@ export async function POST(request: Request) {
         .run();
       // Undoing a one-week move leaves the weekly arrangement alone.
       if (!body.date) {
+        resetGoogleClass(user.id, body.entryId);
         db.delete(userOverrides)
           .where(and(eq(userOverrides.userId, user.id), body.entryId ? eq(userOverrides.entryId, body.entryId) : undefined))
           .run();
       }
       break;
     case "addPersonal":
-      if (body.endMin <= body.startMin) return Response.json({ error: t.calendar.api.endAfterStart }, { status: 400 });
-      if (!body.date && !body.day) return Response.json({ error: t.calendar.api.dateOrDay }, { status: 400 });
-      db.insert(personalEvents)
-        .values({
-          userId: user.id,
-          title: body.title,
-          date: body.date ?? null,
-          day: body.date ? null : body.day!,
-          startMin: body.startMin,
-          endMin: body.endMin,
-          location: body.location || null,
-        })
-        .run();
+    case "updatePersonal": {
+      const where = body.action === "updatePersonal" ? and(eq(personalEvents.id, body.id), eq(personalEvents.userId, user.id)) : undefined;
+      const existing = where ? db.select().from(personalEvents).where(where).get() : undefined;
+      if (where && !existing) return Response.json({ error: t.settings.export.errors.notFound }, { status: 404 });
+      const details = { title: body.title, location: body.location || null };
+      if (where && !body.date && !body.day && body.startMin === undefined && body.endMin === undefined) {
+        db.update(personalEvents).set(details).where(where).run();
+        break;
+      }
+      if (!!body.date === !!body.day || body.startMin === undefined || body.endMin === undefined) {
+        return Response.json({ error: t.calendar.api.dateOrDay }, { status: 400 });
+      }
+      const endDate = body.endDate ?? body.date;
+      const multiDay = !!(body.date && endDate && endDate > body.date);
+      if ((endDate && body.date && endDate < body.date) || (!body.allDay && !multiDay && body.endMin <= body.startMin)
+        || (!body.date && (body.allDay || body.endDate))) return Response.json({ error: t.calendar.api.endAfterStart }, { status: 400 });
+      const calendarTiming = body.date && endDate && (body.allDay || multiDay || existing?.calendarTiming)
+        ? editedInterval(body.date, endDate, body.startMin, body.endMin, !!body.allDay, existing?.calendarTiming) : null;
+      const row = { ...details, calendarTiming, ...(calendarTiming ? personalTimes(calendarTiming)
+        : { date: body.date ?? null, day: body.day ?? null, startMin: body.startMin, endMin: body.endMin }) };
+      if (where) db.update(personalEvents).set(row).where(where).run();
+      else db.insert(personalEvents).values({ userId: user.id, ...row }).run();
       break;
+    }
     case "deletePersonal":
       db.delete(personalEvents).where(and(eq(personalEvents.id, body.id), eq(personalEvents.userId, user.id))).run();
       break;
   }
+  if (user.googleRefreshToken) queueGoogleSync(user.id);
   return Response.json({ ok: true });
 }
 

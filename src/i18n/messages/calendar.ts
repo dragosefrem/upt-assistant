@@ -78,6 +78,8 @@ const en = {
   },
   personal: {
     title: "Add a personal event",
+    edit: "Edit event", editSeries: "Edit series", endDate: "End date", allDay: "All day", untitled: "Untitled event",
+    patternHint: "Changes apply to the series. Its repeat pattern is kept.",
     name: "Title",
     namePlaceholder: "Study group, gym, part-time job…",
     once: "Once",
@@ -208,6 +210,8 @@ const ro: typeof en = {
   },
   personal: {
     title: "Adaugă un eveniment personal",
+    edit: "Editează evenimentul", editSeries: "Editează seria", endDate: "Data de sfârșit", allDay: "Toată ziua", untitled: "Eveniment fără titlu",
+    patternHint: "Modificările se aplică întregii serii. Regula de repetare se păstrează.",
     name: "Titlu",
     namePlaceholder: "Grup de studiu, sală de sport, job part-time…",
     once: "O singură dată",

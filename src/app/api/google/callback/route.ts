@@ -1,11 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
-import { getDb } from "@/db";
-import { users } from "@/db/schema";
 import { getLocale } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
-import { appUrl, exchangeCode, syncToGoogle } from "@/lib/google";
+import { appUrl, connectGoogle, exchangeCode, syncToGoogle } from "@/lib/google";
 
 /** Google redirects here after consent; store the grant and run the first sync. */
 export async function GET(request: Request) {
@@ -25,8 +22,8 @@ export async function GET(request: Request) {
 
   try {
     const refreshToken = await exchangeCode(code, request);
-    getDb().update(users).set({ googleRefreshToken: refreshToken }).where(eq(users.id, user.id)).run();
-    await syncToGoogle({ ...user, googleRefreshToken: refreshToken }, user.locale ?? (await getLocale()));
+    connectGoogle(user.id, refreshToken);
+    await syncToGoogle(user, user.locale ?? (await getLocale()));
     return back("synced");
   } catch (err) {
     console.error("Google Calendar connect failed", err);

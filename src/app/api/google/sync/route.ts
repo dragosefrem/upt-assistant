@@ -2,7 +2,7 @@ import { getLocale, getT } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
 import { disconnectGoogle, GoogleError, syncToGoogle } from "@/lib/google";
 
-/** Re-exports the timetable to the student's Google calendar. */
+/** Synchronizes the dedicated calendar in both directions. */
 export async function POST() {
   const t = await getT();
   const user = await getUser();
@@ -14,7 +14,7 @@ export async function POST() {
     const g = t.settings.export.google;
     const message = err instanceof GoogleError ? (err.known ? err.message : g.replied(err.message)) : g.unreachable;
     if (!(err instanceof GoogleError)) console.error("Google sync failed", err);
-    return Response.json({ error: message }, { status: 502 });
+    return Response.json({ error: message }, { status: err instanceof GoogleError && err.known ? err.status ?? 502 : 502 });
   }
 }
 

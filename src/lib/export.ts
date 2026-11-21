@@ -1,11 +1,13 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { personalEvents } from "@/db/schema";
+import { googleEventLinks, googleExceptions, personalEvents } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import { settings } from "@/i18n/messages/settings";
 import type { User } from "./auth";
+import type { CalendarTime, CalendarTiming } from "./calendar-types";
+import { instant, personalTimes, timingOf } from "./calendar-timing";
 import { sharedEventsFor } from "./group-events";
 import { isPublicHoliday } from "./holidays";
 import { kindLabel } from "./kinds";
@@ -19,6 +21,8 @@ import { TIME_ZONE, addDays, describeWeeks, formatDate, isDatedMeeting, mondayOf
  */
 export interface ExportItem {
   uid: string;
+  calendarTiming?: CalendarTiming;
+  excludedStarts?: CalendarTime[];
   title: string;
   description: string;
   location: string;
@@ -62,7 +66,7 @@ function recurring(semester: Semester, day: number, weeks: string): { first: str
  * account's language when it has one, else English (callers serving a request pass the
  * request's language).
  */
-export function exportItems(user: User, locale: Locale = user.locale ?? "en"): ExportItem[] {
+export function sourceItems(user: User, locale: Locale = user.locale ?? "en"): ExportItem[] {
   const t = settings[locale].calendarFile;
   const time = common[locale].time;
   const semester = currentSemester();
@@ -124,7 +128,7 @@ export function exportItems(user: User, locale: Locale = user.locale ?? "en"): E
   const horizon = semester ? (semester.examEnd ?? semester.endDate) : addDays(new Date().toISOString().slice(0, 10), 120);
   for (const p of getDb().select().from(personalEvents).where(eq(personalEvents.userId, user.id)).all()) {
     if (p.date) {
-      items.push({ uid: `personal-${p.id}`, title: p.title, description: "", location: p.location ?? "", date: p.date, startMin: p.startMin, endMin: p.endMin });
+      items.push({ uid: `personal-${p.id}`, title: p.title, description: p.description ?? "", calendarTiming: p.calendarTiming ?? undefined, location: p.location ?? "", date: p.date, startMin: p.startMin, endMin: p.endMin });
     } else if (p.day) {
       const start = semester?.startDate ?? new Date().toISOString().slice(0, 10);
       const first = addDays(start, (p.day - weekday(start) + 7) % 7);
@@ -136,6 +140,36 @@ export function exportItems(user: User, locale: Locale = user.locale ?? "en"): E
       date: e.date, startMin: e.startMin, endMin: e.endMin });
   }
   return items;
+}
+
+/** Include the student's Google changes in their read-only subscription and calendar files. */
+export function exportItems(user: User, locale: Locale = user.locale ?? "en"): ExportItem[] {
+  const items = sourceItems(user, locale);
+  const db = getDb();
+  const links = db.select().from(googleEventLinks).where(eq(googleEventLinks.userId, user.id)).all();
+  if (!links.length) return items;
+  const byUid = new Map(links.map(link => [link.uid, link]));
+  const exceptions = db.select().from(googleExceptions).where(eq(googleExceptions.userId, user.id)).all();
+  return items.flatMap((item): ExportItem[] => {
+    const link = byUid.get(item.uid);
+    if (!link) return [item];
+    if (link.remote?.status === "cancelled") return [];
+    const changes = link.overrides;
+    const timing = changes?.timing;
+    const master = { ...item, title: changes?.summary ?? item.title, location: changes?.location ?? item.location,
+      description: changes?.description ?? item.description, ...(timing ? { ...personalTimes(timing), calendarTiming: timing, until: undefined, exdates: undefined } : {}),
+      ...(changes?.reminders ? { alarms: changes.reminders.overrides?.filter(o => o.method === "popup").map(o => o.minutes) } : {}),
+    };
+    const instances = exceptions.filter(ex => ex.parentId === link.googleId);
+    const excludedStarts = instances.flatMap(ex => ex.event.originalStartTime ? [ex.event.originalStartTime] : []);
+    const moved = instances.flatMap(({ event }): ExportItem[] => {
+      if (event.status === "cancelled") return [];
+      const timing = timingOf(event);
+      return [{ uid: "instance-" + event.id, title: event.summary ?? master.title, location: event.location ?? master.location,
+        description: event.description ?? master.description, ...personalTimes(timing), calendarTiming: timing, alarms: master.alarms }];
+    });
+    return [{ ...master, excludedStarts }, ...moved];
+  });
 }
 
 /* ───────────────────────────── iCalendar ───────────────────────────── */
@@ -199,6 +233,12 @@ const VTIMEZONE = [
   "END:VTIMEZONE",
 ];
 
+function icsPoint(name: string, point: CalendarTime) {
+  if (point.date) return name + ";VALUE=DATE:" + point.date.replaceAll("-", "");
+  if (point.timeZone) return name + ";TZID=" + point.timeZone + ":" + instant(point).toFormat("yyyyMMdd'T'HHmmss");
+  return name + ":" + instant(point).toUTC().toFormat("yyyyMMdd'T'HHmmss'Z'");
+}
+
 export function toICS(items: ExportItem[], calendarName = "Poli"): string {
   const stamp = `${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`;
   const lines = [
@@ -216,8 +256,10 @@ export function toICS(items: ExportItem[], calendarName = "Poli"): string {
       "BEGIN:VEVENT",
       `UID:${item.uid}@upt-orar`,
       `DTSTAMP:${stamp}`,
-      `DTSTART;TZID=${TIME_ZONE}:${localStamp(item.date, item.startMin)}`,
-      ...(item.endMin === item.startMin ? [] : [`DTEND;TZID=${TIME_ZONE}:${localStamp(item.date, item.endMin)}`]),
+      ...(item.calendarTiming ? [icsPoint("DTSTART", item.calendarTiming.start), ...(item.calendarTiming.endTimeUnspecified ? [] : [icsPoint("DTEND", item.calendarTiming.end)]), ...(item.calendarTiming.recurrence ?? [])] : [
+        `DTSTART;TZID=${TIME_ZONE}:${localStamp(item.date, item.startMin)}`,
+        ...(item.endMin === item.startMin ? [] : [`DTEND;TZID=${TIME_ZONE}:${localStamp(item.date, item.endMin)}`]),
+      ]),
       `SUMMARY:${escapeText(item.title)}`,
     );
     if (item.location) lines.push(`LOCATION:${escapeText(item.location)}`);
@@ -229,6 +271,7 @@ export function toICS(items: ExportItem[], calendarName = "Poli"): string {
         lines.push(`EXDATE;TZID=${TIME_ZONE}:${item.exdates.map((d) => localStamp(d, item.startMin)).join(",")}`);
       }
     }
+    for (const start of item.excludedStarts ?? []) lines.push(icsPoint("EXDATE", start));
     for (const before of item.alarms ?? []) {
       lines.push(
         "BEGIN:VALARM",

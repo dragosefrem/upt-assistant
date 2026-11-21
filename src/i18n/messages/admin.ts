@@ -85,10 +85,10 @@ const en = {
     keywordBefore: "built-in keyword assistant. Set ",
     keywordAfter: " to enable a model.",
     google: "Google Calendar: ",
-    googleEnabled: "direct export enabled",
+    googleEnabled: "two-way sync enabled",
     icsOnlyBefore: ".ics only. Set ",
     and: " and ",
-    icsOnlyAfter: " for direct export.",
+    icsOnlyAfter: " to enable two-way sync.",
   },
 
   accounts: {
@@ -194,10 +194,10 @@ const ro: typeof en = {
     keywordBefore: "asistentul integrat, pe cuvinte-cheie. Setează ",
     keywordAfter: " pentru a activa un model.",
     google: "Google Calendar: ",
-    googleEnabled: "export direct activat",
+    googleEnabled: "sincronizare în ambele sensuri activată",
     icsOnlyBefore: "doar .ics. Setează ",
     and: " și ",
-    icsOnlyAfter: " pentru export direct.",
+    icsOnlyAfter: " pentru sincronizare în ambele sensuri.",
   },
 
   accounts: {

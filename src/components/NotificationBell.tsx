@@ -301,7 +301,7 @@ export function NotificationBell() {
             )}
             <p>
               {t.exportBefore}
-              <Link href="/settings" className="font-medium text-brand-600 hover:underline" onClick={() => setOpen(false)}>
+              <Link href="/settings#export" className="font-medium text-brand-600 hover:underline" onClick={() => setOpen(false)}>
                 {t.exportLink}
               </Link>
               {t.exportAfter}
