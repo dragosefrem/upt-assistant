@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
+  attendance,
   buildings,
   courses,
   entries,
@@ -15,6 +16,7 @@ import {
   specializations,
   userCourses,
   userOverrides,
+  type AttendanceStatus,
   type EntryKind,
 } from "@/db/schema";
 import type { User } from "./auth";
@@ -39,6 +41,14 @@ export interface CalEvent {
   examId?: number;
   personalId?: number;
   moved?: boolean;
+  /**
+   * Identifies the recurring series this occurrence belongs to, built from stable keys
+   * so it survives re-scrapes. Together with `date` it identifies one occurrence.
+   */
+  seriesKey: string;
+  /** Groups the series of one course (lecture, lab, …); equals `seriesKey` otherwise. */
+  courseKey: string;
+  attendance: AttendanceStatus | null;
 }
 
 export interface Place {
@@ -105,7 +115,9 @@ export function placeResolver(facultyId: number | null) {
 
 export interface WeekEntry {
   entryId: number;
+  entryKey: string;
   courseId: number;
+  courseKey: string;
   title: string;
   abbr: string | null;
   kind: EntryKind;
@@ -212,7 +224,9 @@ export function studentWeek(user: Pick<User, "id" | "groupId" | "year">, semeste
     const moved = !!o && (o.day != null || o.startMin != null || o.room != null);
     out.push({
       entryId: entry.id,
+      entryKey: entry.key,
       courseId: course.id,
+      courseKey: course.key,
       title: course.name,
       abbr: course.abbreviation,
       kind: entry.kind,
@@ -236,7 +250,9 @@ export function groupWeek(groupId: number, semester: Semester): WeekEntry[] {
     .rows.filter(({ entry, course }) => !entry.isSlotOption && !course.isOptional)
     .map(({ entry, course }) => ({
       entryId: entry.id,
+      entryKey: entry.key,
       courseId: course.id,
+      courseKey: course.key,
       title: course.name,
       abbr: course.abbreviation,
       kind: entry.kind,
@@ -305,6 +321,9 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
           entryId: e.entryId,
           courseId: e.courseId,
           moved: e.moved,
+          seriesKey: `e:${e.entryKey}`,
+          courseKey: `c:${e.courseKey}`,
+          attendance: null,
         });
       }
     }
@@ -325,6 +344,9 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
       note: x.audience,
       place: place(x.room),
       examId: x.id,
+      seriesKey: `x:${x.key}`,
+      courseKey: `x:${x.key}`,
+      attendance: null,
     });
   }
 
@@ -351,9 +373,22 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
         note: p.date ? null : "every week",
         place: null,
         personalId: p.id,
+        seriesKey: `p:${p.id}`,
+        courseKey: `p:${p.id}`,
+        attendance: null,
       });
     }
   }
+
+  const marks = new Map(
+    getDb()
+      .select({ seriesKey: attendance.seriesKey, date: attendance.date, status: attendance.status })
+      .from(attendance)
+      .where(and(eq(attendance.userId, user.id), gte(attendance.date, from), lte(attendance.date, to)))
+      .all()
+      .map((m) => [`${m.seriesKey}|${m.date}`, m.status]),
+  );
+  for (const e of events) e.attendance = marks.get(`${e.seriesKey}|${e.date}`) ?? null;
 
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin || a.endMin - b.endMin);
 }

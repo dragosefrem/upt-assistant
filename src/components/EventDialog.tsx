@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import type { AttendanceStatus } from "@/db/schema";
 import type { CalEvent } from "@/lib/schedule";
-import { DAY_NAMES, formatDate, formatMinutes, weekday } from "@/lib/time";
+import { DAY_NAMES, formatDate, formatMinutes, nowLocal, weekday } from "@/lib/time";
 import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
 import { Modal } from "./Modal";
 import { TripSuggestions } from "./TripSuggestions";
@@ -56,6 +57,8 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
         {event.note && (<><dt className="text-slate-500">Note</dt><dd className="text-slate-800">{event.note}</dd></>)}
       </dl>
 
+      <AttendanceControl event={event} />
+
       {event.place && <TripSuggestions room={event.room} startMin={event.startMin} />}
 
       {event.type === "class" && event.entryId && !moving && (
@@ -104,5 +107,65 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
       )}
       {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
     </Modal>
+  );
+}
+
+const ATTENDANCE_OPTIONS: Array<{ value: AttendanceStatus | null; label: string; active: string }> = [
+  { value: "attended", label: "✓ Attended", active: "bg-emerald-600 text-white" },
+  { value: "missed", label: "✗ Missed", active: "bg-red-600 text-white" },
+  { value: null, label: "Not marked", active: "bg-slate-600 text-white" },
+];
+
+/** Attended / Missed toggle for this one occurrence; other dates of the series are untouched. */
+function AttendanceControl({ event }: { event: CalEvent }) {
+  const [status, setStatus] = useState<AttendanceStatus | null>(event.attendance);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Same rule as the server: an occurrence can be marked from its day onwards.
+  const markable = event.date <= nowLocal().date;
+
+  const save = async (next: AttendanceStatus | null) => {
+    if (next === status) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/attendance", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ eventId: event.id, date: event.date, status: next }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Attendance could not be saved.");
+      setStatus(next);
+      window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mb-4 rounded-xl border border-slate-200 p-3">
+      <p className="mb-2 flex items-baseline justify-between gap-2 text-sm">
+        <span className="font-medium text-slate-900">Attendance</span>
+        <span className="text-xs text-slate-500">{formatDate(event.date, { weekday: "short", day: "numeric", month: "short" })} only</span>
+      </p>
+      <div role="group" aria-label="Attendance" className="flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm">
+        {ATTENDANCE_OPTIONS.map((o) => (
+          <button
+            key={o.label}
+            type="button"
+            disabled={!markable || busy}
+            aria-pressed={status === o.value}
+            onClick={() => void save(o.value)}
+            className={`flex-1 rounded-md px-2 py-1.5 font-medium transition disabled:cursor-not-allowed disabled:opacity-50 ${status === o.value ? o.active : "text-slate-600 hover:bg-slate-100"}`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {!markable && <p className="mt-2 text-xs text-slate-500">This event has not happened yet. You can mark attendance from its day onwards.</p>}
+      {error && <p role="alert" className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+    </div>
   );
 }

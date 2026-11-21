@@ -346,6 +346,44 @@ export const personalEvents = sqliteTable(
   (t) => [index("personal_user").on(t.userId)],
 );
 
+export type AttendanceStatus = "attended" | "missed";
+
+/**
+ * Whether a student attended one dated occurrence of a calendar event. No row means
+ * "not marked yet".
+ *
+ * Timetable events are expanded on the fly, so rows are keyed by series + date rather
+ * than referencing an event row. The series key is built from stable keys
+ * (`entries.key`, `exams.key`) so marks survive re-scrapes, and title/kind/time are
+ * snapshotted so history stays readable after a class or personal event disappears.
+ */
+export const attendance = sqliteTable(
+  "attendance",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** "e:<entries.key>" | "x:<exams.key>" | "p:<personal_events.id>" */
+    seriesKey: text("series_key").notNull(),
+    /** Groups a course's lecture, lab, … together: "c:<courses.key>", else the series key. */
+    courseKey: text("course_key").notNull(),
+    date: text("date").notNull(),
+    status: text("status").$type<AttendanceStatus>().notNull(),
+    title: text("title").notNull(),
+    abbr: text("abbr"),
+    kind: text("kind").notNull(),
+    startMin: integer("start_min").notNull(),
+    endMin: integer("end_min").notNull(),
+    room: text("room"),
+    teacher: text("teacher"),
+    updatedAt: text("updated_at")
+      .notNull()
+      .default(sql`(datetime('now'))`),
+  },
+  (t) => [uniqueIndex("attendance_unique").on(t.userId, t.seriesKey, t.date), index("attendance_user_date").on(t.userId, t.date)],
+);
+
 export const chatMessages = sqliteTable(
   "chat_messages",
   {
