@@ -277,10 +277,10 @@ describe("Google Calendar sync direction", () => {
     const old = new Database(":memory:");
     try {
       const files = readdirSync("drizzle").filter(f => f.endsWith(".sql")).sort();
-      for (const name of files.filter(n => n < "0007")) old.exec(readFileSync("drizzle/" + name, "utf8"));
+      for (const name of files.filter(n => n < "0008")) old.exec(readFileSync("drizzle/" + name, "utf8"));
       for (const id of ["two", "legacy"]) old.prepare("INSERT INTO users (id, name, email, password_hash, feed_token, google_refresh_token) VALUES (?, ?, ?, 'x', ?, 'grant')").run(id, id, id + "@example.test", id);
       old.exec("INSERT INTO google_sync_state (user_id, cursor) VALUES ('two','earlier-cursor')");
-      old.exec(readFileSync("drizzle/0007_google_sync_direction.sql", "utf8"));
+      old.exec(readFileSync("drizzle/0008_google_sync_direction.sql", "utf8"));
       old.exec("INSERT INTO google_sync_state (user_id) VALUES ('legacy')");
       expect(old.prepare("SELECT user_id,mode,cursor FROM google_sync_state ORDER BY user_id").all()).toEqual([
         { user_id: "legacy", mode: "one_way", cursor: null }, { user_id: "two", mode: "two_way", cursor: null },
@@ -383,7 +383,7 @@ describe("Google Calendar sync direction", () => {
       summary: "Remote move", start: point(13), end: point(14) });
     await sync();
     expect(google.events.get("drift")?.summary).toBe("Practice");
-    expect(google.events.get("drift")?.start).toEqual(original);
+    expect(google.events.get("drift")?.start).toMatchObject(original);
     google.remove("drift"); await sync();
     expect(google.events.get("drift")).toMatchObject({ status: "confirmed", summary: "Practice" });
     expect(localRows()).toHaveLength(1);

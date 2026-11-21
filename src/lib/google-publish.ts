@@ -156,7 +156,8 @@ export async function publishCalendar(user: User, locale: Locale, inventory: Goo
       for (const key of fieldNames) if (!observed || !equalField(key, expected, observed)) Object.assign(patch, { [key]: expected[key] });
       if (Object.keys(patch).length) {
         // Instance resources have no recurrence rules of their own.
-        const body = googleBody(patch);
+        const body = googleBody(patch, true);
+        delete body.recurrence;
         try { await api("PATCH", url(event.id), { ...body, status: "confirmed" }, event.etag ?? "*"); writes++; }
         catch (e) {
           if (!gone(e)) throw e;

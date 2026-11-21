@@ -17,7 +17,7 @@ To activate the connection before the first release, review the pending `web` an
 ## First release
 
 1. Merge the integration changes and deployment files into GitHub's `main`. Under **web → Deployments**, verify that Railway is building the pushed commit SHA. Railway builds the root Dockerfile and checks `/api/health` before switching traffic. The check opens the mounted database and applies migrations and seed data on first use.
-2. Register the administrator before adding a public domain. The first registration receives this role. With a Railway SSH key registered, run the following and keep the tunnel open while visiting `http://localhost:8080/register`. [Railway SSH port forwarding](https://docs.railway.com/cli/ssh#forward-a-port-with-ssh--l)
+2. Configure the verification sender below. Before adding a public domain, set `APP_URL` to the planned HTTPS address and open a private tunnel to register the first administrator. Visit `http://localhost:8080/register`, then open the `/verify/…` path from the e-mail through the same tunnel to finish registration. The first completed account receives the administrator role. [Railway SSH port forwarding](https://docs.railway.com/cli/ssh#forward-a-port-with-ssh--l)
 
    ```sh
    railway ssh config --service web --alias upt-web
@@ -25,8 +25,12 @@ To activate the connection before the first release, review the pending `web` an
    ```
 
 3. Import the university timetables from **Admin → Scrape UPT**, or run `railway ssh --service web -- npm run scrape`.
-4. Run `railway domain --service web --port 3000`. Set `APP_URL` in the web service to the returned HTTPS address and apply the variable change. Verify that `/api/health` returns HTTP 200 at that address and sign in with the administrator account.
+4. Run `railway domain --service web --port 3000`. Set `APP_URL` to the final HTTPS address and apply it to `web`. Verify that `/api/health` returns HTTP 200 and sign in with the administrator account.
 
 Set `GEMINI_API_KEY` on `web` to enable Gemini. After deployment, a signed-in `GET /api/assistant` reports the active engine. Add mail and Google Calendar credentials when enabling those features. The configuration preserves their values on later applies. For Google Calendar, register `<APP_URL>/api/google/callback` as the OAuth redirect URI.
 
-Password resets and emailed calendars use SMTP. Railway enables outbound SMTP on Pro and higher plans. [Railway outbound networking](https://docs.railway.com/networking/outbound-networking#email-delivery)
+## Registration and password-reset e-mails
+
+Set `RESEND_API_KEY` to a sending-only key and `VERIFICATION_EMAIL_FROM` to a sender on its verified domain, such as `Poli <verify@mail.example.org>`. Poli uses that sender for registration and password resets over HTTPS. On Railway plans that support SMTP, an SMTP mailbox can send account links when `RESEND_API_KEY` is unset. Calendar exports use SMTP. [Railway outbound networking](https://docs.railway.com/networking/outbound-networking#email-delivery)
+
+Verification links use `APP_URL` or Railway’s public HTTPS domain. Their token hashes are stored in SQLite on the existing `/data` volume, so a link can be opened after a restart. Check delivery with a mailbox you control. Opening the link should show the account form. Submitting it should open onboarding, and reopening the same link should offer a new one.

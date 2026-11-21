@@ -9,7 +9,7 @@ works in Romanian and English.
 ## What it does
 
 - **Welcome page and accounts.** Signed-out visitors get a public page that explains the
-  app; students register, sign in, and can reset a forgotten password through a
+  app. New students confirm their e-mail before choosing a password. They can recover access through a
   one-time link sent by e-mail.
 - **Onboarding.** Faculty → cycle and year → programme → group, with a step indicator
   and help on what "grupă" and "semigrupă" mean. From year 3 (and wherever a lab runs in
@@ -58,7 +58,7 @@ need `ffmpeg` on the PATH).
 
 ```bash
 npm install
-cp .env.example .env.local   # optional — everything has a working default
+cp .env.example .env.local   # configure a verification sender for registration
 
 # timetable PDFs
 python3 -m venv .venv
@@ -71,7 +71,7 @@ services/campuspath/.venv/bin/python -m pip install -r services/campuspath/requi
 npm run dev                  # http://localhost:3000
 ```
 
-1. Register. **The first account becomes the administrator.**
+1. Configure a verification sender in `.env.local` using the variables below. Open **Create account**, enter your e-mail and follow the link to choose a name and password. **The first completed account becomes the administrator.**
 2. Open **Admin → Scrape UPT** and run it, or run `npm run scrape`.
 3. Finish onboarding by choosing your group.
 
@@ -117,14 +117,15 @@ both directions, and removes that test calendar on completion.
 
 ### Configuration
 
-All optional; see `.env.example`.
+Registration and password resets share an e-mail sender. See `.env.example` for the available settings.
 
 | Variable | Effect |
 | --- | --- |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Connects the assistant to Gemini (default model `gemini-4-hydrogen`). Takes precedence over Claude. |
 | `ANTHROPIC_API_KEY` | Connects the assistant to Claude instead. Without either key a built-in keyword assistant answers the common questions. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Outgoing e-mail: password-reset links and "e-mail my calendar". Without them both say so and nothing else breaks. |
-| `APP_URL` | The app's public address, used in e-mailed links. **Required in production for password reset**: without it no reset mail is sent, so a forged request can never point a link at another site (in development the request's own address is used). Calendar e-mails include a subscription link only when it is reachable from the internet (not localhost). |
+| `RESEND_API_KEY`, `VERIFICATION_EMAIL_FROM` | Sends registration and password-reset links over HTTPS. Use a send-only key and a sender on its verified domain. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Sends calendar exports. Also sends account links when the Resend key is unset. |
+| `APP_URL` | Public address for e-mailed links. Railway defaults to its assigned HTTPS domain. Other production hosts must set this explicitly for account links. |
 | `CAMPUSPATH_URL`, `CAMPUSPATH_PORT`, `CAMPUSPATH_PYTHON` | Campus walkthroughs. By default the app starts `services/campuspath` itself on port 8765 with `services/campuspath/.venv`; set `CAMPUSPATH_URL` to use a service you run yourself. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth web client. Enable the Google Calendar API and register `<APP_URL>/api/google/callback` as an authorized redirect URI. |
 | `GOOGLE_MAPS_EMBED_KEY` | A Maps Embed API key for the map on the Campus page. Without it the keyless Google Maps embed is used. |
@@ -138,6 +139,11 @@ Verification, create an app password at <https://myaccount.google.com/apppasswor
 then set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER` to the address and
 `SMTP_PASS` to the app password. Each account can send its calendar once a minute and
 ask for three password links an hour.
+
+**Registration.** A verification link works once, for one hour. Visiting the link opens the
+account form. Submitting it creates the account and continues to onboarding or the original
+event invitation. Students can request up to three links per hour, at least one minute apart.
+Existing accounts continue using their current credentials.
 
 **Passwords and sign-in.** "Forgot your password?" e-mails a link that works once, for
 an hour. Only a hash of the link's token is stored. The form answers the same way, and
@@ -265,8 +271,7 @@ or moved classes survive an update.
   the column helpers in `schema.ts`.
 - **Background scrapes** run inside the web process. On a serverless host, trigger
   `npm run scrape` from a scheduled job instead.
-- **Not built yet:** e-mail verification at sign-up. Sign-in limits are kept in memory,
-  which suits a single server; several servers would need a shared store. Google
+- **Sign-in limits** are kept in memory. Several servers would need a shared store. Google
   refresh tokens are stored unencrypted in the database.
 - **Walkthrough videos** are rendered on demand, one at a time, and cached on disk under
   `services/campuspath/.cache`. Rendering a new route downloads panoramas from

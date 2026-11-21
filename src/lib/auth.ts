@@ -5,7 +5,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { and, count, eq, gt, lt } from "drizzle-orm";
-import { getDb } from "@/db";
+import { getDb, type DB } from "@/db";
 import { sessions, users } from "@/db/schema";
 
 const COOKIE = "upt_session";
@@ -106,8 +106,10 @@ export function authenticate(email: string, password: string, client: string) {
  * Creates an account. The very first account, and any address listed in ADMIN_EMAILS,
  * becomes an administrator; everyone else is a student.
  */
-export function createUser(input: { email: string; name: string; password: string; locale?: "ro" | "en" }): User {
-  const db = getDb();
+export function createUser(
+  input: { email: string; name: string; password: string; locale?: "ro" | "en"; emailVerifiedAt?: string },
+  db: Pick<DB, "insert" | "select"> = getDb(),
+): User {
   const email = normalizeEmail(input.email);
   const { name, error } = registrationName(input.name);
   if (error) throw new RangeError("A registration name must contain 2 to 80 characters");
@@ -118,6 +120,7 @@ export function createUser(input: { email: string; name: string; password: strin
     .values({
       id: randomUUID(),
       email,
+      emailVerifiedAt: input.emailVerifiedAt,
       name,
       passwordHash: hashPassword(input.password),
       role: n === 0 || admins.includes(email) ? "admin" : "student",

@@ -7,7 +7,7 @@ import { passwordResets, sessions, users } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { auth } from "@/i18n/messages/auth";
 import { hashPassword, newFeedToken, normalizeEmail, type User } from "./auth";
-import { mailConfigured, sendMail } from "./mail";
+import { accountMailConfigured, sendAccountMail } from "./mail";
 
 /**
  * "Forgot password?": a one-time link sent to the account's e-mail address.
@@ -41,25 +41,7 @@ export function resetEmail(user: Pick<User, "name">, link: string, locale: Local
   return { subject: t.subject, text, html };
 }
 
-/** Only local development may derive the reset address from the incoming request. */
-export function resetBaseUrl(headers: Pick<Headers, "get">): string | null {
-  const configured = process.env.APP_URL?.trim();
-  if (configured) {
-    try {
-      const url = new URL(configured);
-      if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash) {
-        return url.origin + url.pathname.replace(/\/+$/, "");
-      }
-    } catch {
-      // Log the configuration problem without including the value.
-    }
-    console.error("Password reset is unavailable: APP_URL must be an absolute HTTP(S) base URL.");
-    return null;
-  }
-  if (process.env.NODE_ENV === "development") return `http://${headers.get("host") ?? "localhost:3000"}`;
-  console.error("Password reset is unavailable: set APP_URL to the public address of this installation.");
-  return null;
-}
+export { accountEmailBaseUrl as resetBaseUrl } from "./mail";
 
 export function requestPasswordReset(
   email: string,
@@ -68,7 +50,7 @@ export function requestPasswordReset(
   afterResponse: (work: () => Promise<void>) => void,
   transport?: Transporter,
 ): "sent" | "not-configured" {
-  if (!baseUrl || (!transport && !mailConfigured())) return "not-configured";
+  if (!baseUrl || (!transport && !accountMailConfigured())) return "not-configured";
   afterResponse(() => sendResetIfEligible(email, baseUrl, locale, transport));
   return "sent";
 }
@@ -94,7 +76,7 @@ async function sendResetIfEligible(email: string, baseUrl: string, locale: Local
   if (!issued) return;
   const message = resetEmail(user, `${baseUrl}/reset/${token}`, user.locale ?? locale);
   try {
-    await sendMail({ to: user.email, ...message }, transport);
+    await sendAccountMail({ to: user.email, ...message }, `password-reset/${id}`, transport);
   } catch (error) {
     db.delete(passwordResets).where(eq(passwordResets.id, id)).run();
     console.error("Password reset: the e-mail could not be sent", error instanceof Error ? error.name : "transport error");

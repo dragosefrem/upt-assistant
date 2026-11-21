@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import Database from "better-sqlite3";
-import { drizzle, type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
+import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { migrateDatabase } from "./migrate";
 import * as schema from "./schema";
 import { seed } from "./seed";
 
@@ -16,10 +16,7 @@ function open(): DB {
   const sqlite = new Database(file);
   sqlite.pragma("journal_mode = WAL");
   sqlite.pragma("foreign_keys = ON");
-  const db = drizzle(sqlite, { schema });
-  // Migrations are idempotent, so applying them on first connection keeps a fresh
-  // checkout (or a fresh deploy) working without a separate setup step.
-  migrate(db, { migrationsFolder: path.join(process.cwd(), "drizzle") });
+  const db = migrateDatabase(sqlite, path.join(process.cwd(), "drizzle"));
   seed(db);
   return db;
 }
