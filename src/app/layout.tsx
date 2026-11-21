@@ -6,7 +6,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin", "lat
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: "UPT Orar", template: "%s · UPT Orar" },
+  title: { default: "Poli", template: "%s · Poli" },
   description: "Timetables, exams and a study assistant for students of Universitatea Politehnica Timișoara.",
 };
 

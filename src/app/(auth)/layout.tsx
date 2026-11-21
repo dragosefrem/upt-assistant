@@ -17,7 +17,7 @@ export default async function AuthLayout({ children }: LayoutProps<"/">) {
         </div>
         <div className="card p-6">{children}</div>
         <p className="mt-4 text-center text-sm">
-          <Link href="/welcome" className="text-slate-500 hover:text-brand-600">← What is UPT Orar?</Link>
+          <Link href="/welcome" className="text-slate-500 hover:text-brand-600">← What is Poli?</Link>
         </p>
       </div>
     </main>

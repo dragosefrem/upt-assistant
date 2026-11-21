@@ -157,12 +157,12 @@ const VTIMEZONE = [
   "END:VTIMEZONE",
 ];
 
-export function toICS(items: ExportItem[], calendarName = "UPT Orar"): string {
+export function toICS(items: ExportItem[], calendarName = "Poli"): string {
   const stamp = `${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`;
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//UPT Orar//Timetable//EN",
+    "PRODID:-//Poli//Timetable//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     `X-WR-CALNAME:${escapeText(calendarName)}`,
@@ -172,6 +172,7 @@ export function toICS(items: ExportItem[], calendarName = "UPT Orar"): string {
   for (const item of items) {
     lines.push(
       "BEGIN:VEVENT",
+      // UIDs keep the old domain so subscribed calendars update instead of duplicating.
       `UID:${item.uid}@upt-orar`,
       `DTSTAMP:${stamp}`,
       `DTSTART;TZID=${TIME_ZONE}:${localStamp(item.date, item.startMin)}`,

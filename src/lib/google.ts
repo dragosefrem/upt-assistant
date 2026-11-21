@@ -9,14 +9,14 @@ import { TIME_ZONE } from "./time";
 /**
  * Google Calendar export over plain REST.
  *
- * The app asks only for `calendar.app.created`: it can create its own "UPT Orar"
+ * The app asks only for `calendar.app.created`: it can create its own "Poli"
  * calendar and manage events inside it, and cannot read or touch anything else in the
  * student's Google account.
  */
 
 const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 const API = "https://www.googleapis.com/calendar/v3";
-const CALENDAR_NAME = "UPT Orar";
+const CALENDAR_NAME = "Poli";
 
 export class GoogleError extends Error {
   constructor(
@@ -107,6 +107,7 @@ function toGoogleEvent(item: ExportItem) {
     end: at(item.endMin),
     recurrence: recurrence.length ? recurrence : undefined,
     // Marks events this app owns, so a re-sync replaces exactly those.
+    // The key keeps its old name so events synced earlier are still recognised.
     extendedProperties: { private: { uptOrar: item.uid } },
     reminders: item.alarms?.length
       ? { useDefault: false, overrides: item.alarms.map((minutes) => ({ method: "popup", minutes })) }
@@ -115,7 +116,7 @@ function toGoogleEvent(item: ExportItem) {
 }
 
 /**
- * Replaces the contents of the student's "UPT Orar" Google calendar with their current
+ * Replaces the contents of the student's "Poli" Google calendar with their current
  * timetable. Returns how many events were written.
  */
 export async function syncToGoogle(user: User): Promise<{ events: number; calendarId: string }> {

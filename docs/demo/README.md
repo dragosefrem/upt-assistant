@@ -1,4 +1,4 @@
-# Demo interactiv UPT Orar
+# Demo interactiv Poli
 
 `index.html` e o pagină de sine stătătoare care arată interfața aplicației, cu un orar și
 examene de exemplu. Nu are nevoie de server sau de bază de date: o deschizi direct în browser.

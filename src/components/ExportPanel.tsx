@@ -21,7 +21,7 @@ export function ExportPanel({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
     flash === "synced"
-      ? { ok: true, text: "Connected. Your timetable is now in the “UPT Orar” calendar in Google Calendar." }
+      ? { ok: true, text: "Connected. Your timetable is now in the “Poli” calendar in Google Calendar." }
       : flash === "denied"
         ? { ok: false, text: "Google access was not granted, so nothing was exported." }
         : flash === "failed"
@@ -64,7 +64,7 @@ export function ExportPanel({
         {googleConfigured ? (
           <>
             <p className="mt-1 text-sm text-slate-600">
-              Creates a separate calendar called “UPT Orar” in your Google account and fills it with your classes, exams and
+              Creates a separate calendar called “Poli” in your Google account and fills it with your classes, exams and
               personal events. The app can only see and change that one calendar.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -1,4 +1,6 @@
-# UPT Orar
+# Poli
+
+_Fostul nume: UPT Orar._
 
 A web app for students of Universitatea Politehnica Timișoara: a personal calendar of
 classes and exams built from the timetables the faculties publish, with Google Calendar
@@ -23,8 +25,8 @@ export, directions to the next room, and a chat/voice assistant.
   the device a week, a day, 2 hours and 30 minutes before (while the app is open); the
   Google Calendar and `.ics` exports carry alerts a day and 2 hours before each exam.
 - **Landing page.** Visitors who are not signed in see `/welcome`, a Romanian page about
-  what UPT Orar does, with live counts of the imported classes and exams; it leads to
-  sign-up and sign-in. The counts and the faculty list appear after the first scrape.
+  what Poli does, with Poli at work in a short animation; it leads to sign-up and
+  sign-in.
 - **Poli.** The assistant's mascot. Pressing any Poli opens the chat; it also greets the
   student with one-tap questions on the calendar page. Placeholder images live in
   `public/images`; `docs/IMAGINI.md` has prompts for the final artwork.
@@ -77,7 +79,7 @@ All optional; see `.env.example`.
 **Google Calendar.** Create an OAuth client (type "Web application") in Google Cloud,
 enable the Google Calendar API, and add `<APP_URL>/api/google/callback` as an
 authorised redirect URI. The app requests only the `calendar.app.created` scope: it
-creates its own "UPT Orar" calendar and cannot see anything else in the account.
+creates its own "Poli" calendar and cannot see anything else in the account.
 
 **Claude.** The assistant runs on Claude Managed Agents: Anthropic hosts the agent
 loop, and this app answers its tool calls from the local database. The agent and its

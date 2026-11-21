@@ -16,7 +16,7 @@ export async function GET(request: Request, ctx: RouteContext<"/api/ics/[token]"
     headers: {
       "content-type": "text/calendar; charset=utf-8",
       "cache-control": "private, max-age=900",
-      ...(download ? { "content-disposition": 'attachment; filename="upt-orar.ics"' } : {}),
+      ...(download ? { "content-disposition": 'attachment; filename="poli.ics"' } : {}),
     },
   });
 }

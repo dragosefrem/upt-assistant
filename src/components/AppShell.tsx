@@ -16,7 +16,7 @@ export function AppShell({ user, children }: { user: User; children: React.React
           <div className="mr-1 flex shrink-0 items-center gap-2 sm:mr-3">
             <Mascot size={34} />
             <Link href="/" className="hidden font-semibold tracking-tight text-slate-900 sm:inline">
-              UPT <span className="text-brand-600">Orar</span>
+              <span className="text-brand-600">Poli</span>
             </Link>
           </div>
           <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-sm sm:gap-1">

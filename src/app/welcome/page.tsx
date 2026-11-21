@@ -7,7 +7,7 @@ import { getUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "Tu ai planul. Poli are calendarul.",
-  description: "UPT Orar: asistentul care îți știe orarul, examenele și sala. Nu mai pierzi nimic, iar timpul câștigat e al tău.",
+  description: "Poli: asistentul care îți știe orarul, examenele și sala. Nu mai pierzi nimic, iar timpul câștigat e al tău.",
 };
 
 // The numbers come from the database at request time.
@@ -41,7 +41,7 @@ const STEPS = [
   { n: "3", title: "Ești mereu la timp", text: "Remindere înainte de examene și răspunsuri la orice întrebare despre săptămâna ta." },
 ];
 
-/** What signed-out visitors see: one short page about UPT Orar, with Poli at work. */
+/** What signed-out visitors see: one short page about Poli, with Poli at work. */
 export default async function WelcomePage() {
   if (await getUser()) redirect("/");
 
@@ -51,7 +51,7 @@ export default async function WelcomePage() {
         <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-5">
           <Mascot size={36} chat={false} />
           <span className="font-semibold tracking-tight">
-            UPT <span className="text-brand-600">Orar</span>
+            <span className="text-brand-600">Poli</span>
           </span>
           <div className="ml-auto flex items-center gap-2">
             <Link href="/login" className="rounded-full px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900">
@@ -201,7 +201,7 @@ export default async function WelcomePage() {
 
       <footer className="border-t border-[#14213d]/10">
         <div className="mx-auto flex max-w-6xl flex-wrap justify-between gap-2 px-5 py-5 text-sm text-slate-500">
-          <span>UPT Orar · orare din documentele publicate pe upt.ro</span>
+          <span>Poli · orare din documentele publicate pe upt.ro</span>
           <span>Poli înțelege română și engleză</span>
         </div>
       </footer>

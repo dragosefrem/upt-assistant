@@ -264,7 +264,7 @@ export function NotificationBell() {
               <label className="flex cursor-pointer items-center justify-between gap-3">
                 <span>
                   <span className="block font-medium text-slate-800">Notify me on this device</span>
-                  A week, a day, 2 h and 30 min before, while UPT Orar is open.
+                  A week, a day, 2 h and 30 min before, while Poli is open.
                 </span>
                 <button
                   type="button"
