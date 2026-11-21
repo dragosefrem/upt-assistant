@@ -27,6 +27,7 @@ describe("password reset", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-11-23T08:00:00Z"));
     vi.stubEnv("DATABASE_PATH", ":memory:");
+    vi.stubEnv("RESEND_API_KEY", "");
     getDb().delete(users).run();
     const user = createUser({ email: EMAIL, name: "Ana Popescu", password: "old-password-1", locale: "ro" });
     userId = user.id;
@@ -84,6 +85,31 @@ describe("password reset", () => {
     expect(row.id).toMatch(/^[0-9a-f]{64}$/);
     expect(resetTarget(token)?.email).toBe(EMAIL);
     expect(resetTarget("x")).toBeNull();
+  });
+
+  it("delivers the reset link in both formats through the configured Resend sender without SMTP", async () => {
+    vi.stubEnv("RESEND_API_KEY", "test-sending-key");
+    vi.stubEnv("VERIFICATION_EMAIL_FROM", "Poli <verify@mail.example.org>");
+    vi.stubEnv("SMTP_HOST", "");
+    const send = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 200 }));
+    const jobs: Array<() => Promise<void>> = [];
+    expect(requestPasswordReset(EMAIL, BASE, "en", (job) => jobs.push(job))).toBe("sent");
+    expect(send).not.toHaveBeenCalled();
+    await jobs[0]();
+
+    expect(send).toHaveBeenCalledOnce();
+    const [url, options] = send.mock.calls[0];
+    const message = JSON.parse(String(options?.body));
+    const token = tokenIn(message.text);
+    const row = getDb().select().from(passwordResets).get()!;
+    expect(url).toBe("https://api.resend.com/emails");
+    expect(options).toMatchObject({ method: "POST", headers: {
+      Authorization: "Bearer test-sending-key", "Idempotency-Key": `password-reset/${row.id}`,
+    } });
+    expect(message).toMatchObject({ from: "Poli <verify@mail.example.org>", to: EMAIL, subject: "Resetează parola contului tău Poli" });
+    expect(message.text).toContain(`${BASE}/reset/${token}`);
+    expect(message.html).toContain(`href="${BASE}/reset/${token}"`);
+    expect(resetTarget(token)?.id).toBe(userId);
   });
 
   it("changes the password once, revokes sessions, all outstanding links and the old calendar credential", async () => {
@@ -145,9 +171,12 @@ describe("password reset", () => {
     expect(resetBaseUrl(headers)).toBe("http://localhost:3100");
   });
 
-  it("reports unconfigured SMTP before scheduling a delivery", () => {
+  it("requires a configured sender before scheduling a delivery", () => {
     vi.stubEnv("SMTP_HOST", "");
     const defer = vi.fn();
+    expect(requestPasswordReset(EMAIL, BASE, "ro", defer)).toBe("not-configured");
+    vi.stubEnv("RESEND_API_KEY", "test-sending-key");
+    vi.stubEnv("VERIFICATION_EMAIL_FROM", "");
     expect(requestPasswordReset(EMAIL, BASE, "ro", defer)).toBe("not-configured");
     expect(defer).not.toHaveBeenCalled();
   });

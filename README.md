@@ -95,14 +95,14 @@ The production setup and first-release steps are in [Deploying UPT to Railway](d
 
 ### Configuration
 
-New registrations need a verification sender. See `.env.example` for the available settings.
+Registration and password resets share an e-mail sender. See `.env.example` for the available settings.
 
 | Variable | Effect |
 | --- | --- |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Connects the assistant to Gemini (default model `gemini-4-hydrogen`). Takes precedence over Claude. |
 | `ANTHROPIC_API_KEY` | Connects the assistant to Claude instead. Without either key a built-in keyword assistant answers the common questions. |
-| `RESEND_API_KEY`, `VERIFICATION_EMAIL_FROM` | Sends registration links over HTTPS. Use a send-only key and a sender on its verified domain. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Sends password resets and calendar exports. Also sends registration links when the Resend key is unset. |
+| `RESEND_API_KEY`, `VERIFICATION_EMAIL_FROM` | Sends registration and password-reset links over HTTPS. Use a send-only key and a sender on its verified domain. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Sends calendar exports. Also sends account links when the Resend key is unset. |
 | `APP_URL` | Public address for e-mailed links. Railway defaults to its assigned HTTPS domain. Other production hosts must set this explicitly for account links. |
 | `CAMPUSPATH_URL`, `CAMPUSPATH_PORT`, `CAMPUSPATH_PYTHON` | Campus walkthroughs. By default the app starts `services/campuspath` itself on port 8765 with `services/campuspath/.venv`; set `CAMPUSPATH_URL` to use a service you run yourself. |
 | `GOOGLE_MAPS_EMBED_KEY` | A Maps Embed API key for the map on the Campus page. Without it the keyless Google Maps embed is used. |

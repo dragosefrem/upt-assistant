@@ -29,8 +29,8 @@ To activate the connection before the first release, review the pending `web` an
 
 Set `GEMINI_API_KEY` on `web` to enable Gemini. After deployment, a signed-in `GET /api/assistant` reports the active engine. Add mail and Google Calendar credentials when enabling those features. The configuration preserves their values on later applies. For Google Calendar, register `<APP_URL>/api/google/callback` as the OAuth redirect URI.
 
-## Registration e-mails
+## Registration and password-reset e-mails
 
-Set `RESEND_API_KEY` to a sending-only key and `VERIFICATION_EMAIL_FROM` to a sender on its verified domain, such as `Poli <verify@mail.example.org>`. Poli sends registration mail over HTTPS. An existing SMTP setup can also send verification mail on Railway plans that support SMTP. Password resets and calendar exports use that SMTP setup. [Railway outbound networking](https://docs.railway.com/networking/outbound-networking#email-delivery)
+Set `RESEND_API_KEY` to a sending-only key and `VERIFICATION_EMAIL_FROM` to a sender on its verified domain, such as `Poli <verify@mail.example.org>`. Poli uses that sender for registration and password resets over HTTPS. On Railway plans that support SMTP, an SMTP mailbox can send account links when `RESEND_API_KEY` is unset. Calendar exports use SMTP. [Railway outbound networking](https://docs.railway.com/networking/outbound-networking#email-delivery)
 
 Verification links use `APP_URL` or Railway’s public HTTPS domain. Their token hashes are stored in SQLite on the existing `/data` volume, so a link can be opened after a restart. Check delivery with a mailbox you control. Opening the link should show the account form. Submitting it should open onboarding, and reopening the same link should offer a new one.

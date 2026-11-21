@@ -31,15 +31,19 @@ export function accountEmailBaseUrl(headers: Pick<Headers, "get">): string | nul
   return null;
 }
 
-/** Verification uses HTTPS on Railway and can use the existing SMTP transport elsewhere. */
-export function verificationMailConfigured(): boolean {
+/** Registration and password resets share one sender. */
+export function accountMailConfigured(): boolean {
   return process.env.RESEND_API_KEY ? Boolean(process.env.VERIFICATION_EMAIL_FROM?.trim()) : mailConfigured();
 }
 
-export async function sendVerificationMail(message: { to: string; subject: string; text: string }, deliveryId: string) {
+export async function sendAccountMail(
+  message: { to: string; subject: string; text: string; html?: string },
+  idempotencyKey: string,
+  transport?: Transporter,
+) {
   const key = process.env.RESEND_API_KEY;
-  if (!key) {
-    await sendMail(message);
+  if (transport || !key) {
+    await sendMail(message, transport);
     return;
   }
   const response = await fetch("https://api.resend.com/emails", {
@@ -47,7 +51,7 @@ export async function sendVerificationMail(message: { to: string; subject: strin
     headers: {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
-      "Idempotency-Key": `registration/${deliveryId}`,
+      "Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify({ from: process.env.VERIFICATION_EMAIL_FROM, ...message }),
     redirect: "error",
