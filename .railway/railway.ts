@@ -19,6 +19,8 @@ export default defineRailway(() => {
       GEMINI_API_KEY: preserve(),
       GEMINI_MODEL: preserve(),
       ANTHROPIC_API_KEY: preserve(),
+      ANTHROPIC_AUTH_TOKEN: preserve(),
+      ANTHROPIC_PROFILE: preserve(),
       SMTP_HOST: preserve(),
       SMTP_PORT: preserve(),
       SMTP_USER: preserve(),
@@ -27,8 +29,14 @@ export default defineRailway(() => {
       GOOGLE_CLIENT_ID: preserve(),
       GOOGLE_CLIENT_SECRET: preserve(),
       GOOGLE_MAPS_EMBED_KEY: preserve(),
+      TIMETABLE_PYTHON: preserve(),
+      CAMPUSPATH_URL: preserve(),
+      CAMPUSPATH_PORT: preserve(),
+      CAMPUSPATH_PYTHON: preserve(),
+      CAMPUSPATH_DIR: preserve(),
+      CAMPUSPATH_START_TIMEOUT_MS: preserve(),
     },
   });
 
-  return project("upt-assistant", { resources: [web, data] });
+  return project("happy-elegance", { resources: [web, data] });
 });
