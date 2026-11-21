@@ -7,16 +7,16 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import { LOCALE_COOKIE } from "@/i18n/config";
-import { getLocale, getT } from "@/i18n/server";
-import { authenticate, createUser, endSession, isEmail, loginClientAddress, normalizeEmail, registrationName, startSession } from "@/lib/auth";
+import type { auth } from "@/i18n/messages/auth";
+import { getLocale } from "@/i18n/server";
+import { authenticate, createUser, endSession, hasEmailFormat, loginClientAddress, normalizeEmail, registrationName, startSession } from "@/lib/auth";
 import { requestPasswordReset, resetBaseUrl, resetPassword } from "@/lib/password-reset";
 
 export interface AuthState {
-  error?: string;
+  error?: keyof typeof auth.en.errors;
+  retryMinutes?: number;
   field?: "name" | "email" | "password" | "repeat";
-  signInLink?: boolean;
-  /** A neutral or good-news message (for example "the link is on its way"). */
-  notice?: string;
+  sent?: boolean;
   email?: string;
   name?: string;
 }
@@ -27,14 +27,13 @@ function destination(form: FormData, fallback: string) {
 }
 
 export async function loginAction(_prev: AuthState, form: FormData): Promise<AuthState> {
-  const t = (await getT()).auth;
   const email = normalizeEmail(String(form.get("email") ?? ""));
   const password = String(form.get("password") ?? "");
-  if (!isEmail(email)) return { error: t.register.badEmail, field: "email", email };
-  if (!password) return { error: t.login.needPassword, field: "password", email };
+  if (!hasEmailFormat(email)) return { error: "badEmail", field: "email", email };
+  if (!password) return { error: "needPassword", field: "password", email };
   const result = authenticate(email, password, loginClientAddress(await headers()));
-  if (result.status === "limited") return { error: t.login.tooMany(result.minutes), email };
-  if (result.status === "invalid") return { error: t.login.wrong, field: "password", email };
+  if (result.status === "limited") return { error: "tooMany", retryMinutes: result.minutes, email };
+  if (result.status === "invalid") return { error: "wrong", field: "password", email };
   const { user } = result;
   await startSession(user.id);
   // The account remembers its language, so it follows the student to a new device.
@@ -43,17 +42,16 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
 }
 
 export async function registerAction(_prev: AuthState, form: FormData): Promise<AuthState> {
-  const t = (await getT()).auth.register;
   const email = normalizeEmail(String(form.get("email") ?? ""));
   const { name, error } = registrationName(String(form.get("name") ?? ""));
   const password = String(form.get("password") ?? "");
   const keep = { email, name };
-  if (error) return { ...keep, error: t[error], field: "name" };
-  if (!isEmail(email)) return { ...keep, error: t.badEmail, field: "email" };
-  if (password.length < 8) return { ...keep, error: t.shortPassword, field: "password" };
+  if (error) return { ...keep, error, field: "name" };
+  if (!hasEmailFormat(email)) return { ...keep, error: "badEmail", field: "email" };
+  if (password.length < 8) return { ...keep, error: "shortPassword", field: "password" };
   const locale = await getLocale();
   if (getDb().select({ id: users.id }).from(users).where(eq(users.email, email)).get()) {
-    return { ...keep, error: t.exists, field: "email", signInLink: true };
+    return { ...keep, error: "exists", field: "email" };
   }
   const user = createUser({ email, name, password, locale });
   await startSession(user.id);
@@ -67,20 +65,18 @@ export async function logoutAction() {
 
 /** "Forgot your password?": always answers the same way for known and unknown addresses. */
 export async function forgotPasswordAction(_prev: AuthState, form: FormData): Promise<AuthState> {
-  const t = (await getT()).auth;
   const email = normalizeEmail(String(form.get("email") ?? ""));
-  if (!isEmail(email)) return { email, error: t.register.badEmail, field: "email" };
+  if (!hasEmailFormat(email)) return { email, error: "badEmail", field: "email" };
   const result = requestPasswordReset(email, resetBaseUrl(await headers()), await getLocale(), after);
-  if (result === "not-configured") return { email, error: t.forgot.notConfigured };
-  return { notice: t.forgot.sent };
+  if (result === "not-configured") return { email, error: "notConfigured" };
+  return { sent: true };
 }
 
 export async function resetPasswordAction(token: string, _prev: AuthState, form: FormData): Promise<AuthState> {
-  const t = (await getT()).auth;
   const password = String(form.get("password") ?? "");
   const repeat = String(form.get("repeat") ?? "");
-  if (password.length < 8) return { error: t.register.shortPassword, field: "password" };
-  if (password !== repeat) return { error: t.reset.mismatch, field: "repeat" };
-  if (!resetPassword(token, password)) return { error: t.reset.invalid };
+  if (password.length < 8) return { error: "shortPassword", field: "password" };
+  if (password !== repeat) return { error: "mismatch", field: "repeat" };
+  if (!resetPassword(token, password)) return { error: "invalid" };
   redirect("/login?reset=done");
 }

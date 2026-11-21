@@ -18,12 +18,12 @@ function Feedback({ state, loginHref = "/login" }: { state: AuthState; loginHref
     <>
       {state.error && (
         <p id="auth-error" role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">
-          {state.error}
-          {state.signInLink && <> <Link className="font-medium underline" href={loginHref}>{t.auth.register.signIn}</Link></>}
+          {state.error === "tooMany" ? t.auth.errors.tooMany(state.retryMinutes ?? 1) : t.auth.errors[state.error]}
+          {state.error === "exists" && <> <Link className="font-medium underline" href={loginHref}>{t.auth.register.signIn}</Link></>}
         </p>
       )}
-      {state.notice && (
-        <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{state.notice}</p>
+      {state.sent && (
+        <p role="status" className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-emerald-800">{t.auth.forgot.sent}</p>
       )}
     </>
   );

@@ -1,6 +1,6 @@
 import { scryptSync } from "node:crypto";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { authenticate, createUser, loginClientAddress, registrationName } from "@/lib/auth";
+import { authenticate, createUser, loginClientAddress, registrationName, verifyPassword } from "@/lib/auth";
 
 vi.mock("node:crypto", { spy: true });
 process.env.DATABASE_PATH = ":memory:";
@@ -28,6 +28,12 @@ describe("sign in", () => {
     expect(authenticate(email, "correct-password", "another")).toEqual({ status: "limited", minutes: 1 });
     vi.setSystemTime(Date.now() + 60_000);
     expect(authenticate(email, "correct-password", "another").status).toBe("signed-in");
+  });
+
+  it("rejects an unreadable stored hash using the standard verification cost", () => {
+    vi.mocked(scryptSync).mockClear();
+    expect(verifyPassword("incorrect", "invalid")).toBe(false);
+    expect(scryptSync).toHaveBeenCalledExactlyOnceWith("incorrect", expect.any(Buffer), 64);
   });
 
   it("limits cumulative failures from one client and leaves a different client available", () => {

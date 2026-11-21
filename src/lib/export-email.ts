@@ -6,7 +6,7 @@ import { users } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import { settings } from "@/i18n/messages/settings";
-import { isEmail, normalizeEmail, type User } from "./auth";
+import { hasEmailFormat, normalizeEmail, type User } from "./auth";
 import { exportItems, toICS } from "./export";
 import { mailConfigured, sendMail } from "./mail";
 import { currentSemester } from "./schedule";
@@ -19,7 +19,9 @@ import { currentSemester } from "./schedule";
 /** Shortest time between two calendar e-mails from one account. */
 export const EMAIL_INTERVAL_MS = 60_000;
 
-export { isEmail };
+export function isEmail(value: string): boolean {
+  return value.length <= 254 && hasEmailFormat(value);
+}
 
 /** The app's address if calendar services could reach it; a localhost URL is no use in an e-mail. */
 export function publicBaseUrl(appUrl = process.env.APP_URL): string | null {

@@ -13,6 +13,8 @@ const SESSION_DAYS = 30;
 
 export type User = typeof users.$inferSelect;
 
+const DUMMY_HASH = `scrypt$${"00".repeat(16)}$${"00".repeat(64)}`;
+
 export function hashPassword(password: string): string {
   const salt = randomBytes(16);
   const hash = scryptSync(password.normalize("NFKC"), salt, 64);
@@ -20,11 +22,11 @@ export function hashPassword(password: string): string {
 }
 
 export function verifyPassword(password: string, stored: string): boolean {
-  const [scheme, saltHex, hashHex] = stored.split("$");
-  if (scheme !== "scrypt" || !saltHex || !hashHex) return false;
+  const valid = /^scrypt\$[\da-f]{32}\$[\da-f]{128}$/i.test(stored);
+  const [, saltHex, hashHex] = (valid ? stored : DUMMY_HASH).split("$");
   const expected = Buffer.from(hashHex, "hex");
   const actual = scryptSync(password.normalize("NFKC"), Buffer.from(saltHex, "hex"), expected.length);
-  return timingSafeEqual(expected, actual);
+  return timingSafeEqual(expected, actual) && valid;
 }
 
 const sha256 = (s: string) => createHash("sha256").update(s).digest("hex");
@@ -33,8 +35,8 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
-export function isEmail(value: string): boolean {
-  return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+export function hasEmailFormat(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
 export function registrationName(raw: string) {
@@ -57,11 +59,12 @@ export function loginClientAddress(headers: Pick<Headers, "get">) {
 }
 
 // Single-process limits reset on restart. Several replicas would need a shared store.
-const failures = new Map<string, { count: number; until: number }>();
+type FailureWindow = { count: number; until: number };
+const authProcess = globalThis as typeof globalThis & { __uptLoginFailures?: Map<string, FailureWindow> };
+const failures = authProcess.__uptLoginFailures ??= new Map<string, FailureWindow>();
 const WINDOW_MS = 15 * 60_000;
 const EMAIL_LIMIT = 5;
 const CLIENT_LIMIT = 30;
-const DUMMY_HASH = `scrypt$${"00".repeat(16)}$${"00".repeat(64)}`;
 
 export function authenticate(email: string, password: string, client: string) {
   const now = Date.now();
@@ -71,7 +74,8 @@ export function authenticate(email: string, password: string, client: string) {
     failures.delete(key);
   }
   const address = normalizeEmail(email);
-  const keys = [[`email:${address}`, EMAIL_LIMIT], [`client:${client}`, CLIENT_LIMIT]] as const;
+  const emailKey = `email:${sha256(address)}`;
+  const keys = [[emailKey, EMAIL_LIMIT], [`client:${client}`, CLIENT_LIMIT]] as const;
   let until = 0;
   for (const [key, limit] of keys) {
     const entry = failures.get(key);
@@ -82,7 +86,7 @@ export function authenticate(email: string, password: string, client: string) {
   const user = getDb().select().from(users).where(eq(users.email, address)).get();
   const matches = verifyPassword(password, user?.passwordHash ?? DUMMY_HASH);
   if (matches && user) {
-    failures.delete(keys[0][0]);
+    failures.delete(emailKey);
     return { status: "signed-in", user } as const;
   }
   for (const [key] of keys) {
