@@ -27,6 +27,19 @@ Front view, centered, simple and readable at 32 px, no outlines thicker than nee
 no gradients or only very subtle ones, transparent background, no other text.
 ```
 
+## 1b. Poli fericit (pentru animația de la apăsare)
+
+Fișier: `public/images/mascot-happy.png` · 512×512 · fundal transparent
+
+Când apeși pe Poli, el sare și apare fața lui fericită. Același personaj, încarcă mascota
+de la pasul 1 ca referință:
+
+```
+Same character and style as the reference image, exact same pose and size, but with
+happy closed eyes drawn as two upward arcs (^ ^), a bigger smile, and the antenna ball
+pink (#f472b6) instead of yellow. Transparent background, no other changes.
+```
+
 ## 2. Mascota în alte poze (opțional)
 
 Același personaj, încarcă mascota de la pasul 1 ca referință. 512×512, transparent.
@@ -51,9 +64,12 @@ morning sky. Pastel palette based on blue (#2f5fe0, #eef4ff) with warm yellow ac
 
 ## Cum le pui în aplicație
 
-1. Salvează mascota ca `public/images/mascot.png`.
-2. În `src/components/Mascot.tsx` schimbă `MASCOT_SRC` din `"/images/mascot.svg"` în `"/images/mascot.png"`.
-   Atât: mascota apare peste tot (antet, salut, chat, login).
+1. Salvează mascota ca `public/images/mascot.png` și fața fericită ca `public/images/mascot-happy.png`.
+2. În `src/components/Mascot.tsx` schimbă `MASCOT_SRC` în `"/images/mascot.png"` și
+   `MASCOT_HAPPY_SRC` în `"/images/mascot-happy.png"`.
+   Atât: mascota apare peste tot (antet, salut, chat, examene, notificări, login).
+   Butonul mare din colț (`src/components/PoliChat.tsx`) e desenat direct în cod, ca să-și
+   poată schimba ochii; dacă vrei și acolo imaginea nouă, spune-mi și îl trec pe imagini.
 3. Pentru celelalte poze, trimite-mi fișierele și le leg eu în locurile potrivite
    (de ex. `mascot-sleep` când nu ai ore, `mascot-thinking` cât timp răspunde asistentul).
 
