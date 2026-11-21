@@ -57,7 +57,7 @@ export default async function WelcomePage() {
         <div className="flex items-center gap-2 text-lg font-semibold tracking-tight text-slate-900">
           <Mascot size={36} chat={false} />
           <Link href="/">
-            UPT <span className="text-brand-600">Orar</span>
+            <span className="text-brand-600">{t.common.appName}</span>
           </Link>
         </div>
         <div className="ml-auto flex items-center gap-2">

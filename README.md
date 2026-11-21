@@ -1,4 +1,4 @@
-# UPT Orar
+# Poli
 
 A web app for students of Universitatea Politehnica Timișoara, built first of all for
 first-years: a personal calendar made from the timetables the faculties publish, the

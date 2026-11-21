@@ -17,7 +17,7 @@ export async function OnboardingFrame({ step, bubble, children }: { step: 2 | 3;
     <div className="flex flex-1 flex-col">
       <header className="mx-auto flex w-full max-w-3xl items-center gap-3 px-4 py-4">
         <Link href="/" className="font-semibold tracking-tight text-slate-900">
-          UPT <span className="text-brand-600">Orar</span>
+          <span className="text-brand-600">{t.common.appName}</span>
         </Link>
         <div className="ml-auto flex items-center gap-2">
           <LanguageSwitch />

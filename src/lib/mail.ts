@@ -29,7 +29,7 @@ function smtpTransport(): Transporter {
 
 export function mailFrom(): string {
   if (process.env.MAIL_FROM) return process.env.MAIL_FROM;
-  return process.env.SMTP_USER ? `UPT Orar <${process.env.SMTP_USER}>` : "UPT Orar <no-reply@localhost>";
+  return process.env.SMTP_USER ? `Poli <${process.env.SMTP_USER}>` : "Poli <no-reply@localhost>";
 }
 
 /** Sends one message; `transport` replaces SMTP in tests. */

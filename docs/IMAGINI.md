@@ -1,4 +1,4 @@
-# Imagini pentru UPT Orar: prompturi pentru ChatGPT și Gemini
+# Imagini pentru Poli: prompturi pentru ChatGPT și Gemini
 
 Interfața folosește acum o mascotă, **Poli**, un roboțel prietenos în albastrul UPT.
 Fișierul `public/images/mascot.svg` e doar o variantă provizorie desenată de mână.

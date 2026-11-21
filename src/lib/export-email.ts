@@ -44,7 +44,7 @@ export function calendarEmail(opts: { ics: string; semester: string | null; feed
   return {
     subject: t.subject,
     text: lines.join("\n"),
-    attachments: [{ filename: "upt-orar.ics", content: opts.ics, contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],
+    attachments: [{ filename: "poli.ics", content: opts.ics, contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],
   };
 }
 

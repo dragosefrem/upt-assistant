@@ -6,7 +6,7 @@ const en = {
   hero: {
     badge: "For students of Politehnica Timișoara",
     headline: "Your UPT timetable, finally in plain sight.",
-    sub: "UPT Orar turns the faculty's big timetable grid into your own calendar: only your group's classes, in the weeks they really happen, with the way to every room and an assistant that answers in seconds.",
+    sub: "Poli turns the faculty's big timetable grid into your own calendar: only your group's classes, in the weeks they really happen, with the way to every room and an assistant that answers in seconds.",
     cta: "Create a free account",
     secondary: "I already have an account",
     note: "Takes a minute: pick your faculty, year and group.",
@@ -62,7 +62,7 @@ const ro: typeof en = {
   hero: {
     badge: "Pentru studenții Politehnicii Timișoara",
     headline: "Orarul tău de la UPT, în sfârșit pe înțeles.",
-    sub: "UPT Orar transformă tabelul mare al facultății în calendarul tău: doar orele grupei tale, în săptămânile în care chiar se țin, cu drumul până la fiecare sală și un asistent care îți răspunde în câteva secunde.",
+    sub: "Poli transformă tabelul mare al facultății în calendarul tău: doar orele grupei tale, în săptămânile în care chiar se țin, cu drumul până la fiecare sală și un asistent care îți răspunde în câteva secunde.",
     cta: "Creează-ți un cont gratuit",
     secondary: "Am deja cont",
     note: "Durează un minut: alegi facultatea, anul și grupa.",

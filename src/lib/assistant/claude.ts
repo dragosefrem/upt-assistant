@@ -62,7 +62,7 @@ export function ensureAgent(client: Anthropic): Promise<AgentRef> {
         },
       });
       const agent = await client.beta.agents.create({
-        name: "UPT timetable assistant",
+        name: "Poli",
         model: MODEL,
         system: SYSTEM,
         tools: agentTools(),
@@ -91,7 +91,7 @@ async function openSession(client: Anthropic, user: User, ref: AgentRef): Promis
   const session = await client.beta.sessions.create({
     agent: { type: "agent", id: ref.agentId, version: ref.version },
     environment_id: ref.environmentId,
-    title: "UPT timetable assistant",
+    title: "Poli",
   });
   setSetting(key, `${ref.version}|${session.id}`);
   return session.id;

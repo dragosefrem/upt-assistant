@@ -11,7 +11,7 @@ export default async function AuthLayout({ children }: LayoutProps<"/">) {
       <div className="absolute inset-x-0 top-0 mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-4">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-slate-900" aria-label={t.auth.backHome} title={t.auth.backHome}>
           <span aria-hidden className="text-slate-400">←</span>
-          UPT <span className="text-brand-600">Orar</span>
+          <span className="text-brand-600">{t.common.appName}</span>
         </Link>
         <LanguageSwitch />
       </div>

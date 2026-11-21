@@ -32,13 +32,14 @@ export default async function GuestPage({ params }: PageProps<"/join/[token]">) 
   const { token } = await params;
   const { user, guestKey, event } = await loadInvitation(token);
   if (!event) notFound();
-  const t = (await getT()).contacts.guest;
+  const messages = await getT();
+  const t = messages.contacts.guest;
   // Bind one fresh key to this form so a retried first submission keeps the same seat.
   const firstGuestKey = !user && !guestKey ? randomBytes(32).toString("base64url") : "";
   return (
     <main className="mx-auto w-full max-w-xl space-y-4 px-4 py-8 sm:py-14">
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-sm font-semibold"><span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">U</span>UPT Orar</div>
+        <div className="flex items-center gap-2 text-sm font-semibold"><span aria-hidden="true" className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-white">P</span>{messages.common.appName}</div>
         <LanguageSwitch />
       </div>
       <article className="card space-y-5 p-5 sm:p-7">

@@ -1,6 +1,6 @@
 /** Texts shared by the whole interface: navigation, event kinds, generic buttons. */
 const en = {
-  appName: "UPT Orar",
+  appName: "Poli",
   tagline: "Your timetable, exams and study buddy at Politehnica Timișoara.",
   holidays: {
     newYear: "New Year’s Day", newYearSecond: "Second day of the New Year",
@@ -91,7 +91,7 @@ const en = {
 };
 
 const ro: typeof en = {
-  appName: "UPT Orar",
+  appName: "Poli",
   tagline: "Orarul, examenele și asistentul tău la Politehnica Timișoara.",
   holidays: {
     newYear: "Anul Nou", newYearSecond: "A doua zi de Anul Nou",
