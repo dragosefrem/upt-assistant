@@ -2,10 +2,14 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { personalEvents } from "@/db/schema";
+import type { Locale } from "@/i18n/config";
+import { common } from "@/i18n/messages/common";
+import { settings } from "@/i18n/messages/settings";
 import type { User } from "./auth";
 import { sharedEventsFor } from "./group-events";
+import { kindLabel } from "./kinds";
 import { currentSemester, examsForUser, occurrenceMoves, placeResolver, studentWeek, type Semester } from "./schedule";
-import { TIME_ZONE, addDays, describeWeeks, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
+import { TIME_ZONE, addDays, describeWeeks, formatDate, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
 
 /**
  * Calendar-neutral description of a student's timetable, shared by the .ics feed and
@@ -31,7 +35,8 @@ export interface ExportItem {
 /** Exams remind a day and two hours before, so phones alert even with the app closed. */
 export const EXAM_ALARMS = [1440, 120];
 
-const KIND_LABEL: Record<string, string> = { course: "Lecture", seminar: "Seminar", lab: "Lab", project: "Project", other: "" };
+/** Kinds named in parentheses after a class title; "other" gets no label. */
+const LABELLED_KINDS = new Set(["course", "seminar", "lab", "project"]);
 
 function recurring(semester: Semester, day: number, weeks: string): { first: string; until: string; exdates: string[] } | null {
   if (isDatedMeeting(weeks)) {
@@ -51,7 +56,14 @@ function recurring(semester: Semester, day: number, weeks: string): { first: str
   return { first, until, exdates };
 }
 
-export function exportItems(user: User): ExportItem[] {
+/**
+ * The student's calendar as export items. Titles and descriptions are in `locale`: the
+ * account's language when it has one, else English (callers serving a request pass the
+ * request's language).
+ */
+export function exportItems(user: User, locale: Locale = user.locale ?? "en"): ExportItem[] {
+  const t = settings[locale].calendarFile;
+  const time = common[locale].time;
   const semester = currentSemester();
   const place = placeResolver(user.facultyId);
   const where = (room: string | null) => {
@@ -65,12 +77,12 @@ export function exportItems(user: User): ExportItem[] {
     for (const e of studentWeek(user, semester)) {
       const r = recurring(semester, e.day, e.weeks);
       if (!r) continue;
-      const title = `${e.title}${KIND_LABEL[e.kind] ? ` (${KIND_LABEL[e.kind]})` : ""}`;
+      const title = `${e.title}${LABELLED_KINDS.has(e.kind) ? ` (${kindLabel(e.kind, locale)})` : ""}`;
       const moves = once.filter((o) => o.entryId === e.entryId);
       items.push({
         uid: `entry-${e.entryId}`,
         title,
-        description: [e.teacher, describeWeeks(e.weeks), e.endMin === e.startMin ? "End time unpublished" : null, e.note].filter(Boolean).join(" · "),
+        description: [e.teacher, describeWeeks(e.weeks, locale), e.endMin === e.startMin ? time.endTimeUnpublished : null, e.note].filter(Boolean).join(" · "),
         location: where(e.room),
         date: r.first,
         startMin: e.startMin,
@@ -83,7 +95,7 @@ export function exportItems(user: User): ExportItem[] {
         items.push({
           uid: `entry-${e.entryId}-${o.date}`,
           title,
-          description: [e.teacher, `moved from ${o.date}`].filter(Boolean).join(" · "),
+          description: [e.teacher, t.movedFrom(formatDate(o.date, { weekday: "short", day: "numeric", month: "long" }, locale))].filter(Boolean).join(" · "),
           location: where(o.room ?? e.room),
           date: o.newDate,
           startMin: o.startMin,
@@ -95,8 +107,8 @@ export function exportItems(user: User): ExportItem[] {
   for (const x of examsForUser(user)) {
     items.push({
       uid: `exam-${x.id}`,
-      title: `Exam: ${x.courseName}${x.room ? ` · ${x.room}` : ""}`,
-      description: [x.room ? `Room ${x.room}` : null, x.teacher, x.audience, x.endMin === x.startMin ? "End time unpublished" : null, "Good luck! 🍀"]
+      title: t.exam(`${x.courseName}${x.room ? ` · ${x.room}` : ""}`),
+      description: [x.room ? t.room(x.room) : null, x.teacher, x.audience, x.endMin === x.startMin ? time.endTimeUnpublished : null, t.goodLuck]
         .filter(Boolean)
         .join(" · "),
       location: where(x.room),
@@ -117,7 +129,7 @@ export function exportItems(user: User): ExportItem[] {
     }
   }
   for (const e of sharedEventsFor(user.id)) {
-    items.push({ uid: `group-${e.id}`, title: e.title, location: e.location ?? "", description: "Shared event",
+    items.push({ uid: `group-${e.id}`, title: e.title, location: e.location ?? "", description: common[locale].kinds.shared,
       date: e.date, startMin: e.startMin, endMin: e.endMin });
   }
   return items;

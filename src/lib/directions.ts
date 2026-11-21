@@ -1,3 +1,5 @@
+import { DATE_LOCALE, type Locale } from "@/i18n/config";
+import { calendar } from "@/i18n/messages/calendar";
 import type { Place } from "./schedule";
 
 /** Travel suggestions between two points. Pure maths: no routing service is called. */
@@ -44,7 +46,9 @@ function mapsUrl(from: LatLng, to: LatLng, mode: "walking" | "bicycling" | "tran
   return `https://www.google.com/maps/dir/?${q}`;
 }
 
-export function planTrip(from: LatLng, place: Place): Directions {
+/** Labels and the summary are written in `locale` (English by default, as the assistant model reads them). */
+export function planTrip(from: LatLng, place: Place, locale: Locale = "en"): Directions {
+  const t = calendar[locale].directions;
   const straight = haversineMeters(from, place);
   // Streets are not straight lines; 1.3 is a common urban detour factor.
   const route = straight * 1.3;
@@ -54,19 +58,19 @@ export function planTrip(from: LatLng, place: Place): Directions {
   const drive = Math.round(route / 420) + 5; // ~25 km/h in town + parking
 
   const options: TravelOption[] = [];
-  if (route <= 4000) options.push({ mode: "walk", label: "Walk", minutes: walk, mapsUrl: mapsUrl(from, place, "walking") });
-  if (route > 800 && route <= 12_000) options.push({ mode: "bike", label: "Bike or scooter", minutes: bike, mapsUrl: mapsUrl(from, place, "bicycling") });
-  if (route > 1200) options.push({ mode: "transit", label: "Public transport", minutes: transit, mapsUrl: mapsUrl(from, place, "transit") });
-  if (route > 2500) options.push({ mode: "drive", label: "Car or taxi", minutes: drive, mapsUrl: mapsUrl(from, place, "driving") });
-  if (!options.length) options.push({ mode: "walk", label: "Walk", minutes: walk, mapsUrl: mapsUrl(from, place, "walking") });
+  if (route <= 4000) options.push({ mode: "walk", label: t.walk, minutes: walk, mapsUrl: mapsUrl(from, place, "walking") });
+  if (route > 800 && route <= 12_000) options.push({ mode: "bike", label: t.bike, minutes: bike, mapsUrl: mapsUrl(from, place, "bicycling") });
+  if (route > 1200) options.push({ mode: "transit", label: t.transit, minutes: transit, mapsUrl: mapsUrl(from, place, "transit") });
+  if (route > 2500) options.push({ mode: "drive", label: t.drive, minutes: drive, mapsUrl: mapsUrl(from, place, "driving") });
+  if (!options.length) options.push({ mode: "walk", label: t.walk, minutes: walk, mapsUrl: mapsUrl(from, place, "walking") });
 
   const best = [...options].sort((a, b) => a.minutes - b.minutes)[0];
   const recommended = route <= 1500 ? options[0] : best;
-  const km = route >= 1000 ? `${(route / 1000).toFixed(1)} km` : `${Math.round(route / 10) * 10} m`;
-  const summary =
-    straight < 80
-      ? `You are already at ${place.name}.`
-      : `${place.name} is about ${km} away. ${recommended.label}: roughly ${recommended.minutes} min.`;
+  const km =
+    route >= 1000
+      ? `${new Intl.NumberFormat(DATE_LOCALE[locale], { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(route / 1000)} km`
+      : `${Math.round(route / 10) * 10} m`;
+  const summary = straight < 80 ? t.alreadyThere(place.name) : t.summary(place.name, km, recommended.label, recommended.minutes);
 
   return {
     destination: place.name,

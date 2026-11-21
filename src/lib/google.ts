@@ -2,6 +2,8 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
+import type { Locale } from "@/i18n/config";
+import { settings } from "@/i18n/messages/settings";
 import type { User } from "./auth";
 import { exportItems, localStamp, type ExportItem } from "./export";
 import { TIME_ZONE, addDays, formatMinutes } from "./time";
@@ -18,10 +20,15 @@ const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 const API = "https://www.googleapis.com/calendar/v3";
 const CALENDAR_NAME = "UPT Orar";
 
+/**
+ * A failure talking to Google. `known` messages are written by this app in the student's
+ * language; the others are Google's own (English) explanations.
+ */
 export class GoogleError extends Error {
   constructor(
     message: string,
     readonly status?: number,
+    readonly known = false,
   ) {
     super(message);
     this.name = "GoogleError";
@@ -117,10 +124,12 @@ function toGoogleEvent(item: ExportItem) {
 
 /**
  * Replaces the contents of the student's "UPT Orar" Google calendar with their current
- * timetable. Returns how many events were written.
+ * timetable. Returns how many events were written. Event texts and the app's own error
+ * messages are in `locale`.
  */
-export async function syncToGoogle(user: User): Promise<{ events: number; calendarId: string }> {
-  if (!user.googleRefreshToken) throw new GoogleError("Google Calendar is not connected.");
+export async function syncToGoogle(user: User, locale: Locale = user.locale ?? "en"): Promise<{ events: number; calendarId: string }> {
+  const t = settings[locale].export.google;
+  if (!user.googleRefreshToken) throw new GoogleError(t.notConnected, undefined, true);
   const db = getDb();
   let accessToken: string;
   try {
@@ -129,7 +138,7 @@ export async function syncToGoogle(user: User): Promise<{ events: number; calend
     if (err instanceof GoogleError && err.status === 400) {
       // The student revoked access (or the token expired): require a fresh connect.
       db.update(users).set({ googleRefreshToken: null, googleCalendarId: null }).where(eq(users.id, user.id)).run();
-      throw new GoogleError("Google access was revoked. Connect Google Calendar again.");
+      throw new GoogleError(t.revoked, undefined, true);
     }
     throw err;
   }
@@ -166,7 +175,7 @@ export async function syncToGoogle(user: User): Promise<{ events: number; calend
     pageToken = page.nextPageToken;
   } while (pageToken);
 
-  const items = exportItems(user);
+  const items = exportItems(user, locale);
   for (const item of items) await call(accessToken, "POST", base, toGoogleEvent(item));
 
   db.update(users).set({ googleSyncedAt: new Date().toISOString() }).where(eq(users.id, user.id)).run();

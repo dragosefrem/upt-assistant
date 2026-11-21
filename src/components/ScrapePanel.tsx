@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale, useT } from "@/i18n/client";
+import { DATE_LOCALE } from "@/i18n/config";
+import { TIME_ZONE } from "@/lib/time";
 
 interface Run {
   id: number;
@@ -23,6 +26,8 @@ const STATUS_STYLE: Record<string, string> = {
 
 /** Controls for the scraping engine, with the log of the run in progress. */
 export function ScrapePanel({ faculties, initialRuns }: { faculties: Array<{ id: number; label: string }>; initialRuns: Run[] }) {
+  const t = useT().admin.scrape;
+  const locale = useLocale();
   const router = useRouter();
   const [catalog, setCatalog] = useState(true);
   const [timetables, setTimetables] = useState(true);
@@ -70,7 +75,7 @@ export function ScrapePanel({ faculties, initialRuns }: { faculties: Array<{ id:
         body: JSON.stringify({ catalog, timetables, exams, dryRun, facultyIds: selected }),
       });
       const data = await res.json();
-      if (!res.ok && !data.runId) throw new Error(data.error ?? "The scrape could not be started.");
+      if (!res.ok && !data.runId) throw new Error(data.error ?? t.couldNotStart);
       if (!res.ok) setError(data.error);
       if (data.runId) await poll(data.runId);
     } catch (err) {
@@ -94,16 +99,16 @@ export function ScrapePanel({ faculties, initialRuns }: { faculties: Array<{ id:
     <div className="grid gap-6 lg:grid-cols-[20rem_1fr]">
       <div className="space-y-4">
         <div className="space-y-3">
-          {check("University structure", catalog, setCatalog, "Faculties, programmes and specializations from upt.ro")}
-          {check("Timetables", timetables, setTimetables, "Replace this semester's timetables from each faculty site")}
-          {check("Exams", exams, setExams, "Replace exam bookings where a faculty publishes them")}
-          {check("Dry run", dryRun, setDryRun, "Fetch and parse, but leave timetable and exam data unchanged")}
+          {check(t.catalog, catalog, setCatalog, t.catalogHint)}
+          {check(t.timetables, timetables, setTimetables, t.timetablesHint)}
+          {check(t.exams, exams, setExams, t.examsHint)}
+          {check(t.dryRun, dryRun, setDryRun, t.dryRunHint)}
         </div>
         <div>
-          <p className="label">Faculties</p>
+          <p className="label">{t.faculties}</p>
           <div className="flex flex-wrap gap-1.5">
             <button className={`rounded-full border px-2.5 py-1 text-xs ${selected.length === 0 ? "border-brand-500 bg-brand-50 text-brand-700" : "border-slate-200 text-slate-600"}`} onClick={() => setSelected([])}>
-              All
+              {t.all}
             </button>
             {faculties.map((f) => {
               const on = selected.includes(f.id);
@@ -119,10 +124,10 @@ export function ScrapePanel({ faculties, initialRuns }: { faculties: Array<{ id:
               );
             })}
           </div>
-          {!faculties.length && <p className="text-xs text-slate-500">No faculties yet — the first run imports them.</p>}
+          {!faculties.length && <p className="text-xs text-slate-500">{t.noFaculties}</p>}
         </div>
         <button className="btn-primary w-full" onClick={start} disabled={starting || running}>
-          {running ? "Scrape in progress…" : starting ? "Starting…" : dryRun ? "Run dry scrape" : "Scrape and replace data"}
+          {running ? t.inProgress : starting ? t.starting : dryRun ? t.runDry : t.runReplace}
         </button>
         {error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       </div>
@@ -135,22 +140,26 @@ export function ScrapePanel({ faculties, initialRuns }: { faculties: Array<{ id:
               onClick={() => setActive(r)}
               className={`rounded-full px-2.5 py-1 text-xs ${active?.id === r.id ? "ring-2 ring-brand-500" : ""} ${STATUS_STYLE[r.status] ?? "bg-slate-100 text-slate-600"}`}
             >
-              #{r.id} {r.status}{r.dryRun ? " (dry)" : ""}
+              #{r.id} {t.status[r.status] ?? r.status}{r.dryRun ? ` ${t.dry}` : ""}
             </button>
           ))}
         </div>
         {active ? (
           <>
             <p className="mb-2 text-xs text-slate-500">
-              Run #{active.id} · {active.scope} · started {new Date(active.startedAt).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}
-              {active.finishedAt ? ` · took ${Math.max(1, Math.round((+new Date(active.finishedAt) - +new Date(active.startedAt)) / 1000))} s` : ""}
+              {t.runInfo(
+                active.id,
+                active.scope.split("+").map((part) => t.scope[part] ?? part).join(" + "),
+                new Date(active.startedAt).toLocaleString(DATE_LOCALE[locale], { dateStyle: "medium", timeStyle: "short", timeZone: TIME_ZONE }),
+              )}
+              {active.finishedAt ? t.took(Math.max(1, Math.round((+new Date(active.finishedAt) - +new Date(active.startedAt)) / 1000))) : ""}
             </p>
             <pre ref={logRef} className="h-80 overflow-auto whitespace-pre-wrap rounded-xl bg-slate-900 p-3 font-mono text-xs leading-relaxed text-slate-100">
-              {active.log || "Starting…"}
+              {active.log || t.starting}
             </pre>
           </>
         ) : (
-          <p className="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">No scrape has been run yet.</p>
+          <p className="rounded-xl border border-dashed border-slate-300 p-6 text-sm text-slate-500">{t.noRuns}</p>
         )}
       </div>
     </div>

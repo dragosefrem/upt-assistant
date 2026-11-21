@@ -1,23 +1,23 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocale, useT } from "@/i18n/client";
+import { kindLabel } from "@/lib/kinds";
 import type { CalEvent } from "@/lib/schedule";
-import { addDays, formatDate, formatMinutes, formatTimeSlot, nowLocal } from "@/lib/time";
+import { addDays, capitalize, formatDate, formatMinutes, formatTimeSlot, nowLocal } from "@/lib/time";
 import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
 import { TripSuggestions } from "./TripSuggestions";
 
-function inWords(minutes: number): string {
-  if (minutes < 1) return "now";
-  if (minutes < 60) return `in ${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  return `in ${h} h${m ? ` ${m} min` : ""}`;
-}
-
 /** "What day is it and what's next": today's date, the class in progress and the next one. */
 export function NextUp({ initial }: { initial: CalEvent[] }) {
+  const t = useT().calendar.nextUp;
+  const locale = useLocale();
   const [events, setEvents] = useState(initial);
   const [now, setNow] = useState(() => nowLocal());
+  const loadedLocale = useRef(locale);
+
+  const inWords = (minutes: number) =>
+    minutes < 1 ? t.startsNow : minutes < 60 ? t.inMinutes(minutes) : t.inHours(Math.floor(minutes / 60), minutes % 60);
 
   const reload = useCallback(async () => {
     const today = nowLocal().date;
@@ -40,6 +40,13 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
     };
   }, [reload]);
 
+  // Event notes are written in the interface language: fetch again after a language switch.
+  useEffect(() => {
+    if (loadedLocale.current === locale) return;
+    loadedLocale.current = locale;
+    void reload();
+  }, [locale, reload]);
+
   const current = events.find((e) => e.date === now.date && e.startMin <= now.minutes && e.endMin > now.minutes);
   const next = events.find((e) => e.date > now.date || (e.date === now.date && e.startMin > now.minutes));
   const leftToday = events.filter((e) => e.date === now.date && e.endMin > now.minutes).length;
@@ -51,7 +58,7 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label} · {when}</p>
         <p className="truncate font-semibold text-slate-900">{e.title}</p>
         <p className="text-sm text-slate-600">
-          {formatTimeSlot(e.startMin, e.endMin)} · {kindStyle(e.kind).label}
+          {formatTimeSlot(e.startMin, e.endMin)} · {kindLabel(e.kind, locale)}
           {e.room ? ` · ${e.room}` : ""}
           {e.place ? ` · ${e.place.name}` : ""}
         </p>
@@ -61,23 +68,23 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
 
   return (
     <section className="card p-4">
-      <div className="mb-3 flex items-baseline justify-between gap-3">
-        <h2 className="text-lg font-semibold tracking-tight text-slate-900">{formatDate(now.date, { weekday: "long", day: "numeric", month: "long" })}</h2>
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <h2 className="text-lg font-semibold tracking-tight text-slate-900">{capitalize(formatDate(now.date, { weekday: "long", day: "numeric", month: "long" }, locale))}</h2>
         <span className="text-sm tabular-nums text-slate-500">
-          {formatMinutes(now.minutes)} · {leftToday ? `${leftToday} left today` : "nothing left today"}
+          {formatMinutes(now.minutes)} · {leftToday ? t.leftToday(leftToday) : t.nothingLeft}
         </span>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        {current && row("Now", current, `until ${formatMinutes(current.endMin)}`)}
+        {current && row(t.now, current, t.until(formatMinutes(current.endMin)))}
         {next ? (
           <div className="space-y-1.5">
-            {row("Next", next, next.date === now.date ? inWords(next.startMin - now.minutes) : formatDate(next.date, { weekday: "long", day: "numeric", month: "short" }))}
+            {row(t.next, next, next.date === now.date ? inWords(next.startMin - now.minutes) : formatDate(next.date, { weekday: "long", day: "numeric", month: "short" }, locale))}
             {next.place && next.date === now.date && (
               <div className="pl-[1.375rem]"><TripSuggestions room={next.room} startMin={next.startMin} compact /></div>
             )}
           </div>
         ) : (
-          !current && <p className="text-sm text-slate-600">Nothing coming up in the next two weeks.</p>
+          !current && <p className="text-sm text-slate-600">{t.nothingSoon}</p>
         )}
       </div>
     </section>

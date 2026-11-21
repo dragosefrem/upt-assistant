@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "@/i18n/client";
 import { Assistant } from "./Assistant";
 import { ASK_ASSISTANT, MASCOT_HAPPY_SRC } from "./Mascot";
 import { burstFrom, OPEN_CHAT } from "./poliFx";
@@ -11,6 +12,7 @@ import { burstFrom, OPEN_CHAT } from "./poliFx";
  * The assistant stays mounted while closed, so questions from the quick buttons still reach it.
  */
 export function PoliChat() {
+  const t = useT().calendar.poli;
   const [open, setOpen] = useState(false);
   const [boop, setBoop] = useState(false);
   const [blink, setBlink] = useState(false);
@@ -80,14 +82,14 @@ export function PoliChat() {
       </div>
 
       <p className={`poli-speech fixed bottom-12 right-[7.5rem] z-50 ${hello && !open ? "poli-show" : ""}`} aria-hidden>
-        Salut! Apasă-mă 👋
+        {t.hello}
       </p>
 
       <button
         ref={button}
         onClick={press}
         className={`poli-fab fixed bottom-6 right-6 z-[55] ${boop ? "poli-boop" : ""} ${open ? "poli-is-open" : ""}`}
-        aria-label={open ? "Close the chat with Poli" : "Chat with Poli"}
+        aria-label={open ? t.closeChat : t.chat}
         aria-expanded={open}
         aria-controls="poli-chat"
       >

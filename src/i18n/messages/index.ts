@@ -11,6 +11,7 @@ import { guide } from "./guide";
 import { landing } from "./landing";
 import { onboarding } from "./onboarding";
 import { settings } from "./settings";
+import { study } from "./study";
 
 /**
  * Every text the interface shows, in each language. One file per area of the app; the
@@ -35,6 +36,7 @@ export const messages = {
     landing: landing.en,
     onboarding: onboarding.en,
     settings: settings.en,
+    study: study.en,
   },
   ro: {
     admin: admin.ro,
@@ -50,6 +52,7 @@ export const messages = {
     landing: landing.ro,
     onboarding: onboarding.ro,
     settings: settings.ro,
+    study: study.ro,
   },
 };
 

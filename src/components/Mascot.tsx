@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- a small static picture; next/image adds nothing here */
 import { useEffect, useRef, useState } from "react";
+import { useT } from "@/i18n/client";
 import { burstFrom, OPEN_CHAT } from "./poliFx";
 
 /**
@@ -27,6 +28,7 @@ export function Mascot({
   wave?: boolean;
   chat?: boolean;
 }) {
+  const t = useT().calendar.poli;
   const [jump, setJump] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
@@ -50,8 +52,8 @@ export function Mascot({
       type="button"
       onClick={press}
       className={`poli-hit inline-flex shrink-0 rounded-full ${className}`}
-      aria-label={chat ? "Chat with Poli" : "Poli"}
-      title={chat ? "Chat with Poli" : undefined}
+      aria-label={chat ? t.chat : "Poli"}
+      title={chat ? t.chat : undefined}
     >
       <img
         src={jump ? MASCOT_HAPPY_SRC : MASCOT_SRC}

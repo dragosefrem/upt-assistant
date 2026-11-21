@@ -15,11 +15,11 @@ export function groupAvailability(user: User, contactIds: string[], range?: Date
   const { from, to } = range ?? nextDays(today, 7);
   const span = daysBetween(from, to);
   if (!Number.isInteger(span) || from < today || span < 0 || span >= PLANNING_PAGE_DAYS) {
-    throw new InvitationError("Choose a valid page of upcoming dates.");
+    throw new InvitationError("invalidPage");
   }
   const ids = [...new Set(contactIds)];
   const others = acceptedScheduleContacts(user.id, ids);
-  if (others.length !== ids.length) throw new InvitationError("Choose people from your accepted contacts.");
+  if (others.length !== ids.length) throw new InvitationError("notContacts");
   const busy = [user, ...others].flatMap((person) => [
     ...eventsBetween(person, from, to),
     ...tentativeTimesFor(person.id, from, to),
@@ -44,26 +44,26 @@ export function createGroupEvent(user: User, booking: Booking) {
   const title = booking.title.trim();
   const location = booking.location.trim();
   const contactIds = [...new Set(booking.contactIds)];
-  if (!title || title.length > 120) throw new InvitationError("Enter an event title of up to 120 characters.");
-  if (location.length > 200) throw new InvitationError("Use a location of up to 200 characters.");
-  if (!contactIds.length && !share) throw new InvitationError("Choose a contact or enable a guest link.");
+  if (!title || title.length > 120) throw new InvitationError("title");
+  if (location.length > 200) throw new InvitationError("location");
+  if (!contactIds.length && !share) throw new InvitationError("noInvitees");
   const endMin = startMin + duration;
   if (!Number.isInteger(startMin) || startMin < 0 || !Number.isInteger(duration) || duration < 1 || endMin > 1440) {
-    throw new InvitationError("Choose a start time and duration within one free window.");
+    throw new InvitationError("window");
   }
   const start = localInstant(`${date}T${formatMinutes(startMin)}`);
   if (start === null || start <= Date.now() || (endMin < 1440 && localInstant(`${date}T${formatMinutes(endMin)}`) === null)) {
-    throw new InvitationError("Choose a valid future time in Timișoara.");
+    throw new InvitationError("futureTime");
   }
   const deadline = localInstant(booking.deadline);
   return getDb().transaction((tx) => {
     if (deadline === null || deadline <= Date.now() || deadline > start) {
-      throw new InvitationError("Set the reply deadline after now and at or before the event starts.");
+      throw new InvitationError("deadline");
     }
     // Check the current calendars and contact permissions under the same write lock as the booking.
     const windows = groupAvailability(user, contactIds, { from: date, to: date });
     if (!windows.some((w) => w.startMin <= startMin && endMin <= w.endMin)) {
-      throw new InvitationError("That time is no longer free for everyone. Check the available times again.");
+      throw new InvitationError("taken");
     }
     const id = randomUUID();
     tx.insert(groupEvents).values({

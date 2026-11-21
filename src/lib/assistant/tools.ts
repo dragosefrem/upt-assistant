@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { buildings, exams, faculties, occurrenceOverrides, personalEvents, savedContacts, userOverrides } from "@/db/schema";
 import type { User } from "../auth";
-import { planTrip, type LatLng } from "../directions";
+import { planTrip } from "../directions";
 import { emailCalendar } from "../export-email";
 import {
   currentSemester,
@@ -23,63 +23,14 @@ import {
 } from "../schedule";
 import { DAY_NAMES, addDays, formatMinutes, nowLocal, weekday } from "../time";
 import type { AssistantChoice, StoredPreview } from "./choices";
+import { brief, fold, isDate, num, parseClock, str, type AssistantTool, type ToolContext } from "./toolkit";
+
+export type { AssistantTool, ToolContext } from "./toolkit";
 
 /**
  * The assistant's capabilities. The same handlers serve Claude (as custom tools) and
  * the built-in keyword assistant, so both give answers from identical data.
  */
-
-export interface ToolContext {
-  user: User;
-  /** Browser geolocation, when the student has shared it. */
-  location: LatLng | null;
-  /** Set by a handler that changed the student's timetable, so the UI can refresh. */
-  changed: boolean;
-  /** Tappable choices to show under the reply (set by show_choices). */
-  choices?: AssistantChoice[];
-  /** A proposed calendar change to preview for the student (set by add/move without `confirmed`). */
-  preview?: StoredPreview;
-}
-
-export interface AssistantTool {
-  name: string;
-  description: string;
-  input_schema: { type: "object"; properties: Record<string, unknown>; required?: string[] };
-  /** Returns the result, or a promise of it for tools that do I/O (such as sending e-mail). */
-  run(input: Record<string, unknown>, ctx: ToolContext): unknown;
-}
-
-const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : undefined);
-const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
-const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
-
-function parseClock(v: unknown): number | undefined {
-  const m = typeof v === "string" ? /^(\d{1,2})(?::(\d{2}))?$/.exec(v.trim()) : null;
-  if (!m) return undefined;
-  const minutes = +m[1] * 60 + +(m[2] ?? 0);
-  return minutes >= 0 && minutes <= 24 * 60 ? minutes : undefined;
-}
-
-const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-
-function brief(e: CalEvent) {
-  return {
-    type: e.type,
-    kind: e.kind,
-    title: e.title,
-    date: e.date,
-    weekday: DAY_NAMES[weekday(e.date)],
-    start: formatMinutes(e.startMin),
-    end: e.endMin === e.startMin ? null : formatMinutes(e.endMin),
-    room: e.room,
-    building: e.place?.name ?? null,
-    address: e.place?.address ?? null,
-    teacher: e.teacher,
-    note: e.note,
-    // Lets the assistant name exactly which of the student's own events to move or delete.
-    ...(e.personalId != null ? { personal_event_id: e.personalId } : {}),
-  };
-}
 
 /** Weekly entries whose course matches a free-text name or acronym. */
 function matchEntries(week: WeekEntry[], course: string, kind?: string, day?: number): WeekEntry[] {

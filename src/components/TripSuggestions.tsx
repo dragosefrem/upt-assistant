@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale, useT } from "@/i18n/client";
 import type { Directions } from "@/lib/directions";
 import { formatMinutes } from "@/lib/time";
 import { useLocation } from "./LocationProvider";
 
 /** Travel suggestions from the student's position to the building of `room`. */
 export function TripSuggestions({ room, startMin, compact = false }: { room: string | null; startMin?: number; compact?: boolean }) {
+  const t = useT().calendar.trip;
+  // The route's labels and summary come back in the interface language; refetch when it changes.
+  const locale = useLocale();
   const { position, status, enable } = useLocation();
   const [trip, setTrip] = useState<Directions | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -26,40 +30,40 @@ export function TripSuggestions({ room, startMin, compact = false }: { room: str
           setError(null);
         } else {
           setTrip(null);
-          setError(data.error ?? "No directions available.");
+          setError(data.error ?? t.unavailable);
         }
       })
-      .catch(() => !cancelled && setError("Could not load directions."));
+      .catch(() => !cancelled && setError(t.loadFailed));
     return () => {
       cancelled = true;
     };
-  }, [lat, lng, room]);
+  }, [lat, lng, room, locale, t]);
 
   if (!position) {
     return (
       <div className={compact ? "text-xs text-slate-500" : "rounded-lg bg-slate-50 p-3 text-sm text-slate-600"}>
         {status === "denied" ? (
-          "Location access is blocked in your browser. Allow it for this site to get travel suggestions."
+          t.blocked
         ) : status === "unsupported" ? (
-          "This browser cannot share a location."
+          t.unsupported
         ) : (
           <button className={compact ? "font-medium text-brand-600 hover:underline" : "btn-secondary"} onClick={enable}>
-            {status === "asking" ? "Waiting for your location…" : "Use my location for directions"}
+            {status === "asking" ? t.waiting : t.enable}
           </button>
         )}
       </div>
     );
   }
   if (error) return <p className="text-xs text-slate-500">{error}</p>;
-  if (!trip) return <p className="text-xs text-slate-400">Working out the route…</p>;
+  if (!trip) return <p className="text-xs text-slate-400">{t.working}</p>;
 
   const leaveBy = startMin !== undefined && trip.leaveMinutesBefore > 0 ? formatMinutes(Math.max(0, startMin - trip.leaveMinutesBefore)) : null;
   if (compact) {
     return (
       <p className="text-xs text-slate-600">
         {trip.summary}
-        {leaveBy && <span className="font-medium text-slate-900"> Leave by {leaveBy}.</span>}{" "}
-        <a className="font-medium text-brand-600 hover:underline" href={trip.options[0].mapsUrl} target="_blank" rel="noreferrer">Open map</a>
+        {leaveBy && <span className="font-medium text-slate-900"> {t.leaveBy(leaveBy)}</span>}{" "}
+        <a className="font-medium text-brand-600 hover:underline" href={trip.options[0].mapsUrl} target="_blank" rel="noreferrer">{t.openMap}</a>
       </p>
     );
   }
@@ -67,7 +71,7 @@ export function TripSuggestions({ room, startMin, compact = false }: { room: str
     <div className="rounded-lg bg-slate-50 p-3 text-sm">
       <p className="text-slate-700">
         {trip.summary}
-        {leaveBy && <span className="font-medium text-slate-900"> Leave by {leaveBy} to be on time.</span>}
+        {leaveBy && <span className="font-medium text-slate-900"> {t.leaveByOnTime(leaveBy)}</span>}
       </p>
       <ul className="mt-2 flex flex-wrap gap-2">
         {trip.options.map((o) => (
@@ -78,7 +82,7 @@ export function TripSuggestions({ room, startMin, compact = false }: { room: str
           </li>
         ))}
       </ul>
-      {trip.approximate && <p className="mt-2 text-xs text-slate-500">The building position is approximate.</p>}
+      {trip.approximate && <p className="mt-2 text-xs text-slate-500">{t.approximate}</p>}
     </div>
   );
 }

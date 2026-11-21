@@ -2,6 +2,9 @@ import "server-only";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { attendance, courses, entries, exams, personalEvents, userOverrides, type AttendanceStatus } from "@/db/schema";
+import type { Locale } from "@/i18n/config";
+import { attendance as attendanceText } from "@/i18n/messages/attendance";
+import { common } from "@/i18n/messages/common";
 import type { User } from "./auth";
 import { currentSemester, eventsBetween, placeResolver, studentWeek, type Place } from "./schedule";
 import { describeWeeks, weekday } from "./time";
@@ -19,16 +22,19 @@ export type MarkResult = { ok: true; status: AttendanceStatus | null } | { ok: f
  * Records (or with `status: null`, clears) whether the student attended one occurrence.
  *
  * The occurrence is looked up in the student's own calendar for that date, so only
- * real events can be marked and the stored title/time come from the server.
+ * real events can be marked and the stored title/time come from the server. `locale` is
+ * the language of the error message.
  */
 export function markAttendance(
   user: User,
   input: { eventId: string; date: string; status: AttendanceStatus | null },
   today: string,
+  locale: Locale = "en",
 ): MarkResult {
-  if (!isMarkable(input.date, today)) return { ok: false, status: 400, error: "This event has not happened yet. You can mark attendance from its day onwards." };
+  const t = attendanceText[locale].errors;
+  if (!isMarkable(input.date, today)) return { ok: false, status: 400, error: t.notYet };
   const event = eventsBetween(user, input.date, input.date).find((e) => e.id === input.eventId && e.date === input.date);
-  if (!event) return { ok: false, status: 404, error: "This event is no longer in your calendar." };
+  if (!event) return { ok: false, status: 404, error: t.notInCalendar };
 
   const db = getDb();
   const where = and(eq(attendance.userId, user.id), eq(attendance.seriesKey, event.seriesKey), eq(attendance.date, event.date));
@@ -164,7 +170,8 @@ export interface SeriesDetails {
 type DetailFields = Omit<SeriesDetails, "source" | "place" | "examDates"> & { examDate: string | null };
 
 /** Details of one calendar series from the current timetable, exams or personal events. */
-function lookupSeries(user: User, seriesKey: string, week: ReturnType<typeof studentWeek>): DetailFields | null {
+function lookupSeries(user: User, seriesKey: string, week: ReturnType<typeof studentWeek>, locale: Locale): DetailFields | null {
+  const t = attendanceText[locale].details;
   const db = getDb();
   const [type, ...rest] = seriesKey.split(":");
   const key = rest.join(":");
@@ -178,10 +185,10 @@ function lookupSeries(user: User, seriesKey: string, week: ReturnType<typeof stu
         title: current.title,
         abbr: current.abbr,
         kind: current.kind,
-        weeks: describeWeeks(current.weeks) ?? "Every week",
+        weeks: describeWeeks(current.weeks, locale) ?? t.everyWeek,
         room: current.room,
         teacher: current.teacher,
-        note: [current.moved ? "moved by you" : null, current.note].filter(Boolean).join(" · ") || null,
+        note: [current.moved ? common[locale].time.movedByYou : null, current.note].filter(Boolean).join(" · ") || null,
       };
     }
     // Still imported but not on the student's timetable (hidden, or course unticked).
@@ -197,17 +204,17 @@ function lookupSeries(user: User, seriesKey: string, week: ReturnType<typeof stu
       title: row.course.name,
       abbr: row.course.abbreviation,
       kind: row.entry.kind,
-      weeks: describeWeeks(row.entry.weeks) ?? "Every week",
+      weeks: describeWeeks(row.entry.weeks, locale) ?? t.everyWeek,
       room: row.entry.room,
       teacher: row.entry.teacher,
-      note: hidden ? "hidden from your timetable" : "not on your timetable any more",
+      note: hidden ? t.hidden : t.notOnTimetable,
     };
   }
 
   if (type === "x") {
     const x = db.select().from(exams).where(eq(exams.key, key)).get();
     if (!x) return null;
-    return { title: x.courseName, abbr: x.courseAbbr, kind: "exam", weeks: "Once", room: x.room, teacher: x.teacher, note: null, examDate: x.date, audience: x.audience };
+    return { title: x.courseName, abbr: x.courseAbbr, kind: "exam", weeks: t.once, room: x.room, teacher: x.teacher, note: null, examDate: x.date, audience: x.audience };
   }
 
   if (type === "p") {
@@ -217,7 +224,7 @@ function lookupSeries(user: User, seriesKey: string, week: ReturnType<typeof stu
       .where(and(eq(personalEvents.id, Number(key)), eq(personalEvents.userId, user.id)))
       .get();
     if (!p) return null;
-    return { ...base, title: p.title, abbr: null, kind: "personal", weeks: p.date ? "Once" : "Every week", room: p.location, teacher: null, note: null };
+    return { ...base, title: p.title, abbr: null, kind: "personal", weeks: p.date ? t.once : t.everyWeek, room: p.location, teacher: null, note: null };
   }
   return null;
 }
@@ -226,9 +233,9 @@ function lookupSeries(user: User, seriesKey: string, week: ReturnType<typeof stu
  * Details for every series card, keyed by `SeriesTally.key`. Current data wins; when
  * the event has left the timetable, the room/teacher saved with the marks are used.
  * A slot fed by several timetable entries (e.g. odd- and even-week rows) lists each
- * distinct value.
+ * distinct value. `locale` is the language of the weeks and notes.
  */
-export function seriesDetails(user: User, series: SeriesTally[]): Map<string, SeriesDetails> {
+export function seriesDetails(user: User, series: SeriesTally[], locale: Locale = "en"): Map<string, SeriesDetails> {
   const semester = currentSemester();
   const week = semester && user.groupId ? studentWeek(user, semester) : [];
   const place = placeResolver(user.facultyId);
@@ -237,7 +244,7 @@ export function seriesDetails(user: User, series: SeriesTally[]): Map<string, Se
 
   for (const s of series) {
     const found = s.seriesKeys.map((k) => {
-      if (!cache.has(k)) cache.set(k, lookupSeries(user, k, week));
+      if (!cache.has(k)) cache.set(k, lookupSeries(user, k, week, locale));
       return cache.get(k)!;
     });
     const parts: DetailFields[] = found.every((f) => f === null)
@@ -250,7 +257,7 @@ export function seriesDetails(user: User, series: SeriesTally[]): Map<string, Se
             weeks: null,
             room: r.room,
             teacher: r.teacher,
-            note: "no longer in your calendar — details as saved when you marked it",
+            note: attendanceText[locale].details.gone,
             examDate: r.kind === "exam" ? r.date : null,
             audience: null,
           };

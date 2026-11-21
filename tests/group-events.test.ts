@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as restoreGuest } from "@/app/join/[token]/manage/[key]/route";
 import { getDb } from "@/db";
 import { courses, entries, entryGroups, exams, examSpecializations, faculties, groups, personalEvents, semesters, specializations, userOverrides, users } from "@/db/schema";
-import { answerContact, cancelContactRequest, contactList, findPerson, incomingContactCount, inviteContact, removeContact } from "@/lib/contacts";
+import { answerContact, cancelContactRequest, contactList, findPerson, incomingContactCount, invitationFailure, InvitationError, inviteContact, removeContact } from "@/lib/contacts";
 import { contactWeek } from "@/lib/contact-schedule";
 import { exportItems, toICS } from "@/lib/export";
 import { groupInviteCount, memberEvent, myGroupEvents, publicEvent, respondToEvent, sharedEventsFor } from "@/lib/group-events";
@@ -299,4 +299,18 @@ it("resolves creator deadlines in campus time across clock changes", () => {
   expect(localInstant("2026-03-29T03:15")).toBeNull();
   expect(localInstant("2026-10-25T03:15")).toBe(Date.parse("2026-10-25T00:15:00Z"));
   expect(localInstant("2026-02-30T20:00")).toBeNull();
+});
+
+it("keeps a stable code on invitation errors and shows them in the visitor's language", () => {
+  const error = (() => { try { inviteContact("alex", "nobody@example.org"); } catch (e) { return e; } })();
+  expect(error).toBeInstanceOf(InvitationError);
+  expect(error).toMatchObject({ code: "noAccount", message: "No account has that e-mail address." });
+  expect(invitationFailure(error)).toEqual({ error: "No account has that e-mail address." });
+  expect(invitationFailure(error, "ro")).toEqual({ error: "Niciun cont nu are adresa asta de e-mail." });
+  expect(() => invitationFailure(new Error("disk full"), "ro")).toThrow("disk full");
+  connect("bea");
+  db.insert(personalEvents).values({ userId: "bea", title: "Dentist", day: 5, startMin: 600, endMin: 660 }).run();
+  expect(contactWeek("alex", "bea", friday, "ro")?.events).toEqual([
+    { date: friday, startMin: 600, endMin: 660, title: "Ocupat", kind: "busy", room: null },
+  ]);
 });

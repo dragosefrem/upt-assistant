@@ -1,24 +1,22 @@
 "use client";
 
+import { useT } from "@/i18n/client";
 import { Mascot, askAssistant } from "./Mascot";
 
+/** Chips in display order; label and question come from the catalogue, in the interface language. */
 const ACTIONS = [
-  { emoji: "⏭️", label: "What's next?", question: "What's next?" },
-  { emoji: "📅", label: "Tomorrow", question: "Ce am mâine?" },
-  { emoji: "📝", label: "My exams", question: "Where is my next exam?" },
-  { emoji: "☕", label: "Free time", question: "When am I free this week?" },
-  { emoji: "🧭", label: "Directions", question: "Cum ajung la sala următoare?" },
-];
-
-function greeting(hour: number) {
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Hi";
-  return "Good evening";
-}
+  { key: "next", emoji: "⏭️" },
+  { key: "tomorrow", emoji: "📅" },
+  { key: "exams", emoji: "📝" },
+  { key: "free", emoji: "☕" },
+  { key: "directions", emoji: "🧭" },
+] as const;
 
 /** Friendly welcome card: a greeting from the mascot and one-tap questions for the assistant. */
 export function QuickActions({ name, hour }: { name: string; hour: number }) {
+  const t = useT().calendar.quick;
   const first = name.split(/\s+/)[0] || name;
+  const greeting = hour < 12 ? t.morning : hour < 18 ? t.day : t.evening;
   return (
     <section className="card relative overflow-hidden bg-gradient-to-br from-brand-600 to-brand-500 p-4 text-white sm:p-5">
       <div aria-hidden className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
@@ -28,19 +26,19 @@ export function QuickActions({ name, hour }: { name: string; hour: number }) {
           <Mascot size={64} wave />
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{greeting(hour)}, {first}! 👋</h1>
-          <p className="mt-0.5 text-sm text-white/85">I&apos;m Poli. Tap a question, or ask me anything in the chat.</p>
+          <h1 className="text-xl font-bold tracking-tight sm:text-2xl">{t.hello(greeting, first)}</h1>
+          <p className="mt-0.5 text-sm text-white/85">{t.intro}</p>
         </div>
       </div>
       <div className="relative mt-4 flex flex-wrap gap-2">
         {ACTIONS.map((a) => (
           <button
-            key={a.label}
-            onClick={() => askAssistant(a.question)}
+            key={a.key}
+            onClick={() => askAssistant(t.chips[a.key].question)}
             className="inline-flex items-center gap-1.5 rounded-full bg-white/95 px-3.5 py-1.5 text-sm font-medium text-brand-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-white hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
           >
             <span aria-hidden>{a.emoji}</span>
-            {a.label}
+            {t.chips[a.key].label}
           </button>
         ))}
       </div>

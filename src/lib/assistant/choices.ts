@@ -14,6 +14,28 @@ export interface AssistantChoice {
   end?: string;
 }
 
+/** A button under a reply that opens a page of the app (a walkthrough, a group event). */
+export interface AssistantLink {
+  label: string;
+  /** In-app address starting with "/". */
+  href: string;
+}
+
+/** Reads links stored with a chat message; only in-app addresses survive. */
+export function parseLinks(json: string | null | undefined): AssistantLink[] | undefined {
+  if (!json) return undefined;
+  try {
+    const list = JSON.parse(json) as unknown;
+    if (!Array.isArray(list)) return undefined;
+    const valid = list.filter(
+      (l): l is AssistantLink => !!l && typeof l === "object" && typeof l.label === "string" && typeof l.href === "string" && /^\/(?!\/)/.test(l.href),
+    );
+    return valid.length ? valid : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** One event on the day shown in a change preview. */
 export interface PreviewEvent {
   title: string;

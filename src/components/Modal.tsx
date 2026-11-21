@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import { useT } from "@/i18n/client";
 
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+  const t = useT();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -13,7 +15,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
       <div role="dialog" aria-modal="true" aria-label={title} className="max-h-[90vh] w-full max-w-md overflow-auto rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
         <div className="mb-3 flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold leading-snug text-slate-900">{title}</h3>
-          <button className="btn-ghost -mr-2 -mt-1 px-2" onClick={onClose} aria-label="Close">✕</button>
+          <button className="btn-ghost -mr-2 -mt-1 px-2" onClick={onClose} aria-label={t.common.actions.close} title={t.common.actions.close}>✕</button>
         </div>
         {children}
       </div>

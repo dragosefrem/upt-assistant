@@ -3,6 +3,9 @@ import { and, eq, isNull, lt, or } from "drizzle-orm";
 import type { Transporter } from "nodemailer";
 import { getDb } from "@/db";
 import { users } from "@/db/schema";
+import type { Locale } from "@/i18n/config";
+import { common } from "@/i18n/messages/common";
+import { settings } from "@/i18n/messages/settings";
 import type { User } from "./auth";
 import { exportItems, toICS } from "./export";
 import { mailConfigured, sendMail } from "./mail";
@@ -32,30 +35,14 @@ export function publicBaseUrl(appUrl = process.env.APP_URL): string | null {
   }
 }
 
-/** Subject, body and attachment of the calendar e-mail. */
-export function calendarEmail(opts: { ics: string; semester: string | null; feedUrl: string | null }) {
-  const lines = [
-    "Hi,",
-    "",
-    `Your UPT timetable is attached as upt-orar.ics: your classes, exams and own events${opts.semester ? ` for ${opts.semester}` : ""}.`,
-    "",
-    "To add it to your calendar:",
-    "- Google Calendar, on a computer: Settings > Import & export > Import, choose upt-orar.ics and the calendar to add it to. Tip: create a calendar called \"UPT Orar\" first, so you can remove it all in one go later.",
-    "- iPhone, iPad or Mac: open the attachment and choose Add All.",
-    "- Outlook: open the attachment and add it to your calendar.",
-    "",
-    "The file is a snapshot of your calendar today. After you change your group, courses or events, send it again from Settings > Export your calendar.",
-  ];
-  if (opts.feedUrl) {
-    lines.push(
-      "",
-      "To stay in sync automatically instead, subscribe to this link (in Google Calendar: Other calendars > + > From URL). Anyone with the link can see your timetable, so keep it to yourself:",
-      opts.feedUrl,
-    );
-  }
-  lines.push("", "UPT Orar");
+/** Subject, body and attachment of the calendar e-mail, in `locale` (default English). */
+export function calendarEmail(opts: { ics: string; semester: string | null; feedUrl: string | null; locale?: Locale }) {
+  const t = settings[opts.locale ?? "en"].mail;
+  const lines = [t.greeting, "", t.attached(opts.semester), "", t.howTo, t.google, t.apple, t.outlook, "", t.snapshot];
+  if (opts.feedUrl) lines.push("", t.subscribe, opts.feedUrl);
+  lines.push("", t.signature);
   return {
-    subject: "Your UPT timetable",
+    subject: t.subject,
     text: lines.join("\n"),
     attachments: [{ filename: "upt-orar.ics", content: opts.ics, contentType: "text/calendar; charset=utf-8; method=PUBLISH" }],
   };
@@ -66,15 +53,25 @@ export type EmailCalendarResult = { ok: true; sentTo: string } | { ok: false; st
 /**
  * E-mails the student's calendar to `to`, or to the address they used last time, or
  * to their sign-in address. A successful send remembers the address.
+ *
+ * `locale` is the language of the e-mail, the calendar inside it and the error messages:
+ * the account's language when it has one, else English. Callers serving a request pass
+ * `user.locale ?? <request language>`.
  */
-export async function emailCalendar(user: User, to?: string, transport?: Transporter): Promise<EmailCalendarResult> {
+export async function emailCalendar(
+  user: User,
+  to?: string,
+  transport?: Transporter,
+  locale: Locale = user.locale ?? "en",
+): Promise<EmailCalendarResult> {
+  const t = settings[locale].export.errors;
   if (!transport && !mailConfigured()) {
-    return { ok: false, status: 503, error: "Email isn't set up on this server yet, so download the .ics file instead." };
+    return { ok: false, status: 503, error: t.mailNotConfigured };
   }
   const address = (to ?? user.exportEmail ?? user.email).trim();
-  if (!isEmail(address)) return { ok: false, status: 400, error: "That doesn't look like an email address." };
-  const items = exportItems(user);
-  if (!items.length) return { ok: false, status: 409, error: "Your calendar is empty. Choose your group or add an event first." };
+  if (!isEmail(address)) return { ok: false, status: 400, error: t.badAddress };
+  const items = exportItems(user, locale);
+  if (!items.length) return { ok: false, status: 409, error: t.emptyCalendar };
 
   // Claim the send slot atomically, so a double click or a retry cannot send twice.
   const db = getDb();
@@ -88,15 +85,16 @@ export async function emailCalendar(user: User, to?: string, transport?: Transpo
     .run();
   if (claimed.changes === 0) {
     const wait = previous ? Math.max(1, Math.ceil((Date.parse(previous) + EMAIL_INTERVAL_MS - now.getTime()) / 1000)) : 60;
-    return { ok: false, status: 429, error: `Your calendar was just sent. Please wait ${wait} seconds before sending it again.` };
+    return { ok: false, status: 429, error: t.wait(wait) };
   }
 
   const semester = currentSemester();
   const base = publicBaseUrl();
   const message = calendarEmail({
     ics: toICS(items),
-    semester: semester ? `semester ${semester.number}, ${semester.academicYear}` : null,
+    semester: semester ? common[locale].time.semester(semester.number, semester.academicYear) : null,
     feedUrl: base ? `${base}/api/ics/${user.feedToken}.ics` : null,
+    locale,
   });
   try {
     await sendMail({ to: address, ...message }, transport);
@@ -104,7 +102,7 @@ export async function emailCalendar(user: User, to?: string, transport?: Transpo
     // Give the slot back, so the student can retry once the problem is fixed.
     db.update(users).set({ calendarEmailedAt: previous }).where(eq(users.id, user.id)).run();
     console.error("Calendar email failed", err);
-    return { ok: false, status: 502, error: "The email could not be sent. Please try again later." };
+    return { ok: false, status: 502, error: t.sendFailed };
   }
   db.update(users).set({ exportEmail: address }).where(eq(users.id, user.id)).run();
   return { ok: true, sentTo: address };

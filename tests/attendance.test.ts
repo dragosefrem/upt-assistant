@@ -307,3 +307,30 @@ describe("summarizeAttendance", () => {
     expect(s.series[0].title).toBe("New name");
   });
 });
+
+describe("in Romanian", () => {
+  const detailsRo = (seriesKey: string) => {
+    const { series } = summarizeAttendance(attendanceRecords(user.id));
+    const s = series.find((x) => x.seriesKeys.includes(seriesKey))!;
+    return seriesDetails(user, [s], "ro").get(s.key)!;
+  };
+
+  it("explains a refused mark in the student's language", () => {
+    expect(markAttendance(user, { eventId: classOn(MON_FUTURE).id, date: MON_FUTURE, status: "attended" }, TODAY, "ro")).toMatchObject({
+      ok: false,
+      status: 400,
+      error: expect.stringContaining("nu a avut loc încă"),
+    });
+    expect(markAttendance(user, { eventId: "e:999999:2026-11-16", date: MON_PAST, status: "attended" }, TODAY, "ro")).toMatchObject({
+      status: 404,
+      error: "Evenimentul nu mai e în calendarul tău.",
+    });
+  });
+
+  it("describes weeks and notes in Romanian", () => {
+    expect(detailsRo("e:ac-mate-curs")).toMatchObject({ weeks: "În fiecare săptămână", note: null });
+    expect(detailsRo("x:ac-exam-mate")).toMatchObject({ weeks: "O singură dată" });
+    // The lab was removed from the timetable in an earlier test.
+    expect(detailsRo("e:ac-mate-lab")).toMatchObject({ source: "saved", note: expect.stringContaining("nu mai e în calendarul tău") });
+  });
+});

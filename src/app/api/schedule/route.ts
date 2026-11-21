@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
 import { entries, entryGroups, occurrenceOverrides, personalEvents, userOverrides } from "@/db/schema";
+import { getT } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
 
 /** A student's personal changes to their own timetable. */
@@ -34,10 +35,11 @@ const Body = z.discriminatedUnion("action", [
 ]);
 
 export async function POST(request: Request) {
+  const t = await getT();
   const user = await getUser();
-  if (!user) return Response.json({ error: "Not signed in" }, { status: 401 });
+  if (!user) return Response.json({ error: t.common.status.notSignedIn }, { status: 401 });
   const parsed = Body.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Invalid request" }, { status: 400 });
+  if (!parsed.success) return Response.json({ error: t.calendar.api.invalidRequest }, { status: 400 });
   const body = parsed.data;
   const db = getDb();
 
@@ -54,8 +56,8 @@ export async function POST(request: Request) {
   switch (body.action) {
     case "hide":
     case "move": {
-      if (!ownsEntry(body.entryId)) return Response.json({ error: "Unknown class" }, { status: 404 });
-      if (body.action === "move" && body.endMin <= body.startMin) return Response.json({ error: "End must be after start" }, { status: 400 });
+      if (!ownsEntry(body.entryId)) return Response.json({ error: t.calendar.api.unknownClass }, { status: 404 });
+      if (body.action === "move" && body.endMin <= body.startMin) return Response.json({ error: t.calendar.api.endAfterStart }, { status: 400 });
       const patch =
         body.action === "hide"
           ? { hidden: true }
@@ -84,8 +86,8 @@ export async function POST(request: Request) {
       }
       break;
     case "addPersonal":
-      if (body.endMin <= body.startMin) return Response.json({ error: "End must be after start" }, { status: 400 });
-      if (!body.date && !body.day) return Response.json({ error: "A date or a weekday is required" }, { status: 400 });
+      if (body.endMin <= body.startMin) return Response.json({ error: t.calendar.api.endAfterStart }, { status: 400 });
+      if (!body.date && !body.day) return Response.json({ error: t.calendar.api.dateOrDay }, { status: 400 });
       db.insert(personalEvents)
         .values({
           userId: user.id,
@@ -108,7 +110,7 @@ export async function POST(request: Request) {
 /** Hidden and moved classes, for the "your changes" list. */
 export async function GET() {
   const user = await getUser();
-  if (!user) return Response.json({ error: "Not signed in" }, { status: 401 });
+  if (!user) return Response.json({ error: (await getT()).common.status.notSignedIn }, { status: 401 });
   const rows = getDb().select().from(userOverrides).where(eq(userOverrides.userId, user.id)).all();
   return Response.json({ overrides: rows });
 }

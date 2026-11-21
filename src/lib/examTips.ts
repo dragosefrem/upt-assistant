@@ -3,6 +3,9 @@
  * the same wording is used on the home page, the exams page and in notifications.
  */
 
+import type { Locale } from "@/i18n/config";
+import { exams } from "@/i18n/messages/exams";
+
 export type ExamStage = "later" | "week" | "soon" | "tomorrow" | "today" | "now";
 
 /** How close an exam is, from the whole days left and the minutes until it starts. */
@@ -16,16 +19,15 @@ export function examStage(daysLeft: number, minutesUntil: number): ExamStage {
 }
 
 /** "in 3 days", "tomorrow", "in 2 h 15 min", "now". */
-export function countdown(daysLeft: number, minutesUntil: number): string {
-  if (minutesUntil <= 0) return "now";
+export function countdown(daysLeft: number, minutesUntil: number, locale: Locale = "en"): string {
+  const t = exams[locale].countdown;
+  if (minutesUntil <= 0) return t.now;
   if (daysLeft <= 0) {
-    if (minutesUntil < 60) return `in ${minutesUntil} min`;
-    const h = Math.floor(minutesUntil / 60);
-    const m = minutesUntil % 60;
-    return `in ${h} h${m ? ` ${m} min` : ""}`;
+    if (minutesUntil < 60) return t.inMinutes(minutesUntil);
+    return t.inHours(Math.floor(minutesUntil / 60), minutesUntil % 60);
   }
-  if (daysLeft === 1) return "tomorrow";
-  return `in ${daysLeft} days`;
+  if (daysLeft === 1) return t.tomorrow;
+  return t.inDays(daysLeft);
 }
 
 export interface TipInput {
@@ -40,82 +42,65 @@ export interface TipInput {
 }
 
 /** Where to go, in one short phrase: "room A101 (Mechanical Engineering building)". */
-export function whereTo(room: string | null, building: string | null): string {
-  if (room && building) return `room ${room} (${building})`;
-  if (room) return `room ${room}`;
+export function whereTo(room: string | null, building: string | null, locale: Locale = "en"): string {
+  const t = exams[locale].where;
+  if (room && building) return t.roomIn(room, building);
+  if (room) return t.room(room);
   if (building) return building;
-  return "the room on the exam list";
+  return t.unknown;
 }
 
 /** The headline Poli says for an exam at this stage. */
-export function examHeadline({ course, daysLeft, minutesUntil, startTime, room, building }: TipInput): string {
-  const where = whereTo(room, building);
+export function examHeadline({ course, daysLeft, minutesUntil, startTime, room, building }: TipInput, locale: Locale = "en"): string {
+  const t = exams[locale].headline;
+  const where = whereTo(room, building, locale);
   switch (examStage(daysLeft, minutesUntil)) {
     case "now":
-      return `${course} is starting now in ${where}. Good luck! 🍀`;
+      return t.now(course, where);
     case "today":
-      return `${course} exam today at ${startTime}, ${where}. You've got this! 💪`;
+      return t.today(course, startTime, where);
     case "tomorrow":
-      return `${course} exam tomorrow at ${startTime}, ${where}.`;
+      return t.tomorrow(course, startTime, where);
     case "soon":
-      return `${course} exam in ${daysLeft} days, ${where}.`;
+      return t.soon(course, daysLeft, where);
     case "week":
-      return `${course} exam next week: ${daysLeft} days to go.`;
+      return t.week(course, daysLeft);
     default:
-      return `${course} exam in ${daysLeft} days. Plenty of time to plan.`;
+      return t.later(course, daysLeft);
   }
 }
 
 /** Two or three concrete suggestions that fit how close the exam is. */
-export function examTips(input: TipInput): string[] {
+export function examTips(input: TipInput, locale: Locale = "en"): string[] {
+  const t = exams[locale].tips;
   const { daysLeft, minutesUntil, startTime, room, building, travelMinutes } = input;
-  const where = whereTo(room, building);
+  const where = whereTo(room, building, locale);
   switch (examStage(daysLeft, minutesUntil)) {
     case "now":
-      return ["Breathe, read every question once before you start, and do the easy ones first."];
+      return [t.now];
     case "today": {
       const [h, m] = startTime.split(":").map(Number);
       const arrive = h * 60 + m - 15;
       const by = arrive >= 0 ? `${String(Math.floor(arrive / 60)).padStart(2, "0")}:${String(arrive % 60).padStart(2, "0")}` : startTime;
-      const leave = travelMinutes
-        ? `Leave about ${travelMinutes + 15} minutes before ${startTime} to reach ${where} with time to spare.`
-        : `Be at ${where} by ${by}, 15 minutes before it starts.`;
-      return [leave, "Pack your student ID, pens and anything the teacher allowed (calculator, formula sheet).", "Eat something and bring water. A calm brain works better. 🥤"];
+      const leave = travelMinutes ? t.leave(travelMinutes + 15, startTime, where) : t.beThere(where, by);
+      return [leave, t.pack, t.eat];
     }
     case "tomorrow":
-      return [
-        "Do one light review of your summary notes. No new chapters tonight.",
-        `Check how to get to ${where} and set an alarm with a buffer.`,
-        "Sleep at least 7 hours; it helps memory more than a late-night cram. 😴",
-      ];
+      return [t.review, t.route(where), t.sleep];
     case "soon":
-      return [
-        "Solve a past exam or a mock test under time pressure.",
-        "Write down what you still don't get and ask a colleague or the teacher.",
-        "Study in 25-minute blocks with 5-minute breaks to stay fresh.",
-      ];
+      return [t.pastExam, t.ask, t.blocks];
     case "week":
-      return [
-        "Split the material into one chunk per day until the exam.",
-        "Make a one-page summary of formulas and key ideas.",
-        "Join or start a study group: explaining something is the best test.",
-      ];
+      return [t.split, t.summary, t.group];
     default:
-      return ["Put the exam in your calendar and plan when to start reviewing.", "A little each week beats everything in the last three days. 📚"];
+      return [t.plan, t.steady];
   }
 }
 
-/** Gentle tips for days without exams coming up. One is picked by the day of the year. */
-export const EVERYDAY_TIPS = [
-  "Take a 5-minute break every 25 minutes of study. Your focus will thank you. ⏱️",
-  "Drink some water and stretch. Long hours at the desk add up. 💧",
-  "Review today's lecture notes for 10 minutes tonight. It saves hours before exams.",
-  "Plan tomorrow in two minutes: classes, rooms, and one thing you want to get done. ✅",
-  "Get some fresh air between classes. A short walk resets your head. 🌳",
-  "Ask questions in the seminar. Someone else is probably wondering the same thing. 🙋",
-];
+/** Gentle tips for days without exams coming up, in English. One is picked by the day of the year. */
+export const EVERYDAY_TIPS = exams.en.everyday;
 
-export function everydayTip(date: string): string {
+export function everydayTip(date: string, locale: Locale = "en"): string {
+  const tips = exams[locale].everyday;
   const day = Math.floor(Date.parse(`${date}T00:00:00Z`) / 86_400_000);
-  return EVERYDAY_TIPS[((day % EVERYDAY_TIPS.length) + EVERYDAY_TIPS.length) % EVERYDAY_TIPS.length];
+  return tips[((day % tips.length) + tips.length) % tips.length];
 }

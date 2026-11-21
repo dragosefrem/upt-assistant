@@ -2,6 +2,7 @@
 
 import { useActionState, useMemo, useState } from "react";
 import type { ProfileState } from "@/app/onboarding/actions";
+import { useT } from "@/i18n/client";
 import type { PickerData } from "@/lib/catalog";
 import { programmeOptions } from "@/lib/profile-options";
 
@@ -22,8 +23,11 @@ export function ProfilePicker({
   data: PickerData;
   initial: Initial;
   action: (prev: ProfileState, form: FormData) => Promise<ProfileState>;
-  submitLabel: string;
+  /** Defaults to "Save" in the interface language. */
+  submitLabel?: string;
 }) {
+  const t = useT();
+  const p = t.settings.profile;
   const initialSpec = data.specializations.find((s) => s.id === initial.specializationId);
   const [facultyId, setFacultyId] = useState<number | null>(initial.facultyId);
   const [degree, setDegree] = useState<"bachelor" | "master">(initialSpec?.degree ?? "bachelor");
@@ -59,10 +63,10 @@ export function ProfilePicker({
       onClick={() => { setSpecId(s.id); setGroupId(null); }}>
       <span className="font-medium">{s.name}</span>
       <span className="ml-2 text-xs text-slate-500">
-        {[s.code, s.language === "RO" ? "Romanian" : s.language === "EN" ? "English" : s.language].filter(Boolean).join(" · ")}
+        {[s.code, (s.language && p.teachingLanguage[s.language]) ?? s.language].filter(Boolean).join(" · ")}
       </span>
       {faculty?.shortName === "AC" && s.code === "CTI" && year === 1 && (
-        <span className="block text-xs text-slate-500">Shared first year for Calculatoare and Tehnologia informației</span>
+        <span className="block text-xs text-slate-500">{p.sharedFirstYear}</span>
       )}
     </button>
   );
@@ -75,7 +79,7 @@ export function ProfilePicker({
       <input type="hidden" name="groupId" value={groupId ?? ""} />
 
       <section>
-        {step(1, "Faculty", !!facultyId)}
+        {step(1, p.faculty, !!facultyId)}
         <div className="grid gap-2 sm:grid-cols-2">
           {data.faculties.map((f) => (
             <button
@@ -95,15 +99,13 @@ export function ProfilePicker({
           ))}
         </div>
         {!data.faculties.length && (
-          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-            No faculties have been imported yet. An administrator needs to run the UPT scrape first.
-          </p>
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{p.noFaculties}</p>
         )}
       </section>
 
       {facultyId && (
         <section>
-          {step(2, "Study cycle and year", !!year)}
+          {step(2, p.cycleAndYear, !!year)}
           <div className="flex flex-wrap items-center gap-2">
             {(["bachelor", "master"] as const).map((d) => (
               <button
@@ -117,7 +119,7 @@ export function ProfilePicker({
                   setYear(null);
                 }}
               >
-                {d === "bachelor" ? "Bachelor (licență)" : "Master"}
+                {d === "bachelor" ? p.bachelor : p.master}
               </button>
             ))}
             <span className="mx-1 h-6 w-px bg-slate-200" />
@@ -132,7 +134,7 @@ export function ProfilePicker({
                   setGroupId(null);
                 }}
               >
-                Year {y}
+                {p.year(y)}
               </button>
             ))}
           </div>
@@ -141,23 +143,23 @@ export function ProfilePicker({
 
       {facultyId && year && (
         <section>
-          {step(3, "Specialization", validSpec)}
+          {step(3, p.specialization, validSpec)}
           <div className="grid gap-2 sm:grid-cols-2">
             {scheduled.map(specButton)}
           </div>
           {other.length > 0 && (
             <details key={`${facultyId}-${degree}-${year}`} className="mt-3" open={!scheduled.length || other.some((s) => s.id === specId)}>
-              <summary className="cursor-pointer text-sm text-slate-600">Programmes without a year {year} timetable this semester</summary>
+              <summary className="cursor-pointer text-sm text-slate-600">{p.withoutTimetable(year)}</summary>
               <div className="mt-2 grid gap-2 sm:grid-cols-2">{other.map(specButton)}</div>
             </details>
           )}
-          {!scheduled.length && !other.length && <p className="text-sm text-slate-500">No programmes listed for this year.</p>}
+          {!scheduled.length && !other.length && <p className="text-sm text-slate-500">{p.noProgrammes}</p>}
         </section>
       )}
 
       {validSpec && year && (
         <section>
-          {step(4, "Group", !!groupId)}
+          {step(4, p.group, !!groupId)}
           {groups.length ? (
             <div className="space-y-3">
               {seriesList.map((series) => (
@@ -168,7 +170,7 @@ export function ProfilePicker({
                       .filter((g) => g.series === series)
                       .map((g) => (
                         <button type="button" key={g.id} className={chip(g.id === groupId)} onClick={() => setGroupId(g.id)}>
-                          {g.name || "Whole year"}
+                          {g.name || p.wholeYear}
                         </button>
                       ))}
                   </div>
@@ -177,15 +179,16 @@ export function ProfilePicker({
             </div>
           ) : (
             <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-              No classes are available for this programme and year. You can continue without a group
+              {p.noClasses}
               {faculty?.scheduleUrl ? (
                 <>
-                  {" "}and open the{" "}
+                  {p.noClassesOpen}
                   <a className="font-medium underline" href={faculty.scheduleUrl} target="_blank" rel="noreferrer">
-                    faculty&apos;s timetable page
+                    {p.facultyPage}
                   </a>
                 </>
-              ) : null}.
+              ) : null}
+              {p.noClassesEnd}
             </p>
           )}
         </section>
@@ -193,7 +196,7 @@ export function ProfilePicker({
 
       {state.error && <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{state.error}</p>}
       <button className="btn-primary" disabled={pending || !validSpec || !year || (groups.length > 0 && !groups.some((g) => g.id === groupId))}>
-        {pending ? "Saving…" : submitLabel}
+        {pending ? t.common.status.saving : (submitLabel ?? t.common.actions.save)}
       </button>
     </form>
   );

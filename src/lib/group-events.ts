@@ -91,16 +91,16 @@ type Invite = { eventId: string } | { shareToken: string };
 type Respondent = { userId: string; guestKey?: string } | { userId?: undefined; guestKey: string; name: string };
 
 export function respondToEvent(invite: Invite, who: Respondent, response: Exclude<Rsvp, "pending">) {
-  if (response !== "accepted" && response !== "declined") throw new InvitationError("Choose a response.");
+  if (response !== "accepted" && response !== "declined") throw new InvitationError("chooseResponse");
   const publicLink = "shareToken" in invite;
   const saved = getDb().transaction((tx) => {
     const event = tx.select({ id: groupEvents.id, status: groupEvents.status, outcome: effectiveStatus(Date.now()) }).from(groupEvents)
       .where(publicLink ? eq(groupEvents.shareToken, invite.shareToken) : eq(groupEvents.id, invite.eventId)).get();
-    if (!event) throw new InvitationError("This invitation is unavailable.");
+    if (!event) throw new InvitationError("unavailable");
     const seat = (identity: SQL) => tx.select().from(eventParticipants)
       .where(and(eq(eventParticipants.eventId, event.id), identity)).get();
     const account = who.userId ? seat(eq(eventParticipants.userId, who.userId)) : undefined;
-    if (!publicLink && !account) throw new InvitationError("This invitation is unavailable.");
+    if (!publicLink && !account) throw new InvitationError("unavailable");
     const hash = publicLink && who.guestKey ? guestHash(who.guestKey) : null;
     const guest = hash ? seat(eq(eventParticipants.guestKeyHash, hash)) : undefined;
 
@@ -118,7 +118,7 @@ export function respondToEvent(invite: Invite, who: Respondent, response: Exclud
       tx.update(eventParticipants).set({ response }).where(eq(eventParticipants.id, guest.id)).run();
     } else {
       const name = who.name.trim();
-      if (!name || name.length > 100 || !hash) throw new InvitationError("Enter a name of up to 100 characters.");
+      if (!name || name.length > 100 || !hash) throw new InvitationError("guestName");
       tx.insert(eventParticipants).values({ eventId: event.id, guestName: name, guestKeyHash: hash, response }).run();
     }
 
@@ -132,5 +132,5 @@ export function respondToEvent(invite: Invite, who: Respondent, response: Exclud
     }
     return true;
   }, { behavior: "immediate" });
-  if (!saved) throw new InvitationError("This invitation expired with fewer than two people going.");
+  if (!saved) throw new InvitationError("expired");
 }

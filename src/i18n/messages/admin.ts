@@ -1,6 +1,215 @@
-/** Texts for the "admin" part of the interface. Keys are added as screens are translated. */
-const en = {};
+/** Texts for the "admin" part of the interface: the admin page, the scrape panel and its API. */
+const en = {
+  title: "Administration",
+  metaTitle: "Admin",
+  intro: "Keep the timetable database in step with what the faculties publish on upt.ro.",
 
-const ro: typeof en = {};
+  scrape: {
+    title: "Scrape UPT",
+    catalog: "University structure",
+    catalogHint: "Faculties, programmes and specializations from upt.ro",
+    timetables: "Timetables",
+    timetablesHint: "Replace this semester’s timetables from each faculty site",
+    exams: "Exams",
+    examsHint: "Replace exam bookings where a faculty publishes them",
+    dryRun: "Dry run",
+    dryRunHint: "Fetch and parse, but leave timetable and exam data unchanged",
+    faculties: "Faculties",
+    all: "All",
+    noFaculties: "No faculties yet — the first run imports them.",
+    inProgress: "Scrape in progress…",
+    starting: "Starting…",
+    runDry: "Run dry scrape",
+    runReplace: "Scrape and replace data",
+    couldNotStart: "The scrape could not be started.",
+    status: { running: "running", success: "success", partial: "partial", failed: "failed" } as Record<string, string>,
+    dry: "(dry)",
+    scope: { catalog: "structure", timetables: "timetables", exams: "exams", nothing: "nothing" } as Record<string, string>,
+    runInfo: (id: number, scope: string, started: string) => `Run #${id} · ${scope} · started ${started}`,
+    took: (seconds: number) => ` · took ${seconds} s`,
+    noRuns: "No scrape has been run yet.",
+  },
+
+  overview: {
+    title: "What is in the database",
+    faculty: "Faculty",
+    programmes: "Programmes",
+    groups: "Groups",
+    activities: "Activities",
+    exams: "Exams",
+    documents: "Documents",
+    imported: (n: number) => `${n} imported`,
+    partial: (n: number) => `${n} partial`,
+    linkOnly: (n: number) => `${n} PDF/link only`,
+    failed: (n: number) => `${n} failed`,
+    none: "none found",
+    empty: "Empty. Run a scrape to import faculties, programmes and timetables.",
+    footnote: "Open a publication to check its classes against the faculty timetable. Partial imports list the pages or sheets that need review.",
+  },
+
+  sources: {
+    title: "Imported documents",
+    kind: { timetable: "timetable", exams: "exams", other: "other" } as Record<string, string>,
+    status: { imported: "imported", partial: "partial", failed: "failed" } as Record<string, string>,
+  },
+
+  optional: {
+    title: "Optional courses",
+    faculty: "Faculty",
+    year: "Year",
+    yearN: (n: number) => `Year ${n}`,
+    show: "Show",
+    hint: "Published timetables do not say which courses are elective. Students from year 3 up can untick any course; a course marked optional here starts unticked for everyone, in any year.",
+    toggle: "Click to change",
+    optional: "optional",
+    mandatory: "mandatory",
+    empty: "No courses for this faculty and year.",
+  },
+
+  semester: {
+    title: "Semester",
+    hint: "The scraper imports documents for the current semester, and the calendar follows its teaching weeks.",
+    name: (academicYear: string, n: number) => `${academicYear}, semester ${n}`,
+    teachingWeeks: (n: number) => `${n} teaching ${n === 1 ? "week" : "weeks"}`,
+    examPeriod: (from: string, to: string) => `exams ${from} → ${to}`,
+    current: "current",
+    makeCurrent: "Make current",
+  },
+
+  integrations: {
+    title: "Integrations",
+    assistant: "Assistant: ",
+    claudeConnected: "Claude connected",
+    keywordBefore: "built-in keyword assistant. Set ",
+    keywordAfter: " to connect Claude.",
+    google: "Google Calendar: ",
+    googleEnabled: "direct export enabled",
+    icsOnlyBefore: ".ics only. Set ",
+    and: " and ",
+    icsOnlyAfter: " for direct export.",
+  },
+
+  accounts: {
+    title: (n: number) => `Accounts (${n})`,
+    role: { student: "student", admin: "admin" } as Record<string, string>,
+    makeStudent: "Make student",
+    makeAdmin: "Make admin",
+  },
+
+  api: {
+    adminsOnly: "Administrators only",
+    invalidRequest: "Invalid request",
+    chooseSomething: "Choose at least one thing to scrape.",
+    alreadyRunning: "A scrape is already running.",
+    unknownRun: "Unknown run",
+  },
+};
+
+const ro: typeof en = {
+  title: "Administrare",
+  metaTitle: "Admin",
+  intro: "Ține baza de date cu orare la zi cu ce publică facultățile pe upt.ro.",
+
+  scrape: {
+    title: "Import de pe upt.ro",
+    catalog: "Structura universității",
+    catalogHint: "Facultăți, programe de studii și specializări de pe upt.ro",
+    timetables: "Orare",
+    timetablesHint: "Înlocuiește orarele din semestrul acesta cu cele de pe site-ul fiecărei facultăți",
+    exams: "Examene",
+    examsHint: "Înlocuiește programările examenelor, unde facultatea le publică",
+    dryRun: "Rulare de probă",
+    dryRunHint: "Descarcă și analizează, dar lasă neschimbate orarele și examenele",
+    faculties: "Facultăți",
+    all: "Toate",
+    noFaculties: "Încă nu există facultăți — prima rulare le importă.",
+    inProgress: "Import în desfășurare…",
+    starting: "Se pornește…",
+    runDry: "Pornește rularea de probă",
+    runReplace: "Importă și înlocuiește datele",
+    couldNotStart: "Importul nu a putut fi pornit.",
+    status: { running: "în curs", success: "reușit", partial: "parțial", failed: "eșuat" },
+    dry: "(probă)",
+    scope: { catalog: "structură", timetables: "orare", exams: "examene", nothing: "nimic" },
+    runInfo: (id: number, scope: string, started: string) => `Rularea #${id} · ${scope} · pornită ${started}`,
+    took: (seconds: number) => ` · a durat ${seconds} s`,
+    noRuns: "Nu a fost rulat încă niciun import.",
+  },
+
+  overview: {
+    title: "Ce e în baza de date",
+    faculty: "Facultate",
+    programmes: "Programe",
+    groups: "Grupe",
+    activities: "Activități",
+    exams: "Examene",
+    documents: "Documente",
+    imported: (n: number) => `${n} ${n === 1 ? "importat" : "importate"}`,
+    partial: (n: number) => `${n} ${n === 1 ? "parțial" : "parțiale"}`,
+    linkOnly: (n: number) => `${n} doar PDF/link`,
+    failed: (n: number) => `${n} ${n === 1 ? "eșuat" : "eșuate"}`,
+    none: "nimic găsit",
+    empty: "Gol. Rulează un import ca să aduci facultățile, programele și orarele.",
+    footnote: "Deschide o publicație ca să verifici orele față de orarul facultății. La importurile parțiale sunt listate paginile sau foile care trebuie verificate.",
+  },
+
+  sources: {
+    title: "Documente importate",
+    kind: { timetable: "orar", exams: "examene", other: "altele" },
+    status: { imported: "importat", partial: "parțial", failed: "eșuat" },
+  },
+
+  optional: {
+    title: "Discipline opționale",
+    faculty: "Facultate",
+    year: "An",
+    yearN: (n: number) => `Anul ${n}`,
+    show: "Afișează",
+    hint: "Orarele publicate nu spun care discipline sunt opționale. Studenții din anul 3 în sus pot debifa orice disciplină; o disciplină marcată aici ca opțională apare debifată pentru toți, în orice an.",
+    toggle: "Apasă ca să schimbi",
+    optional: "opțională",
+    mandatory: "obligatorie",
+    empty: "Nicio disciplină pentru această facultate și acest an.",
+  },
+
+  semester: {
+    title: "Semestrul",
+    hint: "Importul aduce documentele pentru semestrul curent, iar calendarul îi urmează săptămânile de cursuri.",
+    name: (academicYear: string, n: number) => `${academicYear}, semestrul ${n}`,
+    teachingWeeks: (n: number) =>
+      n === 1 ? "o săptămână de cursuri" : n < 20 ? `${n} săptămâni de cursuri` : `${n} de săptămâni de cursuri`,
+    examPeriod: (from: string, to: string) => `sesiune ${from} → ${to}`,
+    current: "curent",
+    makeCurrent: "Fă-l curent",
+  },
+
+  integrations: {
+    title: "Integrări",
+    assistant: "Asistent: ",
+    claudeConnected: "Claude conectat",
+    keywordBefore: "asistentul integrat, pe cuvinte-cheie. Setează ",
+    keywordAfter: " ca să conectezi Claude.",
+    google: "Google Calendar: ",
+    googleEnabled: "export direct activat",
+    icsOnlyBefore: "doar .ics. Setează ",
+    and: " și ",
+    icsOnlyAfter: " pentru export direct.",
+  },
+
+  accounts: {
+    title: (n: number) => `Conturi (${n})`,
+    role: { student: "student", admin: "admin" },
+    makeStudent: "Fă-l student",
+    makeAdmin: "Fă-l admin",
+  },
+
+  api: {
+    adminsOnly: "Doar pentru administratori",
+    invalidRequest: "Cerere invalidă",
+    chooseSomething: "Alege cel puțin un lucru de importat.",
+    alreadyRunning: "Un import rulează deja.",
+    unknownRun: "Rulare necunoscută",
+  },
+};
 
 export const admin = { en, ro };

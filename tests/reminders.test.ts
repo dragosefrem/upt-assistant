@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { exams } from "@/i18n/messages/exams";
+import { planTrip } from "@/lib/directions";
 import { countdown, everydayTip, EVERYDAY_TIPS, examHeadline, examStage, examTips, whereTo } from "@/lib/examTips";
 import { toICS } from "@/lib/export";
 
@@ -42,6 +44,50 @@ describe("Poli's suggestions", () => {
 
   it("picks an everyday tip from the list", () => {
     expect(EVERYDAY_TIPS).toContain(everydayTip("2026-11-21"));
+  });
+});
+
+describe("Poli's suggestions in Romanian", () => {
+  const base = { course: "Mecanică", startTime: "09:00", room: "A101", building: "Corp Mecanică" };
+
+  it("writes the countdown with Romanian plurals", () => {
+    expect(countdown(5, 5 * 1440, "ro")).toBe("în 5 zile");
+    expect(countdown(21, 21 * 1440, "ro")).toBe("în 21 de zile");
+    expect(countdown(1, 1000, "ro")).toBe("mâine");
+    expect(countdown(0, 135, "ro")).toBe("în 2 h 15 min");
+    expect(countdown(0, -5, "ro")).toBe("acum");
+  });
+
+  it("says where to go and when to leave", () => {
+    expect(whereTo("A101", "Corp Mecanică", "ro")).toBe("sala A101 (Corp Mecanică)");
+    expect(whereTo(null, null, "ro")).toBe("sala din lista de examene");
+    expect(examHeadline({ ...base, daysLeft: 0, minutesUntil: 120 }, "ro")).toBe("Examen la Mecanică azi la 09:00, sala A101 (Corp Mecanică). Te descurci! 💪");
+    expect(examTips({ ...base, daysLeft: 0, minutesUntil: 120 }, "ro")[0]).toBe("Fii la sala A101 (Corp Mecanică) până la 08:45, cu 15 minute înainte de început.");
+    expect(examTips({ ...base, daysLeft: 0, minutesUntil: 120, travelMinutes: 20 }, "ro")[0]).toContain("cu vreo 35 de minute înainte de 09:00");
+    expect(examHeadline({ ...base, daysLeft: 20, minutesUntil: 20 * 1440 }, "ro")).toContain("în 20 de zile");
+  });
+
+  it("gives as many tips in both languages and picks the everyday tip from the Romanian list", () => {
+    for (const daysLeft of [0, 1, 3, 6, 20]) {
+      const input = { ...base, daysLeft, minutesUntil: daysLeft * 1440 + 60 };
+      expect(examTips(input, "ro")).toHaveLength(examTips(input).length);
+    }
+    expect(exams.ro.everyday).toHaveLength(EVERYDAY_TIPS.length);
+    expect(exams.ro.everyday).toContain(everydayTip("2026-11-21", "ro"));
+    expect(EVERYDAY_TIPS.indexOf(everydayTip("2026-11-21"))).toBe(exams.ro.everyday.indexOf(everydayTip("2026-11-21", "ro")));
+  });
+});
+
+describe("travel suggestions in Romanian", () => {
+  const electro = { name: "Corp Electro", address: null, lat: 45.7475, lng: 21.2262, approximate: false };
+
+  it("labels the options and uses a decimal comma", () => {
+    const far = planTrip({ lat: 45.79, lng: 21.3 }, electro, "ro");
+    expect(far.options.map((o) => o.label)).toContain("Transport în comun");
+    expect(far.summary).toMatch(/^Corp Electro e la aproximativ \d+,\d km\. /);
+    expect(planTrip({ lat: 45.7475, lng: 21.2262 }, electro, "ro").summary).toBe("Ești deja la Corp Electro.");
+    // English stays the default, for the assistant model.
+    expect(planTrip({ lat: 45.79, lng: 21.3 }, electro).summary).toMatch(/is about \d+\.\d km away/);
   });
 });
 

@@ -2,13 +2,24 @@ import "server-only";
 import { and, asc, count, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { contacts, users } from "@/db/schema";
+import type { Locale } from "@/i18n/config";
+import { contacts as contactTexts, type ContactsErrorCode } from "@/i18n/messages/contacts";
 import { normalizeEmail } from "./auth";
 
-/** Expected input or permission errors that an invitation form can display. */
-export class InvitationError extends Error {}
+/**
+ * Expected input or permission errors that an invitation form can display. `code` names
+ * the text in `contacts.errors`; `message` is its English version, for logs and tests.
+ */
+export class InvitationError extends Error {
+  constructor(readonly code: ContactsErrorCode) {
+    super(contactTexts.en.errors[code]);
+    this.name = "InvitationError";
+  }
+}
 
-export function invitationFailure(error: unknown) {
-  if (error instanceof InvitationError) return { error: error.message };
+/** The form result for an expected error, in the visitor's language; anything else is rethrown. */
+export function invitationFailure(error: unknown, locale: Locale = "en") {
+  if (error instanceof InvitationError) return { error: contactTexts[locale].errors[error.code] };
   throw error;
 }
 
@@ -55,8 +66,8 @@ export function incomingContactCount(userId: string) {
 
 export function inviteContact(userId: string, email: string) {
   const recipient = findPerson(email);
-  if (!recipient) throw new InvitationError("No account has that e-mail address.");
-  if (recipient.id === userId) throw new InvitationError("Enter another person’s e-mail address.");
+  if (!recipient) throw new InvitationError("noAccount");
+  if (recipient.id === userId) throw new InvitationError("notYourself");
   getDb().insert(contacts).values({ ...pair(userId, recipient.id), requestedBy: userId })
     .onConflictDoNothing().run();
 }

@@ -6,6 +6,9 @@ export interface DateRange {
   to: string;
 }
 
+/** Why a requested range was rejected; the page shows `contacts.errors[code]`. */
+export type PlanningRangeError = "invalidDates" | "endBeforeStart" | "pastRange";
+
 export const PLANNING_PAGE_DAYS = 31;
 export const PLANNING_PRESETS = [7, 14, 30] as const;
 const isoDate = z.iso.date();
@@ -17,16 +20,16 @@ export function nextDays(today: string, count: number): DateRange {
 /** Resolve inclusive calendar dates. Long ranges are queried one page at a time. */
 export function planningRange(today: string, params: { from?: unknown; to?: unknown; page?: unknown }) {
   let range = nextDays(today, 7);
-  let error: string | undefined;
+  let error: PlanningRangeError | undefined;
   if (params.from !== undefined || params.to !== undefined) {
     const from = isoDate.safeParse(params.from);
     const to = isoDate.safeParse(params.to);
     if (!from.success || !to.success) {
-      error = "Enter a valid start date and end date.";
+      error = "invalidDates";
     } else if (to.data < from.data) {
-      error = "The end date must be on or after the start date.";
+      error = "endBeforeStart";
     } else if (to.data < today) {
-      error = "Choose a date range that includes today or a future day.";
+      error = "pastRange";
     } else {
       // A saved link can be reopened after part of the range has passed.
       range = { from: from.data < today ? today : from.data, to: to.data };

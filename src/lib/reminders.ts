@@ -1,4 +1,5 @@
 import "server-only";
+import type { Locale } from "@/i18n/config";
 import type { User } from "./auth";
 import { countdown, examHeadline, examStage, examTips, type ExamStage } from "./examTips";
 import { examsForUser, placeResolver, type Place } from "./schedule";
@@ -29,8 +30,11 @@ export interface ExamReminder {
   tips: string[];
 }
 
-/** Upcoming exams of the student, nearest first, with where to go and Poli's suggestions. */
-export function examReminders(user: User, at: Date = new Date(), days = REMINDER_DAYS): ExamReminder[] {
+/**
+ * Upcoming exams of the student, nearest first, with where to go and Poli's suggestions.
+ * The countdown, headline and tips are written in `locale`.
+ */
+export function examReminders(user: User, at: Date = new Date(), days = REMINDER_DAYS, locale: Locale = "en"): ExamReminder[] {
   const now = nowLocal(at);
   const place = placeResolver(user.facultyId);
   return examsForUser(user, now.date, addDays(now.date, days))
@@ -65,9 +69,9 @@ export function examReminders(user: User, at: Date = new Date(), days = REMINDER
         daysLeft,
         minutesUntil,
         stage: examStage(daysLeft, minutesUntil),
-        countdown: countdown(daysLeft, minutesUntil),
-        headline: examHeadline(tipInput),
-        tips: examTips(tipInput),
+        countdown: countdown(daysLeft, minutesUntil, locale),
+        headline: examHeadline(tipInput, locale),
+        tips: examTips(tipInput, locale),
       };
     });
 }

@@ -1,9 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocale, useT } from "@/i18n/client";
+import type { Locale } from "@/i18n/config";
+import type { Messages } from "@/i18n/messages";
 import type { CalEvent } from "@/lib/schedule";
-import { DAY_SHORT, addDays, formatDate, formatMinutes, formatTimeSlot, mondayOf, nowLocal, weekday } from "@/lib/time";
-import { kindStyle } from "@/lib/kinds";
+import { addDays, capitalize, dayName, formatDate, formatMinutes, formatTimeSlot, mondayOf, nowLocal, weekday } from "@/lib/time";
+import { kindLabel, kindStyle } from "@/lib/kinds";
 import { EventDialog } from "./EventDialog";
 import { PersonalEventDialog } from "./PersonalEventDialog";
 
@@ -23,12 +26,13 @@ type Drag = { date: string; anchorMin: number; startMin: number; endMin: number;
 
 /** Small ✓ / ✗ badge for occurrences the student has marked. */
 function AttendanceMark({ status, small = false, className = "" }: { status: CalEvent["attendance"]; small?: boolean; className?: string }) {
+  const t = useT().calendar.attendance;
   if (!status) return null;
   const attended = status === "attended";
   return (
     <span
-      title={attended ? "Attended" : "Missed"}
-      aria-label={attended ? "Attended" : "Missed"}
+      title={attended ? t.attended : t.missed}
+      aria-label={attended ? t.attended : t.missed}
       className={`inline-flex shrink-0 items-center justify-center rounded-full font-bold ${small ? "h-3.5 w-3.5 text-[9px]" : "h-4 w-4 text-[10px]"} leading-none text-white ${attended ? "bg-emerald-600" : "bg-red-600"} ${className}`}
     >
       {attended ? "✓" : "✗"}
@@ -86,10 +90,14 @@ export function Calendar({
   today: string;
   hasGroup: boolean;
 }) {
+  const messages = useT();
+  const t = messages.calendar;
+  const locale = useLocale();
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(today);
   const [events, setEvents] = useState<CalEvent[]>(initialEvents);
-  const [loaded, setLoaded] = useState({ from: initialFrom, to: initialTo });
+  // Event notes come in the interface language, so a language switch also reloads.
+  const [loaded, setLoaded] = useState({ from: initialFrom, to: initialTo, locale });
   const [teachingWeek, setTeachingWeek] = useState<number | null>(initialWeek);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,23 +116,23 @@ export function Calendar({
     setError(null);
     try {
       const res = await fetch(`/api/events?from=${from}&to=${to}`, { cache: "no-store" });
-      if (!res.ok) throw new Error(res.status === 401 ? "Your session has expired. Please sign in again." : "Could not load the calendar.");
+      if (!res.ok) throw new Error(res.status === 401 ? t.grid.sessionExpired : t.grid.loadFailed);
       const data = (await res.json()) as { events: CalEvent[]; teachingWeek: number | null };
       if (id !== requestId.current) return;
       setEvents(data.events);
       setTeachingWeek(data.teachingWeek);
-      setLoaded({ from, to });
+      setLoaded({ from, to, locale });
     } catch (err) {
       if (id === requestId.current) setError((err as Error).message);
     } finally {
       if (id === requestId.current) setLoading(false);
     }
-  }, []);
+  }, [t, locale]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- fetch-on-navigation; state is set from the async result
-    if (range.from !== loaded.from || range.to !== loaded.to) void load(range.from, range.to);
-  }, [range, loaded, load]);
+    if (range.from !== loaded.from || range.to !== loaded.to || loaded.locale !== locale) void load(range.from, range.to);
+  }, [range, loaded, load, locale]);
 
   useEffect(() => {
     const refresh = () => void load(range.from, range.to);
@@ -149,8 +157,8 @@ export function Calendar({
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   const step = (dir: 1 | -1) => {
@@ -163,12 +171,13 @@ export function Calendar({
     }
   };
 
-  const title =
+  const title = capitalize(
     view === "day"
-      ? formatDate(anchor, { weekday: "long", day: "numeric", month: "long" })
+      ? formatDate(anchor, { weekday: "long", day: "numeric", month: "long" }, locale)
       : view === "week"
-        ? `${formatDate(range.from, { day: "numeric", month: "short" })} – ${formatDate(range.to, { day: "numeric", month: "short", year: "numeric" })}`
-        : formatDate(anchor, { month: "long", year: "numeric" });
+        ? `${formatDate(range.from, { day: "numeric", month: "short" }, locale)} – ${formatDate(range.to, { day: "numeric", month: "short", year: "numeric" }, locale)}`
+        : formatDate(anchor, { month: "long", year: "numeric" }, locale),
+  );
 
   const visible = events.filter((e) => e.date >= range.from && e.date <= range.to);
 
@@ -225,28 +234,28 @@ export function Calendar({
     <section className="card flex min-h-0 flex-col overflow-hidden">
       <header className="flex flex-wrap items-center gap-2 border-b border-slate-200 px-4 py-3">
         <div className="flex items-center gap-1">
-          <button className="btn-ghost px-2" onClick={() => step(-1)} aria-label="Previous">‹</button>
-          <button className="btn-secondary" onClick={() => setAnchor(today)}>Today</button>
-          <button className="btn-ghost px-2" onClick={() => step(1)} aria-label="Next">›</button>
+          <button className="btn-ghost px-2" onClick={() => step(-1)} aria-label={t.toolbar.previous} title={t.toolbar.previous}>‹</button>
+          <button className="btn-secondary" onClick={() => setAnchor(today)}>{messages.common.time.today}</button>
+          <button className="btn-ghost px-2" onClick={() => step(1)} aria-label={t.toolbar.next} title={t.toolbar.next}>›</button>
         </div>
         <h2 className="order-first w-full truncate text-base font-semibold text-slate-900 sm:order-none sm:w-auto sm:min-w-0 sm:flex-1">
           {title}
-          {view !== "month" && teachingWeek && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Week {teachingWeek}</span>}
-          {loading && <span className="ml-2 text-xs font-normal text-slate-400">Loading…</span>}
+          {view !== "month" && teachingWeek && <span className="ml-2 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{messages.common.time.week(teachingWeek)}</span>}
+          {loading && <span className="ml-2 text-xs font-normal text-slate-400">{messages.common.status.loading}</span>}
         </h2>
-        <div className="ml-auto flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm sm:ml-0">
+        <div role="group" aria-label={t.toolbar.viewLabel} className="ml-auto flex rounded-lg border border-slate-300 bg-white p-0.5 text-sm sm:ml-0">
           {(["day", "week", "month"] as const).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`rounded-md px-3 py-1 capitalize ${view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
+              className={`rounded-md px-3 py-1 ${view === v ? "bg-brand-600 text-white" : "text-slate-600 hover:bg-slate-100"}`}
               aria-pressed={view === v}
             >
-              {v}
+              {t.toolbar.views[v]}
             </button>
           ))}
         </div>
-        <button className="btn-primary" onClick={() => setAdding({ date: view === "month" ? today : anchor })}>+ Event</button>
+        <button className="btn-primary" onClick={() => setAdding({ date: view === "month" ? today : anchor })}>{t.toolbar.addEvent}</button>
       </header>
 
       {error && <p role="alert" className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
@@ -257,6 +266,8 @@ export function Calendar({
           month={anchor.slice(0, 7)}
           today={today}
           events={visible}
+          t={t}
+          locale={locale}
           onPickDay={(d) => {
             setAnchor(d);
             setView("day");
@@ -276,7 +287,7 @@ export function Calendar({
                 }}
                 className={`sticky top-0 z-20 border-b border-l border-slate-200 bg-white px-2 py-2 text-left text-xs ${d === today ? "text-brand-700" : "text-slate-500"}`}
               >
-                <span className="font-medium uppercase tracking-wide">{DAY_SHORT[weekday(d)]}</span>
+                <span className="font-medium uppercase tracking-wide">{dayName(weekday(d), locale, "short")}</span>
                 <span className={`ml-1.5 inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-sm font-semibold ${d === today ? "bg-brand-600 text-white" : "text-slate-800"}`}>
                   {+d.slice(8)}
                 </span>
@@ -302,7 +313,7 @@ export function Calendar({
                   onPointerMove={(e) => moveDrag(d, e)}
                   onPointerUp={endDrag}
                   onPointerCancel={() => setDrag(null)}
-                  title="Click or drag to add an event"
+                  title={t.grid.clickToAdd}
                 >
                   {hours.map((h, i) => (
                     <div key={h} className="absolute inset-x-0 border-t border-slate-100" style={{ top: i * HOUR_PX }} />
@@ -345,7 +356,7 @@ export function Calendar({
                             {event.room ? ` · ${event.room}` : ""}
                           </span>
                         )}
-                        {height > 54 && <span className="block truncate opacity-70">{style.label}{event.teacher ? ` · ${event.teacher}` : ""}</span>}
+                        {height > 54 && <span className="block truncate opacity-70">{kindLabel(event.kind, locale)}{event.teacher ? ` · ${event.teacher}` : ""}</span>}
                       </button>
                     );
                   })}
@@ -355,19 +366,17 @@ export function Calendar({
           </div>
           {!visible.length && !loading && (
             <p className="border-t border-slate-100 px-4 py-6 text-center text-sm text-slate-500">
-              {hasGroup
-                ? "Nothing scheduled in this period. Click or drag on the calendar to add your own event."
-                : "No timetable is linked to your profile yet. Pick a group in Settings, or click on the calendar to add your own events."}
+              {hasGroup ? t.grid.emptyWithGroup : t.grid.emptyNoGroup}
             </p>
           )}
         </div>
       )}
 
-      <footer className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 px-4 py-2 text-xs text-slate-500">
+      <footer aria-label={t.grid.legend} className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-200 px-4 py-2 text-xs text-slate-500">
         {["course", "seminar", "lab", "project", "exam", "personal"].map((k) => (
           <span key={k} className="inline-flex items-center gap-1.5">
             <span className={`h-2 w-2 rounded-full ${kindStyle(k).dot}`} />
-            {kindStyle(k).label}
+            {kindLabel(k, locale)}
           </span>
         ))}
       </footer>
@@ -379,7 +388,7 @@ export function Calendar({
           defaultStartMin={adding.startMin}
           defaultEndMin={adding.endMin}
           onClose={() => setAdding(null)}
-          onSaved={(title) => setToast(`“${title}” was added to your calendar ✓`)}
+          onSaved={(title) => setToast(t.grid.added(title))}
         />
       )}
       {toast && (
@@ -398,19 +407,23 @@ function MonthGrid({
   events,
   onPickDay,
   onAddOnDay,
+  t,
+  locale,
 }: {
   from: string;
   month: string;
   today: string;
   events: CalEvent[];
+  t: Messages["calendar"];
+  locale: Locale;
   onPickDay: (date: string) => void;
   onAddOnDay: (date: string) => void;
 }) {
   const cells = Array.from({ length: 42 }, (_, i) => addDays(from, i));
   return (
     <div className="grid grid-cols-7 text-xs">
-      {DAY_SHORT.slice(1).map((d) => (
-        <div key={d} className="border-b border-slate-200 px-2 py-1.5 font-medium uppercase tracking-wide text-slate-500">{d}</div>
+      {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+        <div key={d} className="truncate border-b border-slate-200 px-2 py-1.5 font-medium uppercase tracking-wide text-slate-500">{dayName(d, locale, "short")}</div>
       ))}
       {cells.map((d) => {
         const dayEvents = events.filter((e) => e.date === d);
@@ -421,8 +434,8 @@ function MonthGrid({
             type="button"
             onClick={() => onAddOnDay(d)}
             className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white opacity-0 shadow-sm transition group-hover/cell:opacity-100 focus-visible:opacity-100 max-sm:opacity-60"
-            aria-label={`Add an event on ${d}`}
-            title="Add an event"
+            aria-label={t.grid.addOn(formatDate(d, { weekday: "long", day: "numeric", month: "long" }, locale))}
+            title={t.grid.addEvent}
           >
             +
           </button>
@@ -441,7 +454,7 @@ function MonthGrid({
                   <AttendanceMark status={e.attendance} small className="ml-auto" />
                 </span>
               ))}
-              {dayEvents.length > 3 && <span className="block text-slate-400">+{dayEvents.length - 3} more</span>}
+              {dayEvents.length > 3 && <span className="block text-slate-400">{t.grid.more(dayEvents.length - 3)}</span>}
             </span>
           </button>
           </div>

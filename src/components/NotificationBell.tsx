@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useLocale, useT } from "@/i18n/client";
+import type { Locale } from "@/i18n/config";
+import type { Messages } from "@/i18n/messages";
 import type { ExamReminder } from "@/lib/reminders";
-import { formatDate, formatMinutes } from "@/lib/time";
+import { capitalize, formatDate, formatMinutes } from "@/lib/time";
 import { Mascot } from "./Mascot";
 import { OPEN_CHAT } from "./poliFx";
 
@@ -31,15 +34,15 @@ function writeSet(key: string, set: Set<string>) {
   }
 }
 
-/** What the reminder says at a milestone: when, and which room to go to. */
-function message(r: ExamReminder, minutesLeft: number): { title: string; body: string } {
-  const where = [r.room ? `Room ${r.room}` : null, r.place?.name].filter(Boolean).join(" · ") || "Check the room on the exam list";
-  const when = `${formatDate(r.date, { weekday: "long", day: "numeric", month: "short" })}, ${formatMinutes(r.startMin)}`;
-  if (minutesLeft <= 30) return { title: `📝 ${r.course} starts in ${Math.max(1, minutesLeft)} min`, body: `Head to ${where}. Good luck! 🍀` };
-  if (minutesLeft <= 120) return { title: `📝 ${r.course} in ${Math.round(minutesLeft / 60) || 1} h`, body: `${where}. Time to get going, and bring your student ID.` };
-  if (minutesLeft <= 1440) return { title: `📝 ${r.course} exam tomorrow`, body: `${when} · ${where}. Light review and a good night's sleep! 😴` };
+/** What the reminder says at a milestone, in the interface language: when, and which room to go to. */
+function message(r: ExamReminder, minutesLeft: number, t: Messages["exams"]["bell"], locale: Locale): { title: string; body: string } {
+  const where = t.where(r.room, r.place?.name ?? null);
+  const when = `${capitalize(formatDate(r.date, { weekday: "long", day: "numeric", month: "short" }, locale))}, ${formatMinutes(r.startMin)}`;
+  if (minutesLeft <= 30) return { title: t.startsIn(r.course, Math.max(1, minutesLeft)), body: t.startsInBody(where) };
+  if (minutesLeft <= 120) return { title: t.inHours(r.course, Math.round(minutesLeft / 60) || 1), body: t.inHoursBody(capitalize(where)) };
+  if (minutesLeft <= 1440) return { title: t.tomorrow(r.course), body: t.tomorrowBody(when, where) };
   const days = Math.max(2, r.daysLeft);
-  return { title: `📝 ${r.course} exam in ${days} days`, body: `${when} · ${where}. ${r.tips[0] ?? ""}` };
+  return { title: t.inDays(r.course, days), body: `${when} · ${where}. ${r.tips[0] ?? ""}` };
 }
 
 /**
@@ -48,6 +51,8 @@ function message(r: ExamReminder, minutesLeft: number): { title: string; body: s
  * Google Calendar and .ics exports carry reminders 1 day and 2 hours before each exam.)
  */
 export function NotificationBell() {
+  const t = useT().exams.bell;
+  const locale = useLocale();
   const [reminders, setReminders] = useState<ExamReminder[]>([]);
   const [tip, setTip] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState(0);
@@ -60,6 +65,7 @@ export function NotificationBell() {
   const panel = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
+  const loadedLocale = useRef(locale);
 
   const load = useCallback(async () => {
     try {
@@ -97,6 +103,13 @@ export function NotificationBell() {
     };
   }, [load]);
 
+  // Countdowns and tips come in the interface language: fetch again after a language switch.
+  useEffect(() => {
+    if (loadedLocale.current === locale) return;
+    loadedLocale.current = locale;
+    void load();
+  }, [locale, load]);
+
   // Check the milestones every 30 seconds and remind once per exam and milestone.
   useEffect(() => {
     if (!fetchedAt || !reminders.length) return;
@@ -118,7 +131,7 @@ export function NotificationBell() {
         if (fired.has(key)) continue;
         reached.forEach((m) => fired.add(`${r.id}:${m}`));
         changed = true;
-        const msg = message(r, left);
+        const msg = message(r, left, t, locale);
         first ??= msg;
         if (enabled && typeof Notification !== "undefined" && Notification.permission === "granted") {
           try {
@@ -136,14 +149,14 @@ export function NotificationBell() {
       if (changed) writeSet(FIRED_KEY, fired);
     };
     check();
-    const t = setInterval(check, 30_000);
-    return () => clearInterval(t);
-  }, [reminders, fetchedAt, enabled, router]);
+    const timer = setInterval(check, 30_000);
+    return () => clearInterval(timer);
+  }, [reminders, fetchedAt, enabled, router, t, locale]);
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 8000);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => setToast(null), 8000);
+    return () => clearTimeout(timer);
   }, [toast]);
 
   useEffect(() => {
@@ -193,7 +206,7 @@ export function NotificationBell() {
       try {
         localStorage.setItem(PREF_KEY, "on");
       } catch {}
-      new Notification("🔔 Poli will remind you", { body: "A week, a day, 2 hours and 30 minutes before each exam, with the room to go to.", icon: "/images/mascot.svg" });
+      new Notification(t.enabledTitle, { body: t.enabledBody, icon: "/images/mascot.svg" });
     }
   };
 
@@ -202,9 +215,9 @@ export function NotificationBell() {
       <button
         onClick={toggleOpen}
         className={`relative flex h-9 w-9 items-center justify-center rounded-full text-lg transition hover:bg-slate-100 ${unseen.length ? "animate-wiggle" : ""}`}
-        aria-label={unseen.length ? `Reminders, ${unseen.length} new` : "Reminders"}
+        aria-label={unseen.length ? t.labelNew(unseen.length) : t.label}
         aria-expanded={open}
-        title="Exam reminders"
+        title={t.title}
       >
         <span aria-hidden>🔔</span>
         {unseen.length > 0 && (
@@ -216,12 +229,12 @@ export function NotificationBell() {
 
       {/* Rendered on <body>, so the list and the toast sit above Poli's button and the chat. */}
       {open && mounted && createPortal(
-        <div ref={panel} role="dialog" aria-label="Exam reminders" className="animate-pop fixed inset-x-2 top-16 z-[60] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl sm:inset-x-auto sm:right-4 sm:top-14 sm:w-[24rem]">
+        <div ref={panel} role="dialog" aria-label={t.title} className="animate-pop fixed inset-x-2 top-16 z-[60] overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl sm:inset-x-auto sm:right-4 sm:top-14 sm:w-[24rem]">
           <div className="flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
             <Mascot size={30} />
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-slate-900">Reminders</p>
-              <p className="text-xs text-slate-500">Your exams in the next 30 days</p>
+              <p className="font-semibold text-slate-900">{t.heading}</p>
+              <p className="text-xs text-slate-500">{t.subheading}</p>
             </div>
           </div>
           <div className="max-h-[45vh] overflow-y-auto sm:max-h-[60vh]">
@@ -236,14 +249,14 @@ export function NotificationBell() {
                           {r.course} <span className="font-medium text-slate-500">· {r.countdown}</span>
                         </p>
                         <p className="text-slate-600">
-                          {formatDate(r.date, { weekday: "short", day: "numeric", month: "short" })}, {formatMinutes(r.startMin)} ·{" "}
-                          <span className="font-medium text-slate-800">{r.room ? `Room ${r.room}` : "Room TBA"}</span>
+                          {capitalize(formatDate(r.date, { weekday: "short", day: "numeric", month: "short" }, locale))}, {formatMinutes(r.startMin)} ·{" "}
+                          <span className="font-medium text-slate-800">{r.room ? t.room(r.room) : t.roomTba}</span>
                           {r.place ? ` · ${r.place.name}` : ""}
                         </p>
                         <p className="mt-1 text-xs text-slate-500">💡 {r.tips[0]}</p>
                         {r.mapsUrl && (
                           <a href={r.mapsUrl} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs font-medium text-brand-600 hover:underline">
-                            Open map ↗
+                            {t.openMap}
                           </a>
                         )}
                       </div>
@@ -252,24 +265,25 @@ export function NotificationBell() {
                 ))}
               </ul>
             ) : (
-              <p className="px-4 py-5 text-sm text-slate-600">No exams in the next 30 days 🎉{tip ? <span className="mt-1 block text-xs text-slate-500">💡 {tip}</span> : null}</p>
+              <p className="px-4 py-5 text-sm text-slate-600">{t.empty}{tip ? <span className="mt-1 block text-xs text-slate-500">💡 {tip}</span> : null}</p>
             )}
           </div>
           <div className="space-y-2 border-t border-slate-100 bg-slate-50 px-4 py-3 text-xs text-slate-600">
             {permission === "unsupported" ? (
-              <p>This browser can&apos;t show notifications.</p>
+              <p>{t.unsupported}</p>
             ) : permission === "denied" ? (
-              <p>Notifications are blocked for this site. Allow them in the browser&apos;s site settings to get reminders.</p>
+              <p>{t.blocked}</p>
             ) : (
               <label className="flex cursor-pointer items-center justify-between gap-3">
                 <span>
-                  <span className="block font-medium text-slate-800">Notify me on this device</span>
-                  A week, a day, 2 h and 30 min before, while UPT Orar is open.
+                  <span className="block font-medium text-slate-800">{t.deviceTitle}</span>
+                  {t.deviceHint}
                 </span>
                 <button
                   type="button"
                   role="switch"
                   aria-checked={enabled}
+                  aria-label={t.deviceTitle}
                   onClick={toggleDevice}
                   className={`relative h-6 w-11 shrink-0 rounded-full transition ${enabled ? "bg-brand-600" : "bg-slate-300"}`}
                 >
@@ -278,11 +292,11 @@ export function NotificationBell() {
               </label>
             )}
             <p>
-              📱 Want reminders even when the app is closed?{" "}
+              {t.exportBefore}
               <Link href="/settings" className="font-medium text-brand-600 hover:underline" onClick={() => setOpen(false)}>
-                Export to Google Calendar
+                {t.exportLink}
               </Link>
-              : exams come with alerts a day and 2 hours before.
+              {t.exportAfter}
             </p>
           </div>
         </div>,
@@ -296,7 +310,7 @@ export function NotificationBell() {
             <p className="font-semibold text-slate-900">{toast.title}</p>
             <p className="text-slate-600">{toast.body}</p>
           </div>
-          <button className="text-slate-400 hover:text-slate-700" onClick={() => setToast(null)} aria-label="Dismiss">✕</button>
+          <button className="text-slate-400 hover:text-slate-700" onClick={() => setToast(null)} aria-label={t.dismiss}>✕</button>
         </div>,
         document.body,
       )}
