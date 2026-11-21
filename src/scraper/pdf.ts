@@ -8,7 +8,9 @@ import type { DiscoveredSource, NormalizedTimetable, SemesterRef } from "./types
 interface PdfPage { text: string; tables: Box[][] }
 
 function extractPages(body: Buffer): Promise<PdfPage[]> {
-  const local = path.join(process.cwd(), ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
+  // The interpreter is found at run time. Without the marker the bundler follows `.venv` into the
+  // build, and its `bin/python` symlink points outside the project, which fails the production build.
+  const local = path.join(/* turbopackIgnore: true */ process.cwd(), ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
   const python = process.env.TIMETABLE_PYTHON ?? (existsSync(local) ? local : "python3");
   return new Promise((resolve, reject) => {
     const proc = execFile(python, [path.join(process.cwd(), "scripts/read-timetable-pdf.py")],
