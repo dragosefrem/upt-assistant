@@ -22,6 +22,13 @@
       "when": 1795254398043,
       "tag": "0002_published_optional",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1795262519332,
+      "tag": "0003_unified_features",
+      "breakpoints": true
     }
   ]
 }
