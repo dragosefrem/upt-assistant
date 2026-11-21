@@ -7,6 +7,7 @@ const KIND_STYLE: Record<string, { block: string; dot: string; label: string }> 
   other: { block: "border-slate-400 bg-slate-100 text-slate-800", dot: "bg-slate-400", label: "Other" },
   exam: { block: "border-red-500 bg-red-50 text-red-900", dot: "bg-red-500", label: "Exam" },
   personal: { block: "border-violet-500 bg-violet-50 text-violet-900", dot: "bg-violet-500", label: "Personal" },
+  shared: { block: "border-teal-500 bg-teal-50 text-teal-900", dot: "bg-teal-500", label: "Shared event" },
 };
 
 export function kindStyle(kind: string) {

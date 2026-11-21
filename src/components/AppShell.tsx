@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { logoutAction } from "@/app/(auth)/actions";
 import type { User } from "@/lib/auth";
+import { incomingContactCount } from "@/lib/contacts";
+import { groupInviteCount } from "@/lib/group-events";
 import { LocationProvider } from "./LocationProvider";
 import { Mascot } from "./Mascot";
 import { NavLink } from "./NavLink";
@@ -9,6 +11,7 @@ import { PoliChat } from "./PoliChat";
 
 /** Header and page frame shared by the student pages and the admin area. */
 export function AppShell({ user, children }: { user: User; children: React.ReactNode }) {
+  const invites = incomingContactCount(user.id) + groupInviteCount(user.id);
   return (
     <LocationProvider>
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/90 backdrop-blur">
@@ -22,6 +25,7 @@ export function AppShell({ user, children }: { user: User; children: React.React
           <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-sm sm:gap-1">
             <NavLink href="/" icon="📅">Calendar</NavLink>
             <NavLink href="/exams" icon="📝">Exams</NavLink>
+            <NavLink href="/contacts" icon="👥" badge={invites}>Contacts</NavLink>
             <NavLink href="/attendance" icon="✅">Attendance</NavLink>
             <NavLink href="/settings" icon="⚙️">Settings</NavLink>
             {user.role === "admin" && <NavLink href="/admin" icon="🛠️">Admin</NavLink>}

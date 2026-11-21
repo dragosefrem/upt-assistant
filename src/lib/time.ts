@@ -62,8 +62,36 @@ export function occursInWeek(rule: string, teachingWeek: number | null, monday: 
   return isDatedMeeting(rule) ? mondayOf(rule) === monday : teachingWeek !== null && weekMatches(rule, teachingWeek);
 }
 
+/** A datetime-local input value in the campus time zone. */
+export function localDateTime(at: number = Date.now()): string {
+  const { date, minutes } = nowLocal(new Date(at));
+  return `${date}T${formatMinutes(minutes)}`;
+}
+
+/** Resolve a campus wall time, including DST. A skipped minute has no instant.
+ * When the clock repeats an hour, use its first occurrence. */
+export function localInstant(value: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
+  const wall = Date.parse(`${value}:00Z`);
+  if (!Number.isFinite(wall) || new Date(wall).toISOString().slice(0, 16) !== value) return null;
+  const candidates = [-1, 1].map((day) => {
+    const sample = wall + day * 86_400_000;
+    const offset = Date.parse(`${localDateTime(sample)}:00Z`) - sample;
+    return wall - offset;
+  });
+  return candidates.sort((a, b) => a - b).find((at) => localDateTime(at) === value) ?? null;
+}
+
 export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" }, locale = "en-GB"): string {
   return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(utc(date));
+}
+
+export function formatDateRange(from: string, to: string): string {
+  const end = formatDate(to, { day: "numeric", month: "long", year: "numeric" });
+  if (from === to) return end;
+  if (from.slice(0, 7) === to.slice(0, 7)) return `${Number(from.slice(8))}–${end}`;
+  const start = formatDate(from, { day: "numeric", month: "long", year: from.slice(0, 4) === to.slice(0, 4) ? undefined : "numeric" });
+  return `${start} – ${end}`;
 }
 
 export const DAY_NAMES = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];

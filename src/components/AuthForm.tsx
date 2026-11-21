@@ -7,14 +7,18 @@ import type { AuthState } from "@/app/(auth)/actions";
 export function AuthForm({
   mode,
   action,
+  invite,
 }: {
   mode: "login" | "register";
   action: (prev: AuthState, form: FormData) => Promise<AuthState>;
+  invite?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, {});
   const register = mode === "register";
+  const inviteQuery = invite ? `?invite=${encodeURIComponent(invite)}` : "";
   return (
     <form action={formAction} className="space-y-4">
+      {invite && <input type="hidden" name="invite" value={invite} />}
       {register && (
         <div>
           <label className="label" htmlFor="name">Name</label>
@@ -46,9 +50,9 @@ export function AuthForm({
       </button>
       <p className="text-center text-sm text-slate-600">
         {register ? (
-          <>Already have an account? <Link className="font-medium text-brand-600 hover:underline" href="/login">Sign in</Link></>
+          <>Already have an account? <Link className="font-medium text-brand-600 hover:underline" href={`/login${inviteQuery}`}>Sign in</Link></>
         ) : (
-          <>New here? <Link className="font-medium text-brand-600 hover:underline" href="/register">Create an account</Link></>
+          <>New here? <Link className="font-medium text-brand-600 hover:underline" href={`/register${inviteQuery}`}>Create an account</Link></>
         )}
       </p>
     </form>

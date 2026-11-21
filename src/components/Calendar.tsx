@@ -7,12 +7,12 @@ import { kindStyle } from "@/lib/kinds";
 import { EventDialog } from "./EventDialog";
 import { PersonalEventDialog } from "./PersonalEventDialog";
 
+export { kindStyle };
+
 type View = "day" | "week" | "month";
 
 /** Fired on `window` whenever the student's timetable changes (edits, assistant actions). */
 export const SCHEDULE_CHANGED = "upt:schedule-changed";
-
-export { kindStyle };
 
 const HOUR_PX = 56;
 /** Clicking or dragging on the grid snaps to half hours. */
@@ -128,8 +128,15 @@ export function Calendar({
 
   useEffect(() => {
     const refresh = () => void load(range.from, range.to);
+    const refreshVisible = () => { if (document.visibilityState === "visible") refresh(); };
+    const timer = setInterval(refreshVisible, 60_000);
     window.addEventListener(SCHEDULE_CHANGED, refresh);
-    return () => window.removeEventListener(SCHEDULE_CHANGED, refresh);
+    document.addEventListener("visibilitychange", refreshVisible);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener(SCHEDULE_CHANGED, refresh);
+      document.removeEventListener("visibilitychange", refreshVisible);
+    };
   }, [load, range]);
 
   useEffect(() => {

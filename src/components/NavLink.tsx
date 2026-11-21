@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-export function NavLink({ href, icon, children }: { href: string; icon?: string; children: React.ReactNode }) {
+export function NavLink({ href, icon, badge = 0, children }: { href: string; icon?: string; badge?: number; children: React.ReactNode }) {
   const pathname = usePathname();
   const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
   return (
@@ -16,6 +16,11 @@ export function NavLink({ href, icon, children }: { href: string; icon?: string;
       {icon && <span aria-hidden className="text-base leading-none">{icon}</span>}
       {/* On phones only the icon shows; the name stays for screen readers. */}
       <span className={icon ? "max-sm:sr-only" : undefined}>{children}</span>
+      {badge > 0 && (
+        <span className={`rounded-full px-1.5 text-xs font-semibold tabular-nums ${active ? "bg-white/25 text-white" : "bg-brand-100 text-brand-700"}`}>
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }

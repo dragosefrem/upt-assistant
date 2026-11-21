@@ -20,13 +20,14 @@ import {
   type EntryKind,
 } from "@/db/schema";
 import type { User } from "./auth";
+import { sharedEventsFor } from "./group-events";
 import { addDays, daysBetween, describeWeeks, mondayOf, occursInWeek, weekday } from "./time";
 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
 export interface CalEvent {
   id: string;
-  type: "class" | "exam" | "personal";
-  kind: EntryKind | "exam" | "personal";
+  type: "class" | "exam" | "personal" | "shared";
+  kind: EntryKind | "exam" | "personal" | "shared";
   title: string;
   abbr: string | null;
   date: string;
@@ -40,6 +41,7 @@ export interface CalEvent {
   courseId?: number;
   examId?: number;
   personalId?: number;
+  groupEventId?: string;
   moved?: boolean;
   /**
    * Identifies the recurring series this occurrence belongs to, built from stable keys
@@ -61,9 +63,13 @@ export interface Place {
 
 export type Semester = typeof semesters.$inferSelect & { weeks: string[] };
 
+function withTeachingWeeks(row: typeof semesters.$inferSelect): Semester {
+  return { ...row, weeks: JSON.parse(row.teachingWeeks) as string[] };
+}
+
 export function currentSemester(): Semester | null {
   const row = getDb().select().from(semesters).where(eq(semesters.isCurrent, true)).get();
-  return row ? { ...row, weeks: JSON.parse(row.teachingWeeks) as string[] } : null;
+  return row ? withTeachingWeeks(row) : null;
 }
 
 /** 1-based teaching week containing `date`, or null during holidays and sessions. */
@@ -293,15 +299,20 @@ export function examsForUser(user: Pick<User, "specializationId" | "year">, from
 
 /* ───────────────────────────── Calendar events ───────────────────────────── */
 
-/** Expands the weekly timetable, exams and personal events into dated events. */
-export function eventsBetween(user: User, from: string, to: string): CalEvent[] {
-  const semester = currentSemester();
+/** Expands the student's effective schedule into dated events. */
+export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">, from: string, to: string): CalEvent[] {
   const place = placeResolver(user.facultyId);
   const events: CalEvent[] = [];
 
-  if (semester && user.groupId) {
+  // Every term the range touches, up to the end of its exam session (dated meetings can fall there).
+  const terms = user.groupId
+    ? getDb().select().from(semesters).all().map(withTeachingWeeks)
+        .filter((s) => s.startDate <= to && (s.examEnd && s.examEnd > s.endDate ? s.examEnd : s.endDate) >= from)
+    : [];
+  for (const semester of terms) {
     const week = studentWeek(user, semester);
     for (let date = from; date <= to; date = addDays(date, 1)) {
+      // Weekly classes need a teaching week. A dated meeting can also fall in a break or the session.
       const n = date >= semester.startDate && date <= semester.endDate ? teachingWeek(semester, date) : null;
       const monday = mondayOf(date);
       const day = weekday(date);
@@ -359,7 +370,9 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
     if (p.date) {
       if (p.date >= from && p.date <= to) dates.push(p.date);
     } else if (p.day) {
-      for (let date = from; date <= to; date = addDays(date, 1)) if (weekday(date) === p.day) dates.push(date);
+      const span = daysBetween(from, to);
+      const first = (p.day - weekday(from) + 7) % 7;
+      for (let i = first; i <= span; i += 7) dates.push(addDays(from, i));
     }
     for (const date of dates) {
       events.push({
@@ -381,6 +394,15 @@ export function eventsBetween(user: User, from: string, to: string): CalEvent[] 
         attendance: null,
       });
     }
+  }
+
+  for (const e of sharedEventsFor(user.id, from, to)) {
+    events.push({
+      id: `g:${e.id}`, groupEventId: e.id, type: "shared", kind: "shared", title: e.title,
+      date: e.date, startMin: e.startMin, endMin: e.endMin, room: e.location,
+      abbr: null, teacher: null, note: null, place: null,
+      seriesKey: `g:${e.id}`, courseKey: `g:${e.id}`, attendance: null,
+    });
   }
 
   const marks = new Map(
@@ -420,7 +442,8 @@ export function freeSlots(
     const day = busy.filter((b) => b.date === date).sort((a, b) => a.startMin - b.startMin);
     let cursor = dayStart;
     for (const b of day) {
-      if (b.startMin - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: Math.min(b.startMin, dayEnd) });
+      const gapEnd = Math.min(b.startMin, dayEnd);
+      if (gapEnd - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: gapEnd });
       cursor = Math.max(cursor, b.endMin);
     }
     if (dayEnd - cursor >= minMinutes) out.push({ date, startMin: cursor, endMin: dayEnd });

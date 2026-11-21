@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import type { AttendanceStatus } from "@/db/schema";
 import type { CalEvent } from "@/lib/schedule";
@@ -60,6 +61,8 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
       <AttendanceControl event={event} />
 
       {event.place && <TripSuggestions room={event.room} startMin={event.startMin} />}
+
+      {event.groupEventId && <Link href={`/contacts/events/${event.groupEventId}`} className="btn-secondary">View group and change RSVP</Link>}
 
       {event.type === "class" && event.entryId && !moving && (
         <div className="mt-4 flex flex-wrap gap-2 border-t border-slate-100 pt-4">

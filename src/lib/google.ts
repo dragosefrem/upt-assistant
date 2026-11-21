@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { users } from "@/db/schema";
 import type { User } from "./auth";
 import { exportItems, localStamp, type ExportItem } from "./export";
-import { TIME_ZONE } from "./time";
+import { TIME_ZONE, addDays, formatMinutes } from "./time";
 
 /**
  * Google Calendar export over plain REST.
@@ -96,7 +96,7 @@ function toGoogleEvent(item: ExportItem) {
     }
   }
   const at = (minutes: number) => ({
-    dateTime: `${item.date}T${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}:00`,
+    dateTime: `${minutes === 1440 ? addDays(item.date, 1) : item.date}T${formatMinutes(minutes % 1440)}:00`,
     timeZone: TIME_ZONE,
   });
   return {
