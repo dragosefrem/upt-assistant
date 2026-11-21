@@ -1,22 +1,18 @@
 import "server-only";
 import { randomBytes, randomUUID } from "node:crypto";
-import { inArray } from "drizzle-orm";
 import { getDb } from "@/db";
-import { eventParticipants, groupEvents, users } from "@/db/schema";
+import { eventParticipants, groupEvents } from "@/db/schema";
 import type { User } from "./auth";
-import { contactList, InvitationError } from "./contacts";
+import { acceptedScheduleContacts, InvitationError } from "./contacts";
 import { tentativeTimesFor } from "./group-events";
 import { eventsBetween, freeSlots } from "./schedule";
 import { addDays, formatMinutes, localInstant, mondayOf, nowLocal } from "./time";
 
 /** Only the intersection of free intervals leaves the server. */
 export function weeklyAvailability(user: User, contactIds: string[]) {
-  const ids = new Set(contactIds);
-  const selected = contactList(user.id).filter((c) => c.accepted && ids.has(c.id));
-  if (selected.length !== ids.size) throw new InvitationError("Choose people from your accepted contacts.");
-  const others = selected.length ? getDb().select({
-    id: users.id, facultyId: users.facultyId, specializationId: users.specializationId, year: users.year, groupId: users.groupId,
-  }).from(users).where(inArray(users.id, selected.map((c) => c.id))).all() : [];
+  const ids = [...new Set(contactIds)];
+  const others = acceptedScheduleContacts(user.id, ids);
+  if (others.length !== ids.length) throw new InvitationError("Choose people from your accepted contacts.");
   const { date: today, minutes } = nowLocal();
   const sunday = addDays(mondayOf(today), 6);
   const busy = [user, ...others].flatMap((person) => [

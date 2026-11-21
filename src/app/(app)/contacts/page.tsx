@@ -19,12 +19,16 @@ function ContactRow({ person, userId }: { person: Contact; userId: string }) {
         <p className="break-words text-sm font-semibold">{person.name}</p>
         <p className="break-all text-xs text-slate-600">{person.email}</p>
       </div>
-      <InvitationForm action={contactAction.bind(null, person.id)} className="flex flex-wrap items-center gap-1">
-        {person.accepted ? <button className="btn-ghost" name="action" value="remove">Remove</button>
-          : person.requestedBy === userId ? <button className="btn-ghost" name="action" value="cancel">Cancel request</button>
-          : <><button className="btn-primary" name="action" value="accept">Accept</button>
-            <button className="btn-ghost" name="action" value="decline">Decline</button></>}
-      </InvitationForm>
+      <div className="flex flex-wrap items-center gap-1">
+        {person.accepted && <Link href={`/contacts/${person.id}/schedule`} prefetch={false}
+          aria-label={`View schedule for ${person.name}`} className="btn-secondary">View schedule</Link>}
+        <InvitationForm action={contactAction.bind(null, person.id)} className="flex flex-wrap items-center gap-1">
+          {person.accepted ? <button className="btn-ghost" name="action" value="remove">Remove</button>
+            : person.requestedBy === userId ? <button className="btn-ghost" name="action" value="cancel">Cancel request</button>
+            : <><button className="btn-primary" name="action" value="accept">Accept</button>
+              <button className="btn-ghost" name="action" value="decline">Decline</button></>}
+        </InvitationForm>
+      </div>
     </li>
   );
 }
@@ -64,7 +68,10 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
     <div className="mx-auto w-full max-w-5xl space-y-5">
       <InvitationRefresh />
       <header className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Contacts</h1>
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Contacts</h1>
+          <p className="mt-1 text-sm text-slate-600">Accepted contacts can see each other’s classes and exams. Personal commitments appear as “Busy”.</p>
+        </div>
         <Link className="btn-primary" href="/contacts/plan">Plan a group event</Link>
       </header>
       <div className="grid items-start gap-5 md:grid-cols-2">

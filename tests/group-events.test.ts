@@ -4,6 +4,7 @@ import { GET as restoreGuest } from "@/app/join/[token]/manage/[key]/route";
 import { getDb } from "@/db";
 import { courses, entries, entryGroups, exams, examSpecializations, faculties, groups, personalEvents, specializations, userOverrides, users } from "@/db/schema";
 import { answerContact, cancelContactRequest, contactList, findPerson, incomingContactCount, inviteContact, removeContact } from "@/lib/contacts";
+import { contactWeek } from "@/lib/contact-schedule";
 import { exportItems, toICS } from "@/lib/export";
 import { groupInviteCount, memberEvent, myGroupEvents, publicEvent, respondToEvent, sharedEventsFor } from "@/lib/group-events";
 import { createGroupEvent, weeklyAvailability } from "@/lib/group-planning";
@@ -68,6 +69,42 @@ describe("contact requests", () => {
   });
 });
 
+describe("contact schedules", () => {
+  it("permits both people only while their contact request is accepted", () => {
+    expect(contactWeek("dan", "bea")).toBeNull();
+    inviteContact("bea", host().email);
+    expect(contactWeek("bea", "alex")).toBeNull();
+    expect(contactWeek("alex", "bea")).toBeNull();
+    answerContact("alex", "bea", true);
+    expect(contactWeek("alex", "bea", friday)).toMatchObject({ name: "bea", from: "2026-11-16", to: "2026-11-22" });
+    expect(contactWeek("bea", "alex", "2026-11-29")?.from).toBe("2026-11-23");
+    for (const invalid of ["2026-02-30", "9999-12-31", "invalid"]) {
+      expect(contactWeek("bea", "alex", invalid)?.from).toBe("2026-11-16");
+    }
+    removeContact("alex", "bea");
+    expect(contactWeek("bea", "alex")).toBeNull();
+    expect(contactWeek("alex", "bea")).toBeNull();
+  });
+
+  it("shows shared event details only to fellow attendees and redacts other busy time", () => {
+    const together = plan({ contactIds: ["bea"], title: "Study group", startMin: 900 });
+    const separate = plan({ contactIds: ["cam"], title: "Private meetup", startMin: 1080 });
+    reply(separate, "cam", "accepted");
+    db.insert(personalEvents).values({ userId: "alex", date: friday, startMin: 600, endMin: 630,
+      title: "Private appointment", location: "Private address" }).run();
+
+    const busy = (startMin: number, endMin: number) => ({ date: friday, startMin, endMin, title: "Busy", kind: "busy", room: null });
+    const peek = () => contactWeek("bea", "alex", friday)!.events;
+    expect(peek()).toEqual([busy(600, 630), busy(900, 960), busy(1080, 1140)]);
+    reply(together, "bea", "accepted");
+    expect(peek()).toEqual([
+      busy(600, 630),
+      { date: friday, startMin: 900, endMin: 960, title: "Study group", kind: "shared", room: "West pitch" },
+      busy(1080, 1140),
+    ]);
+  });
+});
+
 describe("finding a time together", () => {
   it("combines effective classes, exams and personal appointments and returns only free intervals", () => {
     connect("bea");
@@ -79,7 +116,7 @@ describe("finding a time together", () => {
     const course = db.insert(courses).values({ key: "c1", name: "Private class", semesterId, facultyId: faculty.id }).returning().get();
     const entry = db.insert(entries).values({ key: "e1", day: 1, startMin: 480, endMin: 600, courseId: course.id, kind: "course", semesterId, rawText: "" }).returning().get();
     db.insert(entryGroups).values({ groupId: group.id, entryId: entry.id }).run();
-    db.insert(userOverrides).values({ entryId: entry.id, userId: "bea", day: 5, startMin: 600, endMin: 720 }).run();
+    db.insert(userOverrides).values({ entryId: entry.id, userId: "bea", day: 5, startMin: 600, endMin: 720, room: "A1", note: "My private note" }).run();
     const exam = db.insert(exams).values({ key: "x", year: 1, courseName: "Private exam", facultyId: faculty.id,
       date: friday, startMin: 780, endMin: 840, rawText: "" }).returning().get();
     db.insert(examSpecializations).values({ examId: exam.id, specializationId: spec.id }).run();
@@ -90,6 +127,10 @@ describe("finding a time together", () => {
     ]);
     expect(slots[0]).toEqual({ date: "2026-11-16", startMin: 661, endMin: 1440 });
     expect(slots.at(-1)?.date).toBe("2026-11-22");
+    expect(contactWeek("alex", "bea", friday)?.events).toEqual([
+      { date: friday, startMin: 600, endMin: 720, title: "Private class", kind: "course", room: "A1" },
+      { date: friday, startMin: 780, endMin: 840, title: "Private exam", kind: "exam", room: null },
+    ]);
     expect(() => createGroupEvent(host(), { ...booking, contactIds: ["bea"], startMin: 650 })).toThrow(/no longer free/);
     expect(() => weeklyAvailability(host(), ["dan"])).toThrow(/accepted contacts/);
   });

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, count, eq, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { contacts, users } from "@/db/schema";
 import { normalizeEmail } from "./auth";
@@ -19,6 +19,7 @@ export function findPerson(email: string) {
 }
 
 const involving = (id: string) => or(eq(contacts.firstId, id), eq(contacts.secondId, id));
+const otherUser = (id: string) => eq(users.id, sql`case when ${contacts.firstId} = ${id} then ${contacts.secondId} else ${contacts.firstId} end`);
 
 function pair(first: string, second: string) {
   const [firstId, secondId] = [first, second].sort();
@@ -33,8 +34,18 @@ function between(a: string, b: string) {
 export function contactList(userId: string) {
   return getDb().select({ ...person, accepted: contacts.accepted, requestedBy: contacts.requestedBy })
     .from(contacts)
-    .innerJoin(users, eq(users.id, sql`case when ${contacts.firstId} = ${userId} then ${contacts.secondId} else ${contacts.firstId} end`))
+    .innerJoin(users, otherUser(userId))
     .where(involving(userId)).orderBy(asc(users.name), asc(users.email)).all();
+}
+
+/** The calendar profiles this viewer is allowed to look up. */
+export function acceptedScheduleContacts(viewerId: string, ids: string[]) {
+  if (!ids.length) return [];
+  return getDb().select({
+    id: users.id, name: users.name, groupId: users.groupId, facultyId: users.facultyId,
+    specializationId: users.specializationId, year: users.year,
+  }).from(contacts).innerJoin(users, otherUser(viewerId))
+    .where(and(involving(viewerId), eq(contacts.accepted, true), inArray(users.id, ids))).all();
 }
 
 export function incomingContactCount(userId: string) {
