@@ -2,6 +2,7 @@ import { getT } from "@/i18n/server";
 import type { User } from "@/lib/auth";
 import { incomingContactCount } from "@/lib/contacts";
 import { groupInviteCount } from "@/lib/group-events";
+import { MainContent } from "./AppShell/MainContent";
 import { Brand } from "./Brand";
 import { LocationProvider } from "./LocationProvider";
 import { NotificationBell } from "./NotificationBell";
@@ -25,7 +26,7 @@ export async function AppShell({ user, children }: { user: User; children: React
           </div>
         </div>
       </header>
-      <main id="student-content" tabIndex={-1} className="app-content shell-width">{children}</main>
+      <MainContent id="student-content" tabIndex={-1} className="app-content shell-width">{children}</MainContent>
       <PoliChat />
     </LocationProvider>
   );

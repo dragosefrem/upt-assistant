@@ -145,7 +145,7 @@ const ro: typeof en = {
     unsupported: "Browserul acesta nu poate afișa notificări.",
     blocked: "Notificările sunt blocate pentru acest site. Permite-le din setările site-ului, în browser, ca să primești reamintiri.",
     deviceTitle: "Anunță-mă pe acest dispozitiv",
-    deviceHint: "Cu o săptămână, o zi, 2 h și 30 min înainte, cât timp Poli e deschis.",
+    deviceHint: "Cu o săptămână, o zi, 2 h și 30 min înainte, cât timp folosești Poli.",
     exportBefore: "📱 Vrei reamintiri și când aplicația e închisă? ",
     exportLink: "Exportă în Google Calendar",
     exportAfter: ": examenele vin cu alerte cu o zi și cu 2 ore înainte.",

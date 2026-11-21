@@ -4,7 +4,8 @@ import nodemailer from "nodemailer";
 import { getDb } from "@/db";
 import { courses, entries, entryGroups, examSpecializations, exams, faculties, groups, semesters, specializations, users } from "@/db/schema";
 import type { User } from "@/lib/auth";
-import { exportItems } from "@/lib/export";
+import { exportItems, toICS } from "@/lib/export";
+import { syncToGoogle } from "@/lib/google";
 import { calendarEmail, emailCalendar } from "@/lib/export-email";
 import { renewCalendarLink } from "@/app/(app)/settings/actions";
 import { GET as calendarFeed } from "@/app/api/ics/[token]/route";
@@ -73,6 +74,35 @@ describe("calendar export language", () => {
     expect(texts(exportItems({ ...user, locale: "ro" }, "en"))).toContain("(Lecture)");
   });
 
+  it("names the feed Poli and keeps existing event identities", () => {
+    const [item] = exportItems(user);
+    const feed = toICS([item]);
+    expect(feed).toContain("X-WR-CALNAME:Poli");
+    expect(feed).toContain(`UID:${item.uid}@upt-orar`);
+  });
+
+  it.each(["UPT Orar", "My lectures"])("reuses a connected Google calendar named %s", async (summary) => {
+    const updates: unknown[] = [];
+    const fake = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes("oauth2.googleapis.com")) return Response.json({ access_token: "test" });
+      if (url.endsWith("/calendars/connected") && init?.method === "GET") return Response.json({ summary });
+      if (url.endsWith("/calendars/connected") && init?.method === "PATCH") {
+        updates.push(JSON.parse(String(init.body)));
+        return Response.json({ id: "connected" });
+      }
+      if (url.includes("/calendars/connected/events")) return Response.json({ items: [] });
+      throw new Error("Unexpected Google Calendar endpoint");
+    });
+    vi.stubGlobal("fetch", fake);
+    try {
+      const result = await syncToGoogle({ ...user, googleRefreshToken: "test", googleCalendarId: "connected" });
+      expect(result.calendarId).toBe("connected");
+      expect(updates).toEqual(summary === "UPT Orar" ? [{ summary: "Poli" }] : []);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("writes the e-mail in the student's language", () => {
     const en = calendarEmail({ ics: "X", semester: "semester 1, 2026-2027", feedUrl: null });
     expect(en.subject).toBe("Your UPT timetable");
@@ -103,8 +133,8 @@ describe("calendar export language", () => {
   it.each([
     { to: "friend@example.com", rememberAddress: false, includesFeed: false, saved: "alternate@example.com" },
     { to: "friend@example.com", rememberAddress: true, includesFeed: false, saved: "friend@example.com" },
-    { to: " ALTERNATE@example.com ", rememberAddress: false, includesFeed: true, saved: "alternate@example.com" },
-    { to: "s@example.com", rememberAddress: false, includesFeed: true, saved: "alternate@example.com" },
+    { to: " ALTERNATE@example.com ", rememberAddress: false, includesFeed: false, saved: "alternate@example.com" },
+    { to: " S@example.com ", rememberAddress: false, includesFeed: true, saved: "alternate@example.com" },
   ])("sends a snapshot to $to and preserves the requested address preference ($rememberAddress)", async (test) => {
     const db = getDb();
     const account = db.update(users).set({ exportEmail: "alternate@example.com", calendarEmailedAt: null })

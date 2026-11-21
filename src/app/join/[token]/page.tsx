@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { Brand } from "@/components/Brand";
 import { GroupEventSummary, RsvpButtons } from "@/components/GroupEventSummary";
 import { InvitationForm } from "@/components/InvitationForm";
@@ -15,19 +16,25 @@ import { publicEvent } from "@/lib/group-events";
 import { publicRsvp } from "./actions";
 import { GUEST_COOKIE } from "./guest-cookie";
 
-export async function generateMetadata(): Promise<Metadata> {
+const loadInvitation = cache(async (token: string) => {
+  const user = await getUser();
+  const guestKey = (await cookies()).get(GUEST_COOKIE)?.value;
+  return { user, guestKey, event: publicEvent(token, user?.id, guestKey) };
+});
+
+export async function generateMetadata({ params }: Pick<PageProps<"/join/[token]">, "params">): Promise<Metadata> {
   const t = await getT();
+  const { event } = await loadInvitation((await params).token);
   // Keep invitation tokens out of referrers while allowing a same-origin form POST before hydration.
-  return { title: t.contacts.guest.title, robots: { index: false, follow: false }, referrer: "strict-origin" };
+  return { title: event ? t.contacts.guest.title : t.landing.notFound.title, robots: { index: false, follow: false }, referrer: "strict-origin" };
 }
 
 export default async function GuestPage({ params }: PageProps<"/join/[token]">) {
   const { token } = await params;
-  const user = await getUser();
-  const guestKey = (await cookies()).get(GUEST_COOKIE)?.value;
-  const event = publicEvent(token, user?.id, guestKey);
+  const { user, guestKey, event } = await loadInvitation(token);
   if (!event) notFound();
-  const t = (await getT()).contacts.guest;
+  const messages = await getT();
+  const t = messages.contacts.guest;
   // Bind one fresh key to this form so a retried first submission keeps the same seat.
   const firstGuestKey = !user && !guestKey ? randomBytes(32).toString("base64url") : "";
   return (

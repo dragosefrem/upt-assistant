@@ -1,25 +1,31 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { getLocale, getT } from "@/i18n/server";
 import { kindLabel, kindStyle } from "@/lib/kinds";
 import { requireOnboardedUser } from "@/lib/auth";
 import { contactWeek } from "@/lib/contact-schedule";
 import { addDays, capitalize, formatDate, formatMinutes, nowLocal } from "@/lib/time";
 
-export async function generateMetadata() {
+const loadSchedule = cache(async (id: string, week?: string | string[]) => {
+  const viewer = await requireOnboardedUser();
+  return contactWeek(viewer.id, id, typeof week === "string" ? week : undefined, await getLocale());
+});
+
+export async function generateMetadata({ params, searchParams }: PageProps<"/contacts/[id]/schedule">) {
   const t = await getT();
-  return { title: t.contacts.schedule.title };
+  const schedule = await loadSchedule((await params).id, (await searchParams).week);
+  return { title: schedule ? t.contacts.schedule.title : t.landing.notFound.title };
 }
 
 export default async function ContactSchedulePage({ params, searchParams }: PageProps<"/contacts/[id]/schedule">) {
-  const viewer = await requireOnboardedUser();
   const { id } = await params;
   const { week } = await searchParams;
   const messages = await getT();
   const t = messages.contacts.schedule;
   const locale = await getLocale();
   const today = nowLocal().date;
-  const schedule = contactWeek(viewer.id, id, typeof week === "string" ? week : undefined, locale);
+  const schedule = await loadSchedule(id, week);
   if (!schedule) notFound();
 
   const path = `/contacts/${encodeURIComponent(id)}/schedule`;

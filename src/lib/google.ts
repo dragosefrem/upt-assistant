@@ -148,9 +148,7 @@ export async function syncToGoogle(user: User, locale: Locale = user.locale ?? "
     try {
       const path = `/calendars/${encodeURIComponent(calendarId)}`;
       const calendar = await call<{ summary: string }>(accessToken, "GET", path);
-      if (calendar.summary === "UPT Orar") {
-        await call(accessToken, "PATCH", path, { summary: CALENDAR_NAME });
-      }
+      if (calendar.summary === "UPT Orar") await call(accessToken, "PATCH", path, { summary: CALENDAR_NAME });
     } catch (err) {
       if (err instanceof GoogleError && (err.status === 404 || err.status === 410)) calendarId = null;
       else throw err;

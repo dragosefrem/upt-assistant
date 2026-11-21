@@ -107,7 +107,7 @@ const ro: typeof en = {
     again: "Trimite-mi un link nou",
   },
   mail: {
-    subject: "Resetează-ți parola Poli",
+    subject: "Resetează parola contului tău Poli",
     greeting: (name: string) => `Salut, ${name},`,
     line: "Cineva a cerut resetarea parolei contului tău Poli. Dacă ai fost tu, alege-ți o parolă nouă aici:",
     button: "Alege o parolă nouă",

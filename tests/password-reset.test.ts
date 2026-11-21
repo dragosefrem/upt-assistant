@@ -74,7 +74,7 @@ describe("password reset", () => {
     await mail.deliver();
     const [message] = mail.send.mock.calls[0];
     expect(message.to).toBe(EMAIL);
-    expect(message.subject).toBe("Resetează-ți parola Poli");
+    expect(message.subject).toBe("Resetează parola contului tău Poli");
     expect(message.text).toContain("Salut, Ana,");
     const token = tokenIn(String(message.text));
     expect(message.text).toContain(`${BASE}/reset/${token}`);
