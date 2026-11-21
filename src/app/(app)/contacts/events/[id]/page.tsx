@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 import { GroupEventSummary, responseLabel, RsvpButtons } from "@/components/GroupEventSummary";
 import { InvitationForm } from "@/components/InvitationForm";
 import { InvitationRefresh } from "@/components/InvitationRefresh";
@@ -9,14 +10,16 @@ import { requireOnboardedUser } from "@/lib/auth";
 import { memberEvent } from "@/lib/group-events";
 import { rsvpAction } from "../../actions";
 
-export async function generateMetadata() {
+const loadEvent = cache(async (id: string) => memberEvent((await requireOnboardedUser()).id, id));
+
+export async function generateMetadata({ params }: PageProps<"/contacts/events/[id]">) {
   const t = await getT();
-  return { title: t.contacts.event.pageTitle };
+  const event = await loadEvent((await params).id);
+  return { title: event ? t.contacts.event.pageTitle : t.landing.notFound.title };
 }
 
 export default async function GroupEventPage({ params }: PageProps<"/contacts/events/[id]">) {
-  const user = await requireOnboardedUser();
-  const event = memberEvent(user.id, (await params).id);
+  const event = await loadEvent((await params).id);
   if (!event) notFound();
   const t = (await getT()).contacts.event;
   const locale = await getLocale();

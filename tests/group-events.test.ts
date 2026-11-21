@@ -15,6 +15,7 @@ import { planningRange } from "@/lib/planning-range";
 import { currentSemester, eventsBetween } from "@/lib/schedule";
 import { localInstant } from "@/lib/time";
 
+vi.mock("next/headers", () => ({ cookies: async () => new Map() }));
 vi.stubEnv("DATABASE_PATH", ":memory:");
 const monday = new Date("2026-11-16T09:00:00Z"); // 11:00 on campus
 vi.useFakeTimers({ toFake: ["Date"] });
@@ -252,7 +253,11 @@ describe("shareable invitations", () => {
   it("keeps the guest URL private while preserving the origin on a native RSVP submission", async () => {
     const locale = vi.spyOn(i18nServer, "getT").mockResolvedValue(messages.en);
     try {
-      expect(await guestMetadata()).toMatchObject({ referrer: "strict-origin", robots: { index: false, follow: false } });
+      const id = plan({ contactIds: [], share: true });
+      const token = memberEvent("alex", id)!.shareToken!;
+      const metadata = (token: string) => guestMetadata({ params: Promise.resolve({ token }) });
+      expect(await metadata(token)).toMatchObject({ title: messages.en.contacts.guest.title, referrer: "strict-origin", robots: { index: false, follow: false } });
+      expect((await metadata("absent")).title).toBe(messages.en.landing.notFound.title);
     } finally {
       locale.mockRestore();
     }
