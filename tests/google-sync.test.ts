@@ -14,6 +14,8 @@ import { attendanceGoalOverview, setAttendanceGoal } from "@/lib/attendance-goal
 import { attendanceActivityId } from "@/lib/kinds";
 import { calendarSlices } from "@/lib/calendar-timing";
 import type { GoogleEvent } from "@/lib/calendar-types";
+import { contactWeek, currentContactStatuses } from "@/lib/contact-schedule";
+import { answerContact, inviteContactById } from "@/lib/contacts";
 import { connectGoogle, consentUrl, disconnectGoogle, googleSyncMode, setGoogleSyncMode, syncToGoogle } from "@/lib/google";
 import { syncDueCalendars } from "@/lib/google-worker";
 import { exportItems, toICS } from "@/lib/export";
@@ -283,7 +285,10 @@ describe("Poli and Google Calendar", () => {
     const entry = db.insert(entries).values({ key: "sync-entry", courseId: course.id, semesterId: sem.id, rawText: "Design", kind: "course", day: 1, startMin: 600, endMin: 660, weeks: "all" }).returning().get();
     db.insert(entryGroups).values({ entryId: entry.id, groupId: group.id }).run();
     user = db.update(users).set({ facultyId: faculty.id, specializationId: spec.id, groupId: group.id, year: 1 }).where(eq(users.id, user.id)).returning().get();
-    const other = { ...user, id: "colleague" };
+    const other = db.insert(users).values({ id: "colleague", name: "Colleague", email: "colleague@test.invalid",
+      passwordHash: "x", feedToken: "colleague", facultyId: faculty.id, specializationId: spec.id, groupId: group.id, year: 1 }).returning().get();
+    inviteContactById(other.id, user.id);
+    answerContact(user.id, other.id, true);
     const goalId = attendanceActivityId({ courseKey: "c:" + course.key, kind: entry.kind });
     expect(setAttendanceGoal(user, goalId, 4)).toBeNull();
     await sync();
@@ -301,6 +306,14 @@ describe("Poli and Google Calendar", () => {
       [a.date, 600, "My Design"], [c.date, 600, "My Design"], [c.date, 780, "Tutorial"],
     ]);
     expect(eventsBetween(other, a.date, c.date).map(e => e.title)).toEqual(["Design", "Design", "Design"]);
+    for (const minutes of [600, 780]) {
+      expect(currentContactStatuses(other.id, "en", { date: c.date, minutes }).get(user.id)).toEqual({ state: "busy" });
+    }
+    expect(contactWeek(other.id, user.id, c.date)!.events.filter(e => e.date === c.date)).toMatchObject([
+      { startMin: 600, kind: "busy", title: "Busy", room: null }, { startMin: 780, kind: "busy", title: "Busy", room: null },
+    ]);
+    expect(runTool("contact_schedule", { person: user.name, from: c.date }, { user: other, location: null, changed: false }))
+      .toMatchObject({ busy: [{ what: "busy" }, { what: "busy" }] });
     const sessions = () => eventsBetween(user, c.date, c.date);
     const [regular, moved] = sessions();
     // A mark saved before this merge only identifies the series, date and displayed time.

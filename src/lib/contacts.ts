@@ -70,14 +70,16 @@ export function contactList(userId: string) {
 }
 
 /** The calendar profiles this viewer is allowed to look up. */
-export function acceptedScheduleContacts(viewerId: string, ids: string[]) {
-  if (!ids.length) return [];
+export function acceptedScheduleContacts(viewerId: string, ids?: string[]) {
+  if (ids?.length === 0) return [];
   return getDb().select({
     id: users.id, name: users.name, groupId: users.groupId, facultyId: users.facultyId,
-    specializationId: users.specializationId, year: users.year,
+    specializationId: users.specializationId, year: users.year, shareActivityDetails: users.shareActivityDetails,
   }).from(contacts).innerJoin(users, otherUser(viewerId))
-    .where(and(involving(viewerId), eq(contacts.accepted, true), inArray(users.id, ids))).all();
+    .where(and(involving(viewerId), eq(contacts.accepted, true), ids ? inArray(users.id, ids) : undefined)).all();
 }
+
+export type ScheduleContact = ReturnType<typeof acceptedScheduleContacts>[number];
 
 export function incomingContactCount(userId: string) {
   return getDb().select({ n: count() }).from(contacts)

@@ -7,7 +7,7 @@ import { courses, entries, entryGroups, exams, examSpecializations, faculties, g
 import { messages } from "@/i18n/messages";
 import * as i18nServer from "@/i18n/server";
 import { answerContact, cancelContactRequest, contactList, findPerson, incomingContactCount, invitationFailure, InvitationError, inviteContact, removeContact } from "@/lib/contacts";
-import { contactWeek } from "@/lib/contact-schedule";
+import { contactWeek, currentContactStatuses } from "@/lib/contact-schedule";
 import { exportItems, toICS } from "@/lib/export";
 import { groupInviteCount, memberEvent, myGroupEvents, publicEvent, respondToEvent, sharedEventsFor } from "@/lib/group-events";
 import { createGroupEvent, groupAvailability } from "@/lib/group-planning";
@@ -80,15 +80,20 @@ describe("contact schedules", () => {
   it("permits both people only while their contact request is accepted", () => {
     expect(contactWeek("dan", "bea")).toBeNull();
     inviteContact("bea", host().email);
+    expect(currentContactStatuses("bea").size).toBe(0);
+    expect(currentContactStatuses("alex").size).toBe(0);
     expect(contactWeek("bea", "alex")).toBeNull();
     expect(contactWeek("alex", "bea")).toBeNull();
     answerContact("alex", "bea", true);
+    expect([...currentContactStatuses("bea")]).toEqual([["alex", { state: "free" }]]);
+    expect(currentContactStatuses("dan").size).toBe(0);
     expect(contactWeek("alex", "bea", friday)).toMatchObject({ name: "bea", from: "2026-11-16", to: "2026-11-22" });
     expect(contactWeek("bea", "alex", "2026-11-29")?.from).toBe("2026-11-23");
     for (const invalid of ["2026-02-30", "9999-12-31", "invalid"]) {
       expect(contactWeek("bea", "alex", invalid)?.from).toBe("2026-11-16");
     }
     removeContact("alex", "bea");
+    expect(currentContactStatuses("bea").size).toBe(0);
     expect(contactWeek("bea", "alex")).toBeNull();
     expect(contactWeek("alex", "bea")).toBeNull();
   });
@@ -102,13 +107,27 @@ describe("contact schedules", () => {
 
     const busy = (startMin: number, endMin: number) => ({ date: friday, startMin, endMin, title: "Busy", kind: "busy", room: null });
     const peek = () => contactWeek("bea", "alex", friday)!.events;
+    const status = (minutes: number) => currentContactStatuses("bea", "en", { date: friday, minutes }).get("alex");
     expect(peek()).toEqual([busy(600, 630), busy(900, 960), busy(1080, 1140)]);
+    expect(status(600)).toEqual({ state: "busy" });
+    expect(status(630)).toEqual({ state: "free" });
+    expect(status(900)).toEqual({ state: "busy" });
+    expect(status(1080)).toEqual({ state: "busy" });
     reply(together, "bea", "accepted");
+    expect(status(900)).toEqual({ state: "activity", kind: "shared", title: "Study group", room: "West pitch" });
     expect(peek()).toEqual([
       busy(600, 630),
       { date: friday, startMin: 900, endMin: 960, title: "Study group", kind: "shared", room: "West pitch" },
       busy(1080, 1140),
     ]);
+    db.insert(personalEvents).values([
+      { userId: "alex", date: friday, startMin: 890, endMin: 910, title: "Private appointment" },
+      { userId: "alex", date: friday, startMin: 960, endMin: 980, title: "Private follow-up" },
+    ]).run();
+    expect(status(900)).toEqual({ state: "activity", kind: "shared", title: "Study group", room: "West pitch" });
+    db.update(users).set({ shareActivityDetails: false }).where(eq(users.id, "alex")).run();
+    expect(status(900)).toEqual({ state: "busy" });
+    expect(peek()).toEqual([busy(600, 630), busy(890, 980), busy(1080, 1140)]);
   });
 });
 

@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { facultyDocuments } from "@/lib/faculty-documents";
 import { importDiagnostic } from "@/i18n/messages/import-diagnostics";
 import { saveProfileAction } from "@/app/onboarding/actions";
@@ -13,7 +14,7 @@ import { kindLabel } from "@/lib/kinds";
 import { mailConfigured } from "@/lib/mail";
 import { courseChoices, currentSemester, hiddenClasses } from "@/lib/schedule";
 import { dayName, formatMinutes } from "@/lib/time";
-import { restoreHiddenClass } from "./actions";
+import { restoreHiddenClass, setContactSharing } from "./actions";
 
 export async function generateMetadata() {
   const t = await getT();
@@ -37,7 +38,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       <h1 className="page-heading">{s.page.title}</h1>
 
       <nav aria-label={s.page.title} className="flex flex-wrap gap-2">
-        {([["profile", s.study.title], ["courses", s.courses.title], ["export", s.export.title], ["language", s.language.title]] as const).map(([id, label]) => (
+        {([["profile", s.study.title], ["courses", s.courses.title], ["contact-privacy", s.contactPrivacy.title], ["export", s.export.title], ["language", s.language.title]] as const).map(([id, label]) => (
           <a key={id} href={`#${id}`} className="btn-secondary text-xs">{label}</a>
         ))}
       </nav>
@@ -75,6 +76,32 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
           </ul>
         </section>
       )}
+
+      <section id="contact-privacy" className="card scroll-mt-20 p-6" aria-labelledby="contact-privacy-heading">
+        <h2 id="contact-privacy-heading" className="text-base font-semibold">{s.contactPrivacy.title}</h2>
+        <form action={setContactSharing}>
+          <fieldset className="mt-1 grid gap-2 sm:grid-cols-2">
+            <legend className="mb-3 text-sm text-slate-600">{s.contactPrivacy.hint}</legend>
+            {(["details", "availability"] as const).map((mode) => {
+              const active = user.shareActivityDetails === (mode === "details");
+              const option = s.contactPrivacy[mode];
+              return (
+                <button key={mode} type="submit" name="sharing" value={mode} aria-pressed={active}
+                  aria-labelledby={`sharing-${mode}`} aria-describedby={`sharing-${mode}-hint`}
+                  className={`flex items-start gap-2.5 rounded-xl border p-3 text-left ${active ? "border-brand-500 bg-brand-50" : "border-slate-200 hover:bg-slate-50"}`}>
+                  <span aria-hidden="true" className={`mt-0.5 grid size-4 shrink-0 place-items-center rounded-full border ${active ? "border-brand-600 bg-brand-600 text-white" : "border-slate-400"}`}>
+                    {active && <Check size={12} strokeWidth={3} />}
+                  </span>
+                  <span>
+                    <span id={`sharing-${mode}`} className="block text-sm font-semibold">{option.label}</span>
+                    <span id={`sharing-${mode}-hint`} className="mt-1 block text-xs leading-relaxed text-slate-600">{option.hint}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </fieldset>
+        </form>
+      </section>
 
       <section id="export" className="card scroll-mt-20 p-6">
         <h2 className="mb-4 text-base font-semibold">{s.export.title}</h2>

@@ -1,0 +1,1 @@
+ALTER TABLE `users` ADD `share_activity_details` integer DEFAULT true NOT NULL;

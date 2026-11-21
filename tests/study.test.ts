@@ -7,6 +7,7 @@ import { guide } from "@/i18n/messages/guide";
 import { askLocal } from "@/lib/assistant/local";
 import { runTool, type ToolContext } from "@/lib/assistant/tools";
 import type { User } from "@/lib/auth";
+import { contactWeek, currentContactStatuses } from "@/lib/contact-schedule";
 import { searchGlossary } from "@/lib/glossary";
 import { exportItems, toICS } from "@/lib/export";
 import { makeupSessions, nextOccurrence, practicalsInWeek, weekInfo } from "@/lib/labs";
@@ -243,6 +244,35 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     ]);
     // Wednesday 10:00: Mihai has his PC lab, which is named.
     expect(availabilityAt(people, "2026-11-25", 10 * 60, 11 * 60)[0]).toMatchObject({ free: false, busy: [{ what: "Programarea calculatoarelor" }] });
+  });
+
+  it("shares the current lab within its time slot and applies the owner's preference to every contact view", () => {
+    const date = "2026-11-25";
+    const status = (minutes: number) => currentContactStatuses(ana.id, "en", { date, minutes }).get(mihai.id);
+    const lab = { state: "activity", kind: "lab", title: "Programarea calculatoarelor", room: "B418" };
+    expect(status(599)).toEqual({ state: "free" });
+    expect(status(600)).toEqual(lab);
+    expect(status(719)).toEqual(lab);
+    expect(status(720)).toEqual({ state: "free" });
+
+    const share = (enabled: boolean) =>
+      getDb().update(users).set({ shareActivityDetails: enabled }).where(eq(users.id, mihai.id)).run();
+    share(false);
+    try {
+      expect(status(600)).toEqual({ state: "busy" });
+      expect(status(720)).toEqual({ state: "free" });
+      const week = contactWeek(ana.id, mihai.id, date, "ro")!;
+      expect(week.events.length).toBeGreaterThan(0);
+      expect(week.events.every((e) => e.kind === "busy" && e.title === "Ocupat" && e.room === null)).toBe(true);
+      const nextDay = { date: "2026-11-26", minutes: 600 };
+      expect(currentContactStatuses(mihai.id, "en", nextDay).get(ana.id)).toEqual(lab);
+      expect(call("who_is_free", { date, start: "10:00", people: ["Mihai"] }).busy[0].busy_with).toEqual(["busy 10:00–12:00"]);
+      const schedule = call("contact_schedule", { from: date, person: "Mihai" });
+      expect(schedule.busy.map((e: Any) => e.what)).toEqual(["busy", "busy"]);
+    } finally {
+      share(true);
+    }
+    expect(status(600)).toEqual(lab);
   });
 
   it("answers \"who is free?\" through the assistant, for everyone or for the people named", () => {

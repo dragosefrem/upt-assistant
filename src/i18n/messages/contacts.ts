@@ -5,7 +5,8 @@ const en = {
   /** /contacts */
   page: {
     title: "Contacts",
-    intro: "Accepted contacts can see each other’s classes and exams. Personal commitments appear as “Busy”.",
+    sharingDetails: "Accepted contacts can see your classes, exams and rooms. Personal events appear as Busy.",
+    sharingAvailability: "Your accepted contacts see only when you’re busy or free.",
     planEvent: "Plan a group event",
     find: {
       heading: "Find classmates",
@@ -40,7 +41,10 @@ const en = {
     },
     list: {
       heading: "Your contacts",
-      empty: "Accepted contacts appear here. You can also plan an event and invite guests with a link.",
+      sharing: "My sharing settings",
+      asOf: (time: string) => `Calendar status at ${time} (Timișoara time)`,
+      free: "Free",
+      empty: "Once a contact request is accepted, you’ll see their status here.",
       viewSchedule: "View schedule",
       viewScheduleFor: (name: string) => `View schedule for ${name}`,
     },
@@ -245,7 +249,8 @@ const en = {
 const ro: typeof en = {
   page: {
     title: "Contacte",
-    intro: "Contactele acceptate își văd unul altuia cursurile și examenele. Activitățile personale apar ca „Ocupat”.",
+    sharingDetails: "Contactele acceptate îți văd cursurile, examenele și sălile. Activitățile personale apar ca „Ocupat”.",
+    sharingAvailability: "Contactele acceptate văd doar când ești ocupat sau liber.",
     planEvent: "Plănuiește o întâlnire",
     find: {
       heading: "Găsește colegi",
@@ -280,7 +285,10 @@ const ro: typeof en = {
     },
     list: {
       heading: "Contactele tale",
-      empty: "Contactele acceptate apar aici. Poți și să plănuiești o întâlnire și să inviți persoane printr-un link.",
+      sharing: "Ce partajez",
+      asOf: (time: string) => `Starea din calendar la ${time} (ora Timișoarei)`,
+      free: "Liber",
+      empty: "După ce o cerere de contact este acceptată, vei vedea aici starea persoanei.",
       viewSchedule: "Vezi orarul",
       viewScheduleFor: (name: string) => `Vezi orarul (${name})`,
     },

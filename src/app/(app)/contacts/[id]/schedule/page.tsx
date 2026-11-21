@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache } from "react";
+import { InvitationRefresh } from "@/components/InvitationRefresh";
 import { getLocale, getT } from "@/i18n/server";
 import { kindLabel, kindStyle } from "@/lib/kinds";
 import { requireOnboardedUser } from "@/lib/auth";
@@ -33,6 +34,7 @@ export default async function ContactSchedulePage({ params, searchParams }: Page
   const shortDate = (date: string) => formatDate(date, { day: "numeric", month: "short" }, locale);
   return (
     <div className="mx-auto w-full max-w-3xl space-y-5">
+      <InvitationRefresh />
       <Link href="/contacts" className="text-sm font-medium text-brand-700 hover:underline">{messages.contacts.event.back}</Link>
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">

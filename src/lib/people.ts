@@ -3,7 +3,8 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { savedContacts } from "@/db/schema";
 import type { User } from "./auth";
-import { acceptedScheduleContacts, contactList } from "./contacts";
+import { contactEvents } from "./contact-schedule";
+import { acceptedScheduleContacts, type ScheduleContact } from "./contacts";
 import { tentativeTimesFor } from "./group-events";
 import { describeGroup, eventsBetween, groupBusy, overlaps } from "./schedule";
 
@@ -16,11 +17,10 @@ import { describeGroup, eventsBetween, groupBusy, overlaps } from "./schedule";
  * - a **saved** contact is only a name and a group ("Andreea is in TI 3.2"), so the
  *   group's published timetable stands in for them.
  *
- * What an account contact is doing is shared the same way as on their schedule page:
- * classes and exams by name, everything else as plain busy time.
+ * An account contact's sharing preference determines whether class and exam titles are visible.
  */
 export type Person =
-  | { kind: "account"; id: string; name: string; groupId: number | null; facultyId: number | null; specializationId: number | null; year: number | null }
+  | ({ kind: "account" } & ScheduleContact)
   | { kind: "saved"; id: number; name: string; groupId: number | null };
 
 export interface BusyTime {
@@ -35,8 +35,7 @@ const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,
 
 /** Everyone the student can plan around, account contacts first, each kind by name. */
 export function listPeople(userId: string): Person[] {
-  const acceptedIds = contactList(userId).filter((c) => c.accepted).map((c) => c.id);
-  const accounts: Person[] = acceptedScheduleContacts(userId, acceptedIds)
+  const accounts: Person[] = acceptedScheduleContacts(userId)
     .map((c) => ({ kind: "account" as const, ...c }))
     .sort((a, b) => a.name.localeCompare(b.name));
   const saved: Person[] = getDb()
@@ -67,6 +66,7 @@ export function matchPeople(people: Person[], query: string): Person[] {
 
 /** A short description of where the person studies, for telling namesakes apart. */
 export function personGroup(person: Person): string | null {
+  if (person.kind === "account" && !person.shareActivityDetails) return null;
   const info = describeGroup(person.groupId);
   return info ? `${info.spec.code ?? info.spec.name}, year ${info.group.year}, ${info.label}` : null;
 }
@@ -76,16 +76,10 @@ export function personBusy(person: Person, from: string, to: string): BusyTime[]
   if (person.kind === "saved") {
     return person.groupId ? groupBusy(person.groupId, from, to).map((b) => ({ date: b.date, startMin: b.startMin, endMin: b.endMin, what: b.title })) : [];
   }
-  return [
-    ...eventsBetween(person, from, to).map((e) => ({
-      date: e.date,
-      startMin: e.startMin,
-      endMin: e.endMin,
-      what: e.type === "class" || e.type === "exam" ? e.title : null,
-    })),
-    // An invitation they have not answered yet may still take the time.
-    ...tentativeTimesFor(person.id, from, to).map((b) => ({ date: b.date, startMin: b.startMin, endMin: b.endMin, what: null })),
-  ];
+  return contactEvents(person, from, to).map((event) => ({
+    date: event.date, startMin: event.startMin, endMin: event.endMin,
+    what: event.kind === "busy" ? null : event.title,
+  }));
 }
 
 export interface Availability {

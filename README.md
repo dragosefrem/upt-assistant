@@ -39,9 +39,11 @@ works in Romanian and English.
   tomorrow's timetable, and exams over the next 30 days. Classes and personal or group
   plans have a 15-minute reminder. Exams have four reminders while Poli is open.
   Calendar exports include the 15-minute reminders and alerts one day and two hours before exams.
-- **Contacts and group events.** Link accounts with colleagues (requests are accepted
-  by the other person; real calendars then count as busy time), or save a friend as a
-  name plus a group. See shared free time over custom dates, book a group event, collect
+- **Contacts and group events.** Find classmates by name or browse your group to send a contact request.
+  By default, accepted contacts can see your current class, exam, or group event you both attend, including its room.
+  Choose **Busy or free only** in **Settings → Contact privacy** to hide activity titles and rooms.
+  Personal events and private Google Calendar edits always appear as busy. You can also save a friend by name and group.
+  See shared free time over custom dates, book a group event, collect
   answers, and invite people without an account through a guest link.
 - **Poli, the assistant.** Chat or talk in Romanian or English. Poli looks everything up
   in the student's real data and can do whatever the interface can; see "The assistant"
@@ -194,8 +196,8 @@ the first call: creating a group event, removing a linked contact, changing the 
 and saving a study plan all return a summary first and act only with `confirmed: true`,
 after the student said yes. Adding or moving an event produces a day preview, and the
 Accept button (`/api/assistant/accept`) applies the stored change directly, so what is
-saved is exactly what was shown. A linked contact's calendar is shared the same way as
-on their schedule page: classes and exams by name, everything else as busy time.
+saved is exactly what was shown. Poli can name a linked contact’s classes and exams
+when they share activity details. With availability-only sharing, Poli sees busy time.
 
 Under a reply the chat can show time-slot buttons (`show_choices`), a day preview, and
 buttons that open a page of the app (a walkthrough, a group event). The assistant can
