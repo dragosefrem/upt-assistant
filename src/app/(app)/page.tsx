@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Assistant } from "@/components/Assistant";
 import { Calendar } from "@/components/Calendar";
 import { NextUp } from "@/components/NextUp";
+import { QuickActions } from "@/components/QuickActions";
 import { requireOnboardedUser } from "@/lib/auth";
 import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
 import { addDays, mondayOf, nowLocal } from "@/lib/time";
@@ -10,7 +10,7 @@ export const metadata = { title: "Calendar" };
 
 export default async function HomePage() {
   const user = await requireOnboardedUser();
-  const { date: today } = nowLocal();
+  const { date: today, minutes } = nowLocal();
   const from = mondayOf(today);
   const to = addDays(from, 6);
   const semester = currentSemester();
@@ -20,8 +20,9 @@ export default async function HomePage() {
     : [];
 
   return (
-    <div className="grid min-h-0 flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_23rem]">
+    <div className="mx-auto grid w-full max-w-[1200px] min-h-0 flex-1 grid-cols-[minmax(0,1fr)] gap-5">
       <div className="flex min-w-0 flex-col gap-5">
+        <QuickActions name={user.name} hour={Math.floor(minutes / 60)} />
         <NextUp initial={eventsBetween(user, today, addDays(today, 14))} />
         {pending.length > 0 && (
           <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -45,9 +46,6 @@ export default async function HomePage() {
           </p>
         )}
       </div>
-      <aside className="h-[32rem] lg:sticky lg:top-[4.75rem] lg:h-[calc(100dvh-6rem)]">
-        <Assistant />
-      </aside>
     </div>
   );
 }

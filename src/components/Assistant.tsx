@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { SCHEDULE_CHANGED } from "./Calendar";
 import { useLocation } from "./LocationProvider";
+import { ASK_ASSISTANT, Mascot } from "./Mascot";
 
 interface Message {
   id: string;
@@ -46,7 +47,13 @@ const TOOL_LABELS: Record<string, string> = {
   remove_personal_event: "Updating your calendar…",
 };
 
-const SUGGESTIONS = ["What's next?", "Ce am mâine?", "Where is my next exam?", "When am I free this week?", "Cum ajung la sala următoare?"];
+const SUGGESTIONS = [
+  { emoji: "⏭️", text: "What's next?" },
+  { emoji: "📅", text: "Ce am mâine?" },
+  { emoji: "📝", text: "Where is my next exam?" },
+  { emoji: "☕", text: "When am I free this week?" },
+  { emoji: "🧭", text: "Cum ajung la sala următoare?" },
+];
 
 /** Text prepared for speech: no URLs or markdown punctuation. */
 function speakable(text: string): string {
@@ -70,7 +77,7 @@ function Linkified({ text }: { text: string }) {
   );
 }
 
-export function Assistant() {
+export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   const { position, status: locationStatus, enable: enableLocation, disable: disableLocation } = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -177,6 +184,16 @@ export function Assistant() {
     [busy, speak, say],
   );
 
+  // Questions asked from elsewhere on the page (the welcome card's quick buttons).
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const question = (e as CustomEvent<string>).detail;
+      if (question) void send(question);
+    };
+    window.addEventListener(ASK_ASSISTANT, onAsk);
+    return () => window.removeEventListener(ASK_ASSISTANT, onAsk);
+  }, [send]);
+
   const toggleMic = () => {
     if (listening) {
       recognition.current?.stop();
@@ -220,10 +237,14 @@ export function Assistant() {
   };
 
   return (
-    <section className="card flex h-full min-h-0 flex-col overflow-hidden">
-      <header className="flex items-center gap-2 border-b border-slate-200 px-4 py-3">
+    <section className="card flex h-full min-h-0 flex-col overflow-hidden shadow-[0_24px_60px_-12px_rgba(20,36,87,0.35)]">
+      <header className="flex items-center gap-2 border-b border-slate-200 bg-gradient-to-r from-brand-50 to-white px-4 py-3">
+        <span className="relative">
+          <Mascot size={36} />
+          <span aria-hidden className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white ${busy ? "bg-amber-400" : "bg-emerald-500"}`} />
+        </span>
         <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold text-slate-900">Assistant</h2>
+          <h2 className="whitespace-nowrap text-base font-semibold text-slate-900">Poli</h2>
           <p className="truncate text-xs text-slate-500">
             {engine === "claude" ? "Powered by Claude" : engine === "basic" ? "Built-in assistant (Claude not connected)" : "Ask about classes, exams, free time, directions"}
           </p>
@@ -248,25 +269,45 @@ export function Assistant() {
           {speak ? "🔊 On" : "🔈 Off"}
         </button>
         <button className="btn-ghost px-2 text-xs" onClick={clear} title="Clear conversation">Clear</button>
+        {onClose && (
+          <button className="btn-ghost px-2" onClick={onClose} aria-label="Close chat" title="Close chat">✕</button>
+        )}
       </header>
 
       <div ref={scroller} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
         {!messages.length && (
-          <div className="space-y-3 text-sm text-slate-600">
-            <p>Ask in Romanian or English — by typing or with the microphone.</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-col items-center gap-3 pt-1 text-center text-sm text-slate-600">
+            <Mascot size={72} wave />
+            <div>
+              <p className="font-semibold text-slate-900">Salut! What can I help you with?</p>
+              <p className="mt-0.5 text-xs">Ask in Romanian or English, by typing or with the microphone 🎤</p>
+            </div>
+            <div className="grid w-full gap-2">
               {SUGGESTIONS.map((s) => (
-                <button key={s} className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-700 hover:border-brand-500 hover:text-brand-700" onClick={() => send(s)}>
-                  {s}
+                <button
+                  key={s.text}
+                  className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-left text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-brand-500 hover:text-brand-700 hover:shadow-sm"
+                  onClick={() => send(s.text)}
+                >
+                  <span aria-hidden className="text-base">{s.emoji}</span>
+                  {s.text}
                 </button>
               ))}
             </div>
           </div>
         )}
         {messages.map((m) => (
-          <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2 text-sm leading-relaxed ${m.role === "user" ? "bg-brand-600 text-white" : "bg-slate-100 text-slate-900"}`}>
-              {m.pending ? <span className="text-slate-500">{activity ?? "Thinking…"}</span> : <Linkified text={m.content} />}
+          <div key={m.id} className={`flex animate-pop items-end gap-2 ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+            {m.role === "assistant" && <Mascot size={26} className="mb-0.5" />}
+            <div className={`max-w-[85%] whitespace-pre-wrap break-words px-3.5 py-2 text-sm leading-relaxed ${m.role === "user" ? "rounded-2xl rounded-br-md bg-brand-600 text-white" : "rounded-2xl rounded-bl-md bg-brand-50 text-slate-900"}`}>
+              {m.pending ? (
+                <span className="flex items-center gap-2 text-slate-500">
+                  <span className="typing-dots text-brand-500" aria-hidden><span /><span /><span /></span>
+                  {activity ?? "Thinking…"}
+                </span>
+              ) : (
+                <Linkified text={m.content} />
+              )}
               {m.role === "assistant" && !m.pending && (
                 <button className="ml-2 align-middle text-xs opacity-50 hover:opacity-100" onClick={() => say(m.content)} title="Read aloud" aria-label="Read aloud">🔊</button>
               )}
@@ -313,10 +354,10 @@ export function Assistant() {
               void send(input);
             }
           }}
-          placeholder={listening ? "Listening…" : "Ask about your timetable…"}
+          placeholder={listening ? "Listening… 👂" : "Ask Poli…"}
           aria-label="Message"
         />
-        <button className="btn-primary h-10" disabled={busy || !input.trim()}>Send</button>
+        <button className="btn-primary h-10 rounded-full px-4" disabled={busy || !input.trim()} aria-label="Send">Send ➤</button>
       </form>
       {!voiceSupported && <p className="px-4 pb-2 text-[11px] text-slate-400">Voice input needs a browser with speech recognition (Chrome, Edge or Safari).</p>}
     </section>

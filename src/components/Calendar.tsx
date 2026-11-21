@@ -26,6 +26,11 @@ export function kindStyle(kind: string) {
 }
 
 const HOUR_PX = 56;
+/** Clicking or dragging on the grid snaps to half hours. */
+const SNAP_MIN = 30;
+
+type NewEvent = { date: string; startMin?: number; endMin?: number };
+type Drag = { date: string; anchorMin: number; startMin: number; endMin: number; pointer: string; x: number; y: number; moved: boolean };
 
 function rangeFor(view: View, anchor: string): { from: string; to: string } {
   if (view === "day") return { from: anchor, to: anchor };
@@ -85,7 +90,9 @@ export function Calendar({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<CalEvent | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<NewEvent | null>(null);
+  const [drag, setDrag] = useState<Drag | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [now, setNow] = useState(() => nowLocal());
   const requestId = useRef(0);
 
@@ -129,6 +136,12 @@ export function Calendar({
     return () => clearInterval(tick);
   }, []);
 
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
   const step = (dir: 1 | -1) => {
     if (view === "day") setAnchor(addDays(anchor, dir));
     else if (view === "week") setAnchor(addDays(anchor, 7 * dir));
@@ -148,16 +161,54 @@ export function Calendar({
 
   const visible = events.filter((e) => e.date >= range.from && e.date <= range.to);
 
-  // Grid days: weekends only appear when something is scheduled on them.
-  const days = useMemo(() => {
-    if (view === "day") return [anchor];
-    const all = Array.from({ length: 7 }, (_, i) => addDays(range.from, i));
-    return all.filter((d) => weekday(d) <= 5 || visible.some((e) => e.date === d));
-  }, [view, anchor, range.from, visible]);
+  // Grid days: the whole week, so students can plan weekends too.
+  const days = useMemo(() => (view === "day" ? [anchor] : Array.from({ length: 7 }, (_, i) => addDays(range.from, i))), [view, anchor, range.from]);
 
   const startHour = Math.min(8, ...visible.map((e) => Math.floor(e.startMin / 60)));
   const endHour = Math.max(20, ...visible.map((e) => Math.ceil(e.endMin / 60)));
   const hours = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
+
+  /** Minute of the day under the pointer, rounded down to the snap grid. */
+  const minuteAt = (e: React.PointerEvent<HTMLElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const raw = startHour * 60 + ((e.clientY - rect.top) / HOUR_PX) * 60;
+    const snapped = Math.floor(raw / SNAP_MIN) * SNAP_MIN;
+    return Math.min(Math.max(snapped, startHour * 60), endHour * 60 - SNAP_MIN);
+  };
+
+  const beginDrag = (date: string, e: React.PointerEvent<HTMLDivElement>) => {
+    // Clicks on an existing class open that class instead.
+    if (e.button !== 0 || (e.target as HTMLElement).closest("button")) return;
+    const min = minuteAt(e);
+    // A mouse or pen can drag out a range; on touch the finger scrolls, so a tap picks one slot.
+    if (e.pointerType !== "touch") e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag({ date, anchorMin: min, startMin: min, endMin: min + SNAP_MIN, pointer: e.pointerType, x: e.clientX, y: e.clientY, moved: false });
+  };
+
+  const moveDrag = (date: string, e: React.PointerEvent<HTMLDivElement>) => {
+    if (!drag || drag.date !== date) return;
+    const moved = drag.moved || Math.abs(e.clientY - drag.y) > 6 || Math.abs(e.clientX - drag.x) > 6;
+    if (drag.pointer === "touch") {
+      // The finger is scrolling the calendar, not picking a time.
+      if (moved) setDrag(null);
+      return;
+    }
+    const min = minuteAt(e);
+    setDrag({
+      ...drag,
+      moved,
+      startMin: Math.min(drag.anchorMin, min),
+      endMin: Math.max(drag.anchorMin, min) + SNAP_MIN,
+    });
+  };
+
+  const endDrag = () => {
+    if (!drag) return;
+    // A plain click books an hour; a drag books exactly what was dragged.
+    const endMin = drag.moved ? drag.endMin : Math.min(drag.startMin + 60, 24 * 60);
+    setAdding({ date: drag.date, startMin: drag.startMin, endMin });
+    setDrag(null);
+  };
 
   return (
     <section className="card flex min-h-0 flex-col overflow-hidden">
@@ -184,7 +235,7 @@ export function Calendar({
             </button>
           ))}
         </div>
-        <button className="btn-secondary" onClick={() => setAdding(true)}>+ Event</button>
+        <button className="btn-primary" onClick={() => setAdding({ date: view === "month" ? today : anchor })}>+ Event</button>
       </header>
 
       {error && <p role="alert" className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
@@ -199,6 +250,7 @@ export function Calendar({
             setAnchor(d);
             setView("day");
           }}
+          onAddOnDay={(d) => setAdding({ date: d })}
         />
       ) : (
         <div className="overflow-auto">
@@ -231,10 +283,30 @@ export function Calendar({
               const dayEvents = visible.filter((e) => e.date === d);
               const showNow = d === now.date && now.minutes >= startHour * 60 && now.minutes <= endHour * 60;
               return (
-                <div key={d} className={`relative border-l border-slate-200 ${d === today ? "bg-brand-50/30" : ""}`} style={{ height: hours.length * HOUR_PX }}>
+                <div
+                  key={d}
+                  className={`group/day relative cursor-cell select-none border-l border-slate-200 ${d === today ? "bg-brand-50/30" : ""}`}
+                  style={{ height: hours.length * HOUR_PX }}
+                  onPointerDown={(e) => beginDrag(d, e)}
+                  onPointerMove={(e) => moveDrag(d, e)}
+                  onPointerUp={endDrag}
+                  onPointerCancel={() => setDrag(null)}
+                  title="Click or drag to add an event"
+                >
                   {hours.map((h, i) => (
                     <div key={h} className="absolute inset-x-0 border-t border-slate-100" style={{ top: i * HOUR_PX }} />
                   ))}
+                  {drag && drag.date === d && (
+                    <div
+                      className="pointer-events-none absolute inset-x-1 z-20 rounded-lg border-2 border-dashed border-violet-500 bg-violet-100/80 px-2 py-1 text-xs font-semibold text-violet-900"
+                      style={{
+                        top: ((drag.startMin - startHour * 60) / 60) * HOUR_PX,
+                        height: ((drag.endMin - drag.startMin) / 60) * HOUR_PX - 2,
+                      }}
+                    >
+                      ＋ {formatMinutes(drag.startMin)}–{formatMinutes(drag.endMin)}
+                    </div>
+                  )}
                   {showNow && (
                     <div className="pointer-events-none absolute inset-x-0 z-10 flex items-center" style={{ top: ((now.minutes - startHour * 60) / 60) * HOUR_PX }}>
                       <span className="-ml-1 h-2 w-2 rounded-full bg-red-500" />
@@ -249,7 +321,7 @@ export function Calendar({
                       <button
                         key={event.id}
                         onClick={() => setSelected(event)}
-                        className={`absolute overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left text-xs shadow-sm transition hover:z-10 hover:shadow-md ${style.block}`}
+                        className={`absolute flex flex-col items-stretch justify-start overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left text-xs shadow-sm transition hover:z-10 hover:shadow-md ${style.block}`}
                         style={{ top, height, left: `calc(${(col / cols) * 100}% + 2px)`, width: `calc(${100 / cols}% - 4px)` }}
                       >
                         <span className="block truncate font-semibold leading-tight">
@@ -272,8 +344,8 @@ export function Calendar({
           {!visible.length && !loading && (
             <p className="border-t border-slate-100 px-4 py-6 text-center text-sm text-slate-500">
               {hasGroup
-                ? "Nothing scheduled in this period — no classes, exams or personal events."
-                : "No timetable is linked to your profile yet. Pick a group in Settings, or add your own events."}
+                ? "Nothing scheduled in this period. Click or drag on the calendar to add your own event."
+                : "No timetable is linked to your profile yet. Pick a group in Settings, or click on the calendar to add your own events."}
             </p>
           )}
         </div>
@@ -289,7 +361,20 @@ export function Calendar({
       </footer>
 
       {selected && <EventDialog event={selected} onClose={() => setSelected(null)} />}
-      {adding && <PersonalEventDialog defaultDate={view === "month" ? today : anchor} onClose={() => setAdding(false)} />}
+      {adding && (
+        <PersonalEventDialog
+          defaultDate={adding.date}
+          defaultStartMin={adding.startMin}
+          defaultEndMin={adding.endMin}
+          onClose={() => setAdding(null)}
+          onSaved={(title) => setToast(`“${title}” was added to your calendar ✓`)}
+        />
+      )}
+      {toast && (
+        <p role="status" className="animate-pop fixed bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg">
+          {toast}
+        </p>
+      )}
     </section>
   );
 }
@@ -300,12 +385,14 @@ function MonthGrid({
   today,
   events,
   onPickDay,
+  onAddOnDay,
 }: {
   from: string;
   month: string;
   today: string;
   events: CalEvent[];
   onPickDay: (date: string) => void;
+  onAddOnDay: (date: string) => void;
 }) {
   const cells = Array.from({ length: 42 }, (_, i) => addDays(from, i));
   return (
@@ -317,15 +404,24 @@ function MonthGrid({
         const dayEvents = events.filter((e) => e.date === d);
         const inMonth = d.startsWith(month);
         return (
+          <div key={d} className={`group/cell relative min-h-24 border-b border-l border-slate-100 transition hover:bg-slate-50 ${inMonth ? "" : "bg-slate-50/60 text-slate-400"}`}>
           <button
-            key={d}
-            onClick={() => onPickDay(d)}
-            className={`min-h-24 border-b border-l border-slate-100 p-1.5 text-left align-top transition hover:bg-slate-50 ${inMonth ? "" : "bg-slate-50/60 text-slate-400"}`}
+            type="button"
+            onClick={() => onAddOnDay(d)}
+            className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white opacity-0 shadow-sm transition group-hover/cell:opacity-100 focus-visible:opacity-100 max-sm:opacity-60"
+            aria-label={`Add an event on ${d}`}
+            title="Add an event"
           >
-            <span className={`inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-sm font-semibold ${d === today ? "bg-brand-600 text-white" : ""}`}>
+            +
+          </button>
+          <button
+            onClick={() => onPickDay(d)}
+            className="flex h-full min-h-24 w-full min-w-0 flex-col justify-start p-1.5 text-left"
+          >
+            <span className={`inline-flex h-6 min-w-6 self-start items-center justify-center rounded-full px-1 text-sm font-semibold ${d === today ? "bg-brand-600 text-white" : ""}`}>
               {+d.slice(8)}
             </span>
-            <span className="mt-1 block space-y-0.5">
+            <span className="mt-1 block min-w-0 space-y-0.5">
               {dayEvents.slice(0, 3).map((e) => (
                 <span key={e.id} className="flex items-center gap-1 truncate">
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />
@@ -335,6 +431,7 @@ function MonthGrid({
               {dayEvents.length > 3 && <span className="block text-slate-400">+{dayEvents.length - 3} more</span>}
             </span>
           </button>
+          </div>
         );
       })}
     </div>
