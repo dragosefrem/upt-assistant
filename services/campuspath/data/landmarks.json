@@ -1,0 +1,3059 @@
+{
+  "panorama_7C6A13D7_23C6_1DC1_41AB_E8C1503CF2B2": {
+    "name": "AC entrance",
+    "mention": "the AC entrance",
+    "aliases": ["Intrare Automatică și Calculatoare", "Intrarea AC", "AC building entrance", "Computer Engineering entrance"],
+    "toward": {"panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "Go under the canopy and through the glass entrance doors."},
+    "ro": {"name": "Intrarea AC", "mention": "intrarea AC", "toward": {"panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "Treci pe sub copertină și intră pe ușile de sticlă."}},
+    "ways": {"panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "enter_building"}
+  },
+  "panorama_18136869_39DC_5B88_4172_ED32CAAB533E": {
+    "name": "Main hall",
+    "mention": "the main hall",
+    "aliases": ["AC main hall", "AC lobby", "Holul principal AC"],
+    "toward": {"panorama_22014CC7_3C40_DAE9_41C4_2759259E29EC": "Go up the short steps beside the noticeboards."},
+    "ro": {"name": "Holul principal", "mention": "holul principal", "toward": {"panorama_22014CC7_3C40_DAE9_41C4_2759259E29EC": "Urcă treptele scurte de lângă aviziere."}},
+    "ways": {"panorama_18137509_39DC_7588_4193_9ADE649F33AD": "hall", "panorama_1812FF55_39DC_5598_418C_12F8A481A7D5": "hall", "panorama_0B1E5E1C_4A59_E187_41CC_588D848B2678": "leave_building", "panorama_22014CC7_3C40_DAE9_41C4_2759259E29EC": "hall"},
+    "floor": 0
+  },
+  "panorama_22014CC7_3C40_DAE9_41C4_2759259E29EC": {
+    "name": "Electrical Engineering corridor",
+    "mention": "the Electrical Engineering corridor",
+    "toward": {"panorama_18153971_39DB_DD98_41CA_0B75E3EDCE48": "Follow the long corridor toward the light at the far end."},
+    "ro": {"name": "Coridorul Inginerie Electrică", "mention": "coridorul Inginerie Electrică", "toward": {"panorama_18153971_39DB_DD98_41CA_0B75E3EDCE48": "Urmează coridorul lung spre lumina din capăt."}},
+    "ways": {"panorama_22A049D2_3C40_FAEB_41CD_A075224CBAA5": "into_room", "panorama_22AE4453_3C40_A9E9_419E_50DA73DE4193": "corridor", "panorama_18153971_39DB_DD98_41CA_0B75E3EDCE48": "corridor", "panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "hall"},
+    "floor": 0
+  },
+  "panorama_18153971_39DB_DD98_41CA_0B75E3EDCE48": {
+    "name": "AC dean’s office corridor",
+    "mention": "the AC dean’s office corridor",
+    "toward": {"panorama_18159655_39DB_F798_41C1_516CF815ADC4": "Continue along the corridor, past the opening on your right."},
+    "ro": {"name": "Coridorul decanatului AC", "mention": "coridorul decanatului AC", "toward": {"panorama_18159655_39DB_F798_41C1_516CF815ADC4": "Continuă pe coridor, pe lângă deschiderea din dreapta."}},
+    "ways": {"panorama_181FB3EC_39DC_4C88_41C5_0EB185F18926": "into_room", "panorama_18159655_39DB_F798_41C1_516CF815ADC4": "corridor", "panorama_22014CC7_3C40_DAE9_41C4_2759259E29EC": "corridor"},
+    "floor": 0
+  },
+  "panorama_18159655_39DB_F798_41C1_516CF815ADC4": {
+    "name": "Electronics corridor",
+    "mention": "the Electronics corridor",
+    "toward": {"panorama_1815934B_39DB_CD88_41A1_B0AAF3DC67CF": "Go through the glass doors at the end of the corridor."},
+    "ro": {"name": "Coridorul Electronică", "mention": "coridorul Electronică", "toward": {"panorama_1815934B_39DB_CD88_41A1_B0AAF3DC67CF": "Treci prin ușile de sticlă de la capătul coridorului."}},
+    "ways": {"panorama_1815934B_39DB_CD88_41A1_B0AAF3DC67CF": "doorway", "panorama_18153971_39DB_DD98_41CA_0B75E3EDCE48": "corridor"},
+    "floor": 0
+  },
+  "panorama_1815934B_39DB_CD88_41A1_B0AAF3DC67CF": {
+    "name": "Noticeboard corner",
+    "mention": "the noticeboard corner",
+    "toward": {"panorama_18158D43_39D4_35F8_41C4_3BC8055DBFC4": "Follow the corridor around the noticeboard."},
+    "ro": {"name": "Colțul cu avizier", "mention": "colțul cu avizier", "toward": {"panorama_18158D43_39D4_35F8_41C4_3BC8055DBFC4": "Urmează coridorul pe după avizier."}},
+    "ways": {"panorama_18159655_39DB_F798_41C1_516CF815ADC4": "doorway", "panorama_18158D43_39D4_35F8_41C4_3BC8055DBFC4": "hall", "panorama_02CAA3E8_1301_BBE8_41A5_C5AEE2682992": "leave_building"},
+    "floor": 0
+  },
+  "panorama_18158D43_39D4_35F8_41C4_3BC8055DBFC4": {
+    "name": "Stairwell entrance",
+    "mention": "the stairwell entrance",
+    "toward": {"panorama_181818E3_39DC_7CB8_41C1_EF2BB2E9EDBE": "Take the stairs through the open double doors."},
+    "ro": {"name": "Intrarea în casa scării", "mention": "intrarea în casa scării", "toward": {"panorama_181818E3_39DC_7CB8_41C1_EF2BB2E9EDBE": "Urcă pe scări, prin ușile duble deschise."}},
+    "ways": {"panorama_3231A044_3C41_E9EF_41C3_743B76AF490A": "stairs_up", "panorama_1815934B_39DB_CD88_41A1_B0AAF3DC67CF": "hall", "panorama_181818E3_39DC_7CB8_41C1_EF2BB2E9EDBE": "stairs_up"},
+    "floor": 0
+  },
+  "panorama_181818E3_39DC_7CB8_41C1_EF2BB2E9EDBE": {
+    "name": "Stair landing",
+    "mention": "the stair landing",
+    "toward": {"panorama_1818E5C7_39DC_54F8_41C5_BD21B51FC36F": "Continue up the stairs to floor 4."},
+    "ro": {"name": "Palierul scării", "mention": "palierul scării", "toward": {"panorama_1818E5C7_39DC_54F8_41C5_BD21B51FC36F": "Continuă pe scări până la etajul 4."}},
+    "ways": {"panorama_18181BCE_39DC_5C88_41C8_0E4B3A71EF35": "doorway", "panorama_3231A044_3C41_E9EF_41C3_743B76AF490A": "stairs_down", "panorama_18158D43_39D4_35F8_41C4_3BC8055DBFC4": "stairs_down", "panorama_1818E5C7_39DC_54F8_41C5_BD21B51FC36F": "stairs_up"},
+    "floor": 3
+  },
+  "panorama_1818E5C7_39DC_54F8_41C5_BD21B51FC36F": {
+    "name": "Stair landing by the display hall",
+    "mention": "the stair landing by the display hall",
+    "toward": {"panorama_181832BD_39DC_4C88_41C6_FFBD631E9088": "Leave the stairwell through the glass doors into the display hall."},
+    "ro": {"name": "Palierul de lângă holul cu vitrine", "mention": "palierul de lângă holul cu vitrine", "toward": {"panorama_181832BD_39DC_4C88_41C6_FFBD631E9088": "Ieși din casa scării prin ușile de sticlă, în holul cu vitrine."}},
+    "ways": {"panorama_181832BD_39DC_4C88_41C6_FFBD631E9088": "doorway", "panorama_181818E3_39DC_7CB8_41C1_EF2BB2E9EDBE": "stairs_down", "panorama_18199143_39DC_4DF8_41C5_7709226EF352": "stairs_up"},
+    "floor": 4
+  },
+  "panorama_181832BD_39DC_4C88_41C6_FFBD631E9088": {
+    "name": "Display hall",
+    "mention": "the display hall",
+    "toward": {"panorama_1819244A_39DC_CB89_41BF_2A9DA120C2CF": "Take the opening beside the glass display wall."},
+    "ro": {"name": "Holul cu vitrine", "mention": "holul cu vitrine", "toward": {"panorama_1819244A_39DC_CB89_41BF_2A9DA120C2CF": "Intră prin deschiderea de lângă peretele cu vitrine."}},
+    "ways": {"panorama_71E5AABE_52E2_BDFF_41D4_0B09116ABDD8": "hall", "panorama_1819244A_39DC_CB89_41BF_2A9DA120C2CF": "corridor", "panorama_1818E5C7_39DC_54F8_41C5_BD21B51FC36F": "doorway"},
+    "floor": 4
+  },
+  "panorama_1819244A_39DC_CB89_41BF_2A9DA120C2CF": {
+    "name": "B419 doorway",
+    "mention": "the B419 doorway",
+    "toward": {"panorama_1819A98C_39DC_FC88_41B2_B91A7036DD57": "Go through the marked door into Lab B419."},
+    "ro": {"name": "Ușa B419", "mention": "ușa B419", "toward": {"panorama_1819A98C_39DC_FC88_41B2_B91A7036DD57": "Intră pe ușa marcată în laboratorul B419."}},
+    "ways": {"panorama_181832BD_39DC_4C88_41C6_FFBD631E9088": "corridor", "panorama_1819A98C_39DC_FC88_41B2_B91A7036DD57": "into_room"},
+    "floor": 4
+  },
+  "panorama_1819A98C_39DC_FC88_41B2_B91A7036DD57": {
+    "name": "Lab B419",
+    "mention": "Lab B419",
+    "aliases": ["Sala B419"],
+    "ro": {"name": "Laboratorul B419", "mention": "laboratorul B419"},
+    "ways": {"panorama_18198703_39DC_D578_41C8_40F4D40A6B15": "hall", "panorama_1819244A_39DC_CB89_41BF_2A9DA120C2CF": "out_of_room"},
+    "floor": 4
+  },
+  "panorama_18130AFC_39DC_3C88_4194_DB4A912171C5": {
+    "name": "Main hall staircase",
+    "mention": "the main hall staircase",
+    "ro": {"name": "Scara din holul principal", "mention": "scara din holul principal"},
+    "ways": {"panorama_1813221F_39DC_4F88_41C2_5DEE6ABF27D0": "hall", "panorama_3231A050_3C40_69E7_4176_995FCB5564CA": "corridor", "panorama_181C6D84_39DC_D578_41B1_12F0068758E9": "hall"},
+    "floor": 0
+  },
+  "panorama_3231A044_3C41_E9EF_41C3_743B76AF490A": {
+    "name": "InfoCenter hall",
+    "mention": "the InfoCenter hall",
+    "ro": {"name": "Holul InfoCenter", "mention": "holul InfoCenter"},
+    "ways": {"panorama_3236E06E_3C41_A9BB_41B2_4B4A4A1E551E": "corridor", "panorama_32312037_3C41_A9A9_41C5_C0A23D8658E7": "doorway", "panorama_181818E3_39DC_7CB8_41C1_EF2BB2E9EDBE": "stairs_up", "panorama_18158D43_39D4_35F8_41C4_3BC8055DBFC4": "stairs_down"},
+    "floor": 1
+  },
+  "panorama_3236E06E_3C41_A9BB_41B2_4B4A4A1E551E": {
+    "name": "B113–B114 corridor",
+    "mention": "the B113–B114 corridor",
+    "ro": {"name": "Coridorul B113–B114", "mention": "coridorul B113–B114"},
+    "ways": {"panorama_3231A044_3C41_E9EF_41C3_743B76AF490A": "corridor", "panorama_32360F24_3C40_57AF_41B4_F866C479CFF6": "corridor"},
+    "floor": 1
+  },
+  "panorama_32360F24_3C40_57AF_41B4_F866C479CFF6": {
+    "name": "B113 and B114 doorway",
+    "mention": "the B113 and B114 doorway",
+    "ro": {"name": "Ușa B113 și B114", "mention": "ușa B113 și B114"},
+    "ways": {"panorama_3236E06E_3C41_A9BB_41B2_4B4A4A1E551E": "corridor", "panorama_3222A6FB_3C40_5699_41C3_E869CF90AEB2": "into_room", "panorama_3236A056_3C40_69EB_4191_DCA2FD84BB30": "into_room"},
+    "floor": 1
+  },
+  "panorama_18181BCE_39DC_5C88_41C8_0E4B3A71EF35": {
+    "name": "A307–A308 corridor",
+    "mention": "the A307–A308 corridor",
+    "ro": {"name": "Coridorul A307–A308", "mention": "coridorul A307–A308"},
+    "ways": {"panorama_1819BC93_39DC_3498_4197_A1D380F1B658": "into_room", "panorama_18184EEA_39DC_3488_41C7_F2EFF00A0FA4": "corridor", "panorama_181818E3_39DC_7CB8_41C1_EF2BB2E9EDBE": "doorway"},
+    "floor": 3
+  },
+  "panorama_18184EEA_39DC_3488_41C7_F2EFF00A0FA4": {
+    "name": "NOKIA lab doorway",
+    "mention": "the NOKIA lab doorway",
+    "ro": {"name": "Ușa laboratorului NOKIA", "mention": "ușa laboratorului NOKIA"},
+    "ways": {"panorama_181BE701_39DF_F578_419C_4E2FC995E1B7": "into_room", "panorama_18181BCE_39DC_5C88_41C8_0E4B3A71EF35": "corridor"},
+    "floor": 3
+  },
+  "panorama_18199143_39DC_4DF8_41C5_7709226EF352": {
+    "name": "Upper stair landing",
+    "mention": "the upper stair landing",
+    "ro": {"name": "Palierul de sus al scării", "mention": "palierul de sus al scării"},
+    "ways": {"panorama_18190E46_39DC_57F8_41A6_E042A301ACEF": "doorway", "panorama_1818E5C7_39DC_54F8_41C5_BD21B51FC36F": "stairs_down"},
+    "floor": 6
+  },
+  "panorama_18190E46_39DC_57F8_41A6_E042A301ACEF": {
+    "name": "Study hall",
+    "mention": "the study hall",
+    "ro": {"name": "Holul de studiu", "mention": "holul de studiu"},
+    "ways": {"panorama_181F901A_39DD_CB88_41A7_FC4EEA4F336A": "corridor", "panorama_18199143_39DC_4DF8_41C5_7709226EF352": "doorway"},
+    "floor": 6
+  },
+  "panorama_181F901A_39DD_CB88_41A7_FC4EEA4F336A": {
+    "name": "B623 doorway",
+    "mention": "the B623 doorway",
+    "ro": {"name": "Ușa B623", "mention": "ușa B623"},
+    "ways": {"panorama_181EC81E_39DC_5B88_41C5_A5884882AD4A": "into_room", "panorama_18190E46_39DC_57F8_41A6_E042A301ACEF": "corridor"},
+    "floor": 6
+  },
+  "panorama_02CFD376_1300_74F9_41B0_5A44E3A38457": {
+    "name": "Corp D entrance",
+    "mention": "the Corp D entrance",
+    "ro": {"name": "Intrarea în Corpul D", "mention": "intrarea în Corpul D"},
+    "ways": {"panorama_22AF2FCF_3C40_76F9_41B9_919E9CDA5E3C": "enter_building", "panorama_181CD06E_39DC_CB88_41A4_8A3FC81F293E": "enter_building"}
+  },
+  "panorama_22AF2FCF_3C40_76F9_41B9_919E9CDA5E3C": {
+    "name": "Rogojan amphitheatre corridor",
+    "mention": "the Rogojan amphitheatre corridor",
+    "ro": {"name": "Coridorul amfiteatrului Rogojan", "mention": "coridorul amfiteatrului Rogojan"},
+    "ways": {"panorama_22AEAEA0_3C40_56A7_41CC_CBE74DBD3D1A": "corridor", "panorama_22AF00FE_3C40_AA9B_41B5_865FD29494E9": "corridor", "panorama_181EEB7F_39DC_5D88_41A4_5B4EADD1BDA4": "into_room", "panorama_02CFD376_1300_74F9_41B0_5A44E3A38457": "leave_building"},
+    "floor": 0
+  },
+  "panorama_22AF00FE_3C40_AA9B_41B5_865FD29494E9": {
+    "name": "D003 doorway",
+    "mention": "the D003 doorway",
+    "ro": {"name": "Ușa D003", "mention": "ușa D003"},
+    "ways": {"panorama_22AEAEA0_3C40_56A7_41CC_CBE74DBD3D1A": "corridor", "panorama_22AFC1FC_3C40_AA9F_41B6_3A4748ED6744": "into_room"},
+    "floor": 0
+  },
+  "panorama_22AEAEA0_3C40_56A7_41CC_CBE74DBD3D1A": {
+    "name": "Corp D stairs",
+    "mention": "the Corp D stairs",
+    "ro": {"name": "Scara Corpului D", "mention": "scara Corpului D"},
+    "ways": {"panorama_22AF2FCF_3C40_76F9_41B9_919E9CDA5E3C": "corridor", "panorama_22AF00FE_3C40_AA9B_41B5_865FD29494E9": "corridor", "panorama_22AEBD6E_3C4F_BBBB_41C4_4716C2065450": "stairs_up"},
+    "floor": 0
+  },
+  "panorama_22AEBD6E_3C4F_BBBB_41C4_4716C2065450": {
+    "name": "Corp D upper landing",
+    "mention": "the Corp D upper landing",
+    "ro": {"name": "Palierul de sus din Corpul D", "mention": "palierul de sus din Corpul D"},
+    "ways": {"panorama_22AEAEA0_3C40_56A7_41CC_CBE74DBD3D1A": "stairs_down", "panorama_22AEFC93_3C4F_D969_41C9_9A59E19ED969": "corridor"},
+    "floor": 1
+  },
+  "panorama_22AEFC93_3C4F_D969_41C9_9A59E19ED969": {
+    "name": "D106 corridor",
+    "mention": "the D106 corridor",
+    "ro": {"name": "Coridorul D106", "mention": "coridorul D106"},
+    "ways": {"panorama_22AE1ED4_3C40_56EF_41CD_4DA7D1446ABD": "into_room", "panorama_22AEBD6E_3C4F_BBBB_41C4_4716C2065450": "corridor"},
+    "floor": 1
+  },
+  "panorama_181C6D84_39DC_D578_41B1_12F0068758E9": {
+    "name": "Courtyard lounge",
+    "mention": "the courtyard lounge",
+    "ro": {"name": "Holul dinspre curte", "mention": "holul dinspre curte"},
+    "ways": {"panorama_181CD06E_39DC_CB88_41A4_8A3FC81F293E": "doorway", "panorama_18130AFC_39DC_3C88_4194_DB4A912171C5": "hall"}
+  },
+  "panorama_181CD06E_39DC_CB88_41A4_8A3FC81F293E": {
+    "name": "Rear exit stairs",
+    "mention": "the rear exit stairs",
+    "ro": {"name": "Scara ieșirii din spate", "mention": "scara ieșirii din spate"},
+    "ways": {"panorama_181C6D84_39DC_D578_41B1_12F0068758E9": "doorway", "panorama_02CFD376_1300_74F9_41B0_5A44E3A38457": "leave_building"},
+    "floor": 0
+  },
+  "panorama_265CFC80_3774_3B78_4187_0DD008F0C388": {
+    "name": "Library entrance terrace",
+    "mention": "the library entrance terrace",
+    "open": true,
+    "ways": {"panorama_26548CF7_376C_F498_4184_F4BBE04EFB73": "enter_building"},
+    "ro": {"name": "Terasa de la intrarea Bibliotecii UPT", "mention": "terasa de la intrarea Bibliotecii UPT"}
+  },
+  "panorama_2FA5AEC1_3C40_F6E9_41C2_AB70B42F9601": {
+    "open": true,
+    "ways": {"panorama_2FA43E25_3C40_D9A9_41C1_9A7AB7EB0CB9": "enter_building"}
+  },
+  "panorama_0A2AD5B7_3C40_6AA9_41C1_BF6F32D06C95": {
+    "open": true,
+    "ways": {"panorama_0AE31AC2_3C43_DEEB_41CB_29731E71DDD5": "enter_building"}
+  },
+  "panorama_0AC055F4_3C40_AAAF_41A2_EBA76C6C9849": {
+    "open": false,
+    "ways": {"panorama_02CAC958_1301_F428_419D_2732E1501191": "leave_building", "panorama_0AC103E6_3C40_EEAB_4189_4BE8F6DCC56D": "hall", "panorama_0AC7D828_3C40_59A7_41C2_3A556FCE544C": "hall", "panorama_0AC7DA43_3C40_79E9_41C8_39553CF21B3D": "hall", "panorama_0AC0CE55_3C47_B9E9_41BD_26948C208932": "hall"},
+    "floor": 0
+  },
+  "panorama_22AF3EE3_3C40_D6A9_41C7_FAFEE30202EE": {
+    "open": false,
+    "ways": {"panorama_22AFC1FC_3C40_AA9F_41B6_3A4748ED6744": "hall"},
+    "floor": 0
+  },
+  "panorama_05AC2165_3DC0_6BA9_41B3_AD731AA33388": {
+    "open": false,
+    "ways": {"panorama_0124AA96_3DC0_D96B_41CF_0AC2FA4F5B95": "out_of_room"},
+    "floor": 2
+  },
+  "panorama_02DA0C91_1301_EC38_41B1_4BCC85C920EE": {
+    "open": true
+  },
+  "panorama_02DA0F9D_1301_EC28_41A3_4FFDBBBE5A25": {
+    "open": true,
+    "ways": {"panorama_2BF79BAD_36D4_3C88_41C5_2DB7DF09E048": "enter_building"}
+  },
+  "panorama_02D9F5D6_1300_5C38_415F_38FBDCD2B5B0": {
+    "open": true,
+    "ways": {"panorama_197AE00B_0A05_3FDA_419F_D88AB7454D14": "enter_building"}
+  },
+  "panorama_02D8812C_131F_D468_41A7_CEB0564143F4": {
+    "open": true,
+    "ways": {"panorama_2755C2A0_3C40_6EA7_41BA_17D1879FD84C": "enter_building"}
+  },
+  "panorama_1C056525_1301_BC18_41A1_0885A10B1BF8": {
+    "open": true
+  },
+  "panorama_02CD5715_1300_BC38_41B2_2280328A730E": {
+    "ways": {"panorama_09CF25A2_3C47_AAAB_41CB_688804AF1848": "enter_building"}
+  },
+  "panorama_015142CB_3C43_AEF9_41B1_F2E1D34CC8EF": {
+    "ways": {"panorama_05539320_3DCF_EFA7_4192_6A13A30EC6AC": "enter_building"}
+  },
+  "panorama_09CF25A2_3C47_AAAB_41CB_688804AF1848": {
+    "name": "Orologerie entrance lobby",
+    "mention": "the Orologerie entrance lobby",
+    "ways": {"panorama_02CD5715_1300_BC38_41B2_2280328A730E": "leave_building", "panorama_09CE66D1_3C47_D6E9_41C4_C120CD798256": "into_room", "panorama_09C82B59_3C47_BF99_41A7_A7C22FC1D98A": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Holul de la intrarea Orologerie", "mention": "holul de la intrarea Orologerie"}
+  },
+  "panorama_09CE66D1_3C47_D6E9_41C4_C120CD798256": {
+    "ways": {"panorama_09CF8876_3C47_F9AB_41CD_FB906B07ABC0": "hall", "panorama_09CF25A2_3C47_AAAB_41CB_688804AF1848": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_09CF8876_3C47_F9AB_41CD_FB906B07ABC0": {
+    "ways": {"panorama_09CE66D1_3C47_D6E9_41C4_C120CD798256": "hall", "panorama_09CF8A19_3C47_D999_41C8_BEC23CBCBD5F": "hall"},
+    "floor": 0
+  },
+  "panorama_09CF8A19_3C47_D999_41C8_BEC23CBCBD5F": {
+    "ways": {"panorama_09CF8876_3C47_F9AB_41CD_FB906B07ABC0": "hall"},
+    "floor": 0
+  },
+  "panorama_09C82B59_3C47_BF99_41A7_A7C22FC1D98A": {
+    "name": "Ground-floor corridor at the stairs",
+    "mention": "the ground-floor corridor at the stairs",
+    "ways": {"panorama_09C87C5A_3C40_599B_41C4_A65EB3B14EE8": "stairs_up", "panorama_09CF25A2_3C47_AAAB_41CB_688804AF1848": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Coridorul de la parter, lângă scări", "mention": "coridorul de la parter, lângă scări"}
+  },
+  "panorama_09C87C5A_3C40_599B_41C4_A65EB3B14EE8": {
+    "name": "Mezzanine landing",
+    "mention": "the mezzanine landing",
+    "ways": {"panorama_09C82B59_3C47_BF99_41A7_A7C22FC1D98A": "stairs_down", "panorama_08613CA5_3DC0_7AA9_41B6_51384A790D64": "stairs_up", "panorama_09C8BD55_3C40_7BE9_41B9_F6655416C7E8": "into_room"},
+    "floor": "M",
+    "ro": {"name": "Palierul de la mezanin", "mention": "palierul de la mezanin"}
+  },
+  "panorama_09C8BD55_3C40_7BE9_41B9_F6655416C7E8": {
+    "ways": {"panorama_09C8CED9_3C40_5699_41C7_44541E2CE77E": "hall", "panorama_09C87C5A_3C40_599B_41C4_A65EB3B14EE8": "out_of_room"},
+    "floor": "M"
+  },
+  "panorama_09C8CED9_3C40_5699_41C7_44541E2CE77E": {
+    "ways": {"panorama_09C9A02D_3C40_A9B9_41C4_798921199442": "hall", "panorama_09C8BD55_3C40_7BE9_41B9_F6655416C7E8": "hall"},
+    "floor": "M"
+  },
+  "panorama_09C9A02D_3C40_A9B9_41C4_798921199442": {
+    "ways": {"panorama_09C8CED9_3C40_5699_41C7_44541E2CE77E": "hall"},
+    "floor": "M"
+  },
+  "panorama_09C9818F_3C40_EB79_41C7_C64048A7CE78": {
+    "name": "Floor 4 hall",
+    "mention": "the floor 4 hall",
+    "ways": {"panorama_09C9227D_3C40_E999_419B_126CE6694F64": "into_room", "panorama_08637AAD_3DC0_5EB9_41C4_1F30BA29751E": "stairs_down", "panorama_09C92554_3C40_6BEF_41C4_DC8CC77E9CD0": "into_room"},
+    "floor": 4,
+    "ro": {"name": "Holul de la etajul 4", "mention": "holul de la etajul 4"}
+  },
+  "panorama_09C9227D_3C40_E999_419B_126CE6694F64": {
+    "ways": {"panorama_09C9A368_3C40_AFA7_41B5_4513C36CB9B7": "hall", "panorama_09C9818F_3C40_EB79_41C7_C64048A7CE78": "out_of_room"},
+    "floor": 4
+  },
+  "panorama_09C9A368_3C40_AFA7_41B5_4513C36CB9B7": {
+    "ways": {"panorama_09C93476_3C40_A9A8_41C1_298FDB101783": "hall", "panorama_09C9227D_3C40_E999_419B_126CE6694F64": "hall"},
+    "floor": 4
+  },
+  "panorama_09C93476_3C40_A9A8_41C1_298FDB101783": {
+    "ways": {"panorama_09C9A368_3C40_AFA7_41B5_4513C36CB9B7": "hall"},
+    "floor": 4
+  },
+  "panorama_09C92554_3C40_6BEF_41C4_DC8CC77E9CD0": {
+    "ways": {"panorama_09CA76D6_3C40_56EB_41CC_B0E53C47B881": "hall", "panorama_09C9818F_3C40_EB79_41C7_C64048A7CE78": "out_of_room", "panorama_09CB998B_3C41_DB79_41CB_577D74A8059E": "hall"},
+    "floor": 4
+  },
+  "panorama_09CA76D6_3C40_56EB_41CC_B0E53C47B881": {
+    "ways": {"panorama_09C92554_3C40_6BEF_41C4_DC8CC77E9CD0": "hall", "panorama_09CB288C_3C41_B97F_41B8_3F134F1345F4": "hall"},
+    "floor": 4
+  },
+  "panorama_09CB288C_3C41_B97F_41B8_3F134F1345F4": {
+    "ways": {"panorama_09CB998B_3C41_DB79_41CB_577D74A8059E": "hall", "panorama_09CA76D6_3C40_56EB_41CC_B0E53C47B881": "hall"},
+    "floor": 4
+  },
+  "panorama_09CB998B_3C41_DB79_41CB_577D74A8059E": {
+    "ways": {"panorama_09CB288C_3C41_B97F_41B8_3F134F1345F4": "hall", "panorama_09C92554_3C40_6BEF_41C4_DC8CC77E9CD0": "hall"},
+    "floor": 4
+  },
+  "panorama_03A5B5B6_3DC0_AAAB_4195_C8894692C440": {
+    "ways": {"panorama_0897B70A_3DC0_F77B_41CB_B8C7338BA8A9": "hall"},
+    "floor": 2
+  },
+  "panorama_0897B70A_3DC0_F77B_41CB_B8C7338BA8A9": {
+    "ways": {"panorama_03A5B5B6_3DC0_AAAB_4195_C8894692C440": "hall", "panorama_0864D85D_3DC0_D999_41B2_99A0CEF41DE3": "out_of_room"},
+    "floor": 2
+  },
+  "panorama_0864D85D_3DC0_D999_41B2_99A0CEF41DE3": {
+    "name": "Floor 2 corridor at rooms 201 and 208",
+    "mention": "the floor 2 corridor at rooms 201 and 208",
+    "ways": {"panorama_0897B70A_3DC0_F77B_41CB_B8C7338BA8A9": "into_room", "panorama_0863B97D_3DC0_BB99_41B5_E232D822173C": "corridor"},
+    "floor": 2,
+    "ro": {"name": "Coridorul de la etajul 2, în dreptul sălilor 201 și 208", "mention": "coridorul de la etajul 2, în dreptul sălilor 201 și 208"}
+  },
+  "panorama_0863B97D_3DC0_BB99_41B5_E232D822173C": {
+    "name": "Floor 2 corridor by the hall",
+    "mention": "the floor 2 corridor by the hall",
+    "ways": {"panorama_08637AAD_3DC0_5EB9_41C4_1F30BA29751E": "hall", "panorama_0864D85D_3DC0_D999_41B2_99A0CEF41DE3": "corridor"},
+    "floor": 2,
+    "ro": {"name": "Coridorul de la etajul 2, lângă hol", "mention": "coridorul de la etajul 2, lângă hol"}
+  },
+  "panorama_08637AAD_3DC0_5EB9_41C4_1F30BA29751E": {
+    "name": "Floor 2 hall at the stairs",
+    "mention": "the floor 2 hall at the stairs",
+    "ways": {"panorama_09C9818F_3C40_EB79_41C7_C64048A7CE78": "stairs_up", "panorama_0863B97D_3DC0_BB99_41B5_E232D822173C": "hall", "panorama_08613CA5_3DC0_7AA9_41B6_51384A790D64": "stairs_down"},
+    "floor": 2,
+    "ro": {"name": "Holul de la etajul 2, lângă scări", "mention": "holul de la etajul 2, lângă scări"}
+  },
+  "panorama_08613CA5_3DC0_7AA9_41B6_51384A790D64": {
+    "name": "Floor 1 landing",
+    "mention": "the floor 1 landing",
+    "ways": {"panorama_08637AAD_3DC0_5EB9_41C4_1F30BA29751E": "stairs_up", "panorama_09C87C5A_3C40_599B_41C4_A65EB3B14EE8": "stairs_down"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1", "mention": "palierul de la etajul 1"}
+  },
+  "panorama_05539320_3DCF_EFA7_4192_6A13A30EC6AC": {
+    "name": "SPM entrance lobby",
+    "mention": "the SPM entrance lobby",
+    "ways": {"panorama_05542508_3DCF_AB67_41BA_D8B3D88A6DBA": "stairs_up", "panorama_015142CB_3C43_AEF9_41B1_F2E1D34CC8EF": "leave_building"},
+    "floor": 0,
+    "ro": {"name": "Holul de la intrarea SPM", "mention": "holul de la intrarea SPM"}
+  },
+  "panorama_05542508_3DCF_AB67_41BA_D8B3D88A6DBA": {
+    "name": "SPM mezzanine landing",
+    "mention": "the SPM mezzanine landing",
+    "ways": {"panorama_025CB3AF_3DC0_AEB9_41C2_02410435FC6E": "into_room", "panorama_05A424EF_3DCF_AAB9_41A9_672521A64DB8": "stairs_up", "panorama_05539320_3DCF_EFA7_4192_6A13A30EC6AC": "stairs_down"},
+    "floor": "M",
+    "ro": {"name": "Palierul de la mezanin (SPM)", "mention": "palierul de la mezanin (SPM)"}
+  },
+  "panorama_025CB3AF_3DC0_AEB9_41C2_02410435FC6E": {
+    "ways": {"panorama_05542508_3DCF_AB67_41BA_D8B3D88A6DBA": "out_of_room", "panorama_05AF8A48_3DC0_D9E7_41C1_7A6A3C089542": "into_room", "panorama_05A28BCC_3DC0_BEFF_41C7_C5DCDCA86397": "doorway"},
+    "floor": "M"
+  },
+  "panorama_05AF8A48_3DC0_D9E7_41C1_7A6A3C089542": {
+    "ways": {"panorama_025CB3AF_3DC0_AEB9_41C2_02410435FC6E": "out_of_room"},
+    "floor": "M"
+  },
+  "panorama_05A28BCC_3DC0_BEFF_41C7_C5DCDCA86397": {
+    "ways": {"panorama_05AD9D4F_3DC0_5BF9_41BE_F9EEB5AD0791": "into_room", "panorama_025CB3AF_3DC0_AEB9_41C2_02410435FC6E": "doorway"},
+    "floor": "M"
+  },
+  "panorama_05AD9D4F_3DC0_5BF9_41BE_F9EEB5AD0791": {
+    "ways": {"panorama_05A28BCC_3DC0_BEFF_41C7_C5DCDCA86397": "out_of_room"},
+    "floor": "M"
+  },
+  "panorama_0552B17E_3DCF_EB9B_41BB_ADCA519F4AF3": {
+    "name": "SPM floor 1 corridor at room 113",
+    "mention": "the SPM floor 1 corridor at room 113",
+    "ways": {"panorama_05A424EF_3DCF_AAB9_41A9_672521A64DB8": "corridor", "panorama_7D99C136_3DC0_6BAB_41B1_B510BD0FC912": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1, în dreptul sălii 113 (SPM)", "mention": "coridorul de la etajul 1, în dreptul sălii 113 (SPM)"}
+  },
+  "panorama_05A424EF_3DCF_AAB9_41A9_672521A64DB8": {
+    "name": "SPM floor 1 corridor at the stairs",
+    "mention": "the SPM floor 1 corridor at the stairs",
+    "ways": {"panorama_05ACF32A_3DC0_6FBB_41CC_6DC0FF152276": "stairs_up", "panorama_05542508_3DCF_AB67_41BA_D8B3D88A6DBA": "stairs_down", "panorama_0552B17E_3DCF_EB9B_41BB_ADCA519F4AF3": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1, lângă scări (SPM)", "mention": "coridorul de la etajul 1, lângă scări (SPM)"}
+  },
+  "panorama_7D99C136_3DC0_6BAB_41B1_B510BD0FC912": {
+    "ways": {"panorama_0552B17E_3DCF_EB9B_41BB_ADCA519F4AF3": "out_of_room", "panorama_05556FC6_3DCF_B6EB_41B2_10157B6BB0A8": "hall"},
+    "floor": 1
+  },
+  "panorama_05556FC6_3DCF_B6EB_41B2_10157B6BB0A8": {
+    "ways": {"panorama_7D99C136_3DC0_6BAB_41B1_B510BD0FC912": "hall"},
+    "floor": 1
+  },
+  "panorama_0124AA96_3DC0_D96B_41CF_0AC2FA4F5B95": {
+    "name": "SPM floor 2 corridor at room 221",
+    "mention": "the SPM floor 2 corridor at room 221",
+    "ways": {"panorama_05ACF32A_3DC0_6FBB_41CC_6DC0FF152276": "corridor", "panorama_05AC2165_3DC0_6BA9_41B3_AD731AA33388": "into_room"},
+    "floor": 2,
+    "ro": {"name": "Coridorul de la etajul 2, în dreptul sălii 221 (SPM)", "mention": "coridorul de la etajul 2, în dreptul sălii 221 (SPM)"}
+  },
+  "panorama_05ACF32A_3DC0_6FBB_41CC_6DC0FF152276": {
+    "name": "SPM floor 2 landing",
+    "mention": "the SPM floor 2 landing",
+    "ways": {"panorama_05A424EF_3DCF_AAB9_41A9_672521A64DB8": "stairs_down", "panorama_0124AA96_3DC0_D96B_41CF_0AC2FA4F5B95": "corridor"},
+    "floor": 2,
+    "ro": {"name": "Palierul de la etajul 2 (SPM)", "mention": "palierul de la etajul 2 (SPM)"}
+  },
+  "panorama_02DAAABF_1300_5468_417F_71310D1596E5": {
+    "ways": {"panorama_25B97D98_3954_3488_41AB_8211E9759ACF": "enter_building"}
+  },
+  "panorama_2FD074FC_1D98_9F73_4196_5EF26095FC54": {
+    "ways": {"panorama_25B97D98_3954_3488_41AB_8211E9759ACF": "enter_building"}
+  },
+  "panorama_21B81455_16D7_8937_41B4_5247569F1C0E": {
+    "ways": {"panorama_25B97D98_3954_3488_41AB_8211E9759ACF": "enter_building"}
+  },
+  "panorama_2031C5D6_16D7_8B35_41B3_A9B18A769C3C": {
+    "ways": {"panorama_25B97D98_3954_3488_41AB_8211E9759ACF": "enter_building"}
+  },
+  "panorama_25B97D98_3954_3488_41AB_8211E9759ACF": {
+    "ways": {"panorama_25B89B22_3955_DDB8_41C3_7DCF726DC4F9": "hall", "panorama_02DAAABF_1300_5468_417F_71310D1596E5": "leave_building", "panorama_19AA9949_3974_5D88_41C2_4129452DB2D4": "doorway"},
+    "floor": 0
+  },
+  "panorama_25B89B22_3955_DDB8_41C3_7DCF726DC4F9": {
+    "name": "Ground-floor main hall",
+    "mention": "the ground-floor main hall",
+    "ways": {"panorama_25A76535_3954_D598_41C2_8B97B8EAEFCC": "stairs_up", "panorama_25B97D98_3954_3488_41AB_8211E9759ACF": "hall", "panorama_25A6803B_3954_CB88_41CB_E663F1A29E1E": "hall", "panorama_21CA2932_3CC0_5BAB_41C1_3567C8A3ADC5": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Holul mare de la parter", "mention": "holul mare de la parter"}
+  },
+  "panorama_25A6803B_3954_CB88_41CB_E663F1A29E1E": {
+    "name": "Ground-floor hall by the basement stairs",
+    "mention": "the ground-floor hall by the basement stairs",
+    "ways": {"panorama_1619359F_5226_57BD_41BB_4D3B560292A4": "into_room", "panorama_25B89B22_3955_DDB8_41C3_7DCF726DC4F9": "hall"},
+    "floor": 0,
+    "ro": {"name": "Holul de la parter, lângă scara spre demisol", "mention": "holul de la parter, lângă scara spre demisol"}
+  },
+  "panorama_25B8592C_3954_3D88_41C3_9D9FCC9A19C0": {
+    "name": "Floor 4 hall",
+    "mention": "the floor 4 hall",
+    "ways": {"panorama_25B9E7AE_3954_5488_41A1_D72380F855B1": "hall", "panorama_25B81BC2_3954_DCF8_41B5_6B05C01321F5": "doorway", "panorama_25B9C52A_3954_7588_41C7_7DEADB6CFBDC": "corridor"},
+    "floor": 4,
+    "ro": {"name": "Holul de la etajul 4", "mention": "holul de la etajul 4"}
+  },
+  "panorama_25B9E7AE_3954_5488_41A1_D72380F855B1": {
+    "name": "Floor 4 hall, CA4 door",
+    "mention": "the floor 4 hall, CA4 door",
+    "ways": {"panorama_25B8592C_3954_3D88_41C3_9D9FCC9A19C0": "hall"},
+    "floor": 4,
+    "ro": {"name": "Holul de la etajul 4, la amfiteatrul CA4", "mention": "holul de la etajul 4, la amfiteatrul CA4"}
+  },
+  "panorama_25B9C52A_3954_7588_41C7_7DEADB6CFBDC": {
+    "ways": {"panorama_25B8592C_3954_3D88_41C3_9D9FCC9A19C0": "corridor", "panorama_25B992C4_3954_4CF8_41C5_3A5EFC7FA2A4": "into_room"},
+    "floor": 4
+  },
+  "panorama_25B992C4_3954_4CF8_41C5_3A5EFC7FA2A4": {
+    "ways": {"panorama_25B9C02D_3954_4B88_41C6_3CC254BD8DE4": "hall", "panorama_25B9C52A_3954_7588_41C7_7DEADB6CFBDC": "out_of_room"},
+    "floor": 4
+  },
+  "panorama_25B9C02D_3954_4B88_41C6_3CC254BD8DE4": {
+    "ways": {"panorama_25B992C4_3954_4CF8_41C5_3A5EFC7FA2A4": "hall"},
+    "floor": 4
+  },
+  "panorama_279D2D5B_3954_5588_41CA_41C3BD717690": {
+    "ways": {"panorama_25BB8AF6_3954_7C98_41AD_E75CE3F18C28": "hall"},
+    "floor": 5
+  },
+  "panorama_25BB8AF6_3954_7C98_41AD_E75CE3F18C28": {
+    "ways": {"panorama_279D2D5B_3954_5588_41CA_41C3BD717690": "hall", "panorama_25BBB82E_3954_5B88_41B1_CFEDD556C4F7": "out_of_room"},
+    "floor": 5
+  },
+  "panorama_25BBB82E_3954_5B88_41B1_CFEDD556C4F7": {
+    "name": "Floor 5 studios entrance",
+    "mention": "the floor 5 studios entrance",
+    "ways": {"panorama_25BB8AF6_3954_7C98_41AD_E75CE3F18C28": "into_room", "panorama_25B8A575_3954_3598_41A1_891D6CA925E1": "into_room", "panorama_25B8B2AC_3954_CC88_41BC_D9D3D2CA0CE4": "corridor"},
+    "floor": 5,
+    "ro": {"name": "Etajul 5, intrarea la ateliere", "mention": "etajul 5, intrarea la ateliere"}
+  },
+  "panorama_25B8A575_3954_3598_41A1_891D6CA925E1": {
+    "ways": {"panorama_25BBB82E_3954_5B88_41B1_CFEDD556C4F7": "out_of_room"},
+    "floor": 5
+  },
+  "panorama_25B8B2AC_3954_CC88_41BC_D9D3D2CA0CE4": {
+    "name": "Floor 5 corridor",
+    "mention": "the floor 5 corridor",
+    "ways": {"panorama_25B81048_3954_CB88_41C4_5D3EBE551AA4": "corridor", "panorama_25BBB82E_3954_5B88_41B1_CFEDD556C4F7": "corridor"},
+    "floor": 5,
+    "ro": {"name": "Coridorul de la etajul 5", "mention": "coridorul de la etajul 5"}
+  },
+  "panorama_25B81048_3954_CB88_41C4_5D3EBE551AA4": {
+    "name": "Floor 5 hall at the main stairs",
+    "mention": "the floor 5 hall at the main stairs",
+    "ways": {"panorama_25B8B2AC_3954_CC88_41BC_D9D3D2CA0CE4": "corridor", "panorama_25B81BC2_3954_DCF8_41B5_6B05C01321F5": "stairs_down"},
+    "floor": 5,
+    "ro": {"name": "Holul de la etajul 5, la scara principală", "mention": "holul de la etajul 5, la scara principală"}
+  },
+  "panorama_25B81BC2_3954_DCF8_41B5_6B05C01321F5": {
+    "name": "Floor 4 stair landing",
+    "mention": "the floor 4 stair landing",
+    "ways": {"panorama_25B81048_3954_CB88_41C4_5D3EBE551AA4": "stairs_up", "panorama_25B8592C_3954_3D88_41C3_9D9FCC9A19C0": "doorway", "panorama_21CA2932_3CC0_5BAB_41C1_3567C8A3ADC5": "stairs_down"},
+    "floor": 4,
+    "ro": {"name": "Palierul scării de la etajul 4", "mention": "palierul scării de la etajul 4"}
+  },
+  "panorama_25A76C0F_3954_7B88_41AE_001558C59549": {
+    "name": "Floor 1 hall, Nicolae Maior door",
+    "mention": "the floor 1 hall, Nicolae Maior door",
+    "ways": {"panorama_25A76535_3954_D598_41C2_8B97B8EAEFCC": "hall", "panorama_121C6CFC_5226_D583_41D1_96A63081C230": "into_room", "panorama_25A7F9EF_3954_5C88_41A7_4C54127DF47A": "hall", "panorama_25A7F788_3954_3488_41C1_14C4947D0C70": "hall"},
+    "floor": 1,
+    "ro": {"name": "Holul de la etajul 1, la amfiteatrul Nicolae Maior", "mention": "holul de la etajul 1, la amfiteatrul Nicolae Maior"}
+  },
+  "panorama_25A7F9EF_3954_5C88_41A7_4C54127DF47A": {
+    "ways": {"panorama_25A7F788_3954_3488_41C1_14C4947D0C70": "hall", "panorama_121C6CFC_5226_D583_41D1_96A63081C230": "into_room", "panorama_25A76C0F_3954_7B88_41AE_001558C59549": "hall"},
+    "floor": 1
+  },
+  "panorama_25A7F788_3954_3488_41C1_14C4947D0C70": {
+    "name": "Floor 1 hall, C-tin Avram door",
+    "mention": "the floor 1 hall, C-tin Avram door",
+    "ways": {"panorama_25A76535_3954_D598_41C2_8B97B8EAEFCC": "hall", "panorama_25A7F9EF_3954_5C88_41A7_4C54127DF47A": "hall", "panorama_25A7513C_3954_4D88_41C7_FD219601720B": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Holul de la etajul 1, la amfiteatrul C-tin Avram", "mention": "holul de la etajul 1, la amfiteatrul C-tin Avram"}
+  },
+  "panorama_25A76535_3954_D598_41C2_8B97B8EAEFCC": {
+    "name": "Floor 1 hall at the main stairs",
+    "mention": "the floor 1 hall at the main stairs",
+    "ways": {"panorama_21CA2932_3CC0_5BAB_41C1_3567C8A3ADC5": "stairs_up", "panorama_25B89B22_3955_DDB8_41C3_7DCF726DC4F9": "stairs_down", "panorama_19AF0AA0_3974_DCB8_41AD_2B02E0715482": "doorway", "panorama_25A7F788_3954_3488_41C1_14C4947D0C70": "hall"},
+    "floor": 1,
+    "ro": {"name": "Holul de la etajul 1, la scara principală", "mention": "holul de la etajul 1, la scara principală"}
+  },
+  "panorama_19AF0AA0_3974_DCB8_41AD_2B02E0715482": {
+    "name": "Floor 1 corridor by the secretariat",
+    "mention": "the floor 1 corridor by the secretariat",
+    "ways": {"panorama_19A99DCE_3974_5488_41A9_8B6A95495DA0": "corridor", "panorama_25A76535_3954_D598_41C2_8B97B8EAEFCC": "doorway", "panorama_19AF6C58_3974_3B88_41C1_C2FC2FED6194": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1, la secretariat", "mention": "coridorul de la etajul 1, la secretariat"}
+  },
+  "panorama_19AF6C58_3974_3B88_41C1_C2FC2FED6194": {
+    "ways": {"panorama_19AF0AA0_3974_DCB8_41AD_2B02E0715482": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_19A99DCE_3974_5488_41A9_8B6A95495DA0": {
+    "ways": {"panorama_19AE2F72_3974_7598_41C7_492C9A5FE989": "into_room", "panorama_19AF0AA0_3974_DCB8_41AD_2B02E0715482": "corridor", "panorama_19AAE7E7_3974_34B8_415B_253BCECDD4A4": "stairs_down"},
+    "floor": 1
+  },
+  "panorama_19AE2F72_3974_7598_41C7_492C9A5FE989": {
+    "ways": {"panorama_19A99DCE_3974_5488_41A9_8B6A95495DA0": "out_of_room", "panorama_19A9018A_3974_4C88_41AA_9725021479B0": "into_room"},
+    "floor": 1
+  },
+  "panorama_19A9018A_3974_4C88_41AA_9725021479B0": {
+    "ways": {"panorama_19AE2F72_3974_7598_41C7_492C9A5FE989": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_19AA42E7_3977_CCB8_4196_1528A5579E9C": {
+    "ways": {"panorama_19AA445B_3977_CB88_4183_4D74B96C55EF": "hall", "panorama_19AA8614_3977_D798_41C8_BE4F688269E9": "hall", "panorama_19AAE7E7_3974_34B8_415B_253BCECDD4A4": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_19AA445B_3977_CB88_4183_4D74B96C55EF": {
+    "ways": {"panorama_19AA8614_3977_D798_41C8_BE4F688269E9": "hall", "panorama_19AA42E7_3977_CCB8_4196_1528A5579E9C": "hall"},
+    "floor": 0
+  },
+  "panorama_19AA8614_3977_D798_41C8_BE4F688269E9": {
+    "ways": {"panorama_19AA445B_3977_CB88_4183_4D74B96C55EF": "hall", "panorama_19AA42E7_3977_CCB8_4196_1528A5579E9C": "hall"},
+    "floor": 0
+  },
+  "panorama_19AAE7E7_3974_34B8_415B_253BCECDD4A4": {
+    "name": "Ground-floor lab corridor, far end",
+    "mention": "the ground-floor lab corridor, far end",
+    "ways": {"panorama_19A99DCE_3974_5488_41A9_8B6A95495DA0": "stairs_up", "panorama_19AA42E7_3977_CCB8_4196_1528A5579E9C": "into_room", "panorama_19AA9949_3974_5D88_41C2_4129452DB2D4": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Capătul coridorului de la parter", "mention": "capătul coridorului de la parter"}
+  },
+  "panorama_19AA9949_3974_5D88_41C2_4129452DB2D4": {
+    "name": "Ground-floor lab corridor",
+    "mention": "the ground-floor lab corridor",
+    "ways": {"panorama_25B97D98_3954_3488_41AB_8211E9759ACF": "doorway", "panorama_19AAE7E7_3974_34B8_415B_253BCECDD4A4": "corridor", "panorama_19AB7AAA_3974_7C88_41AD_34A3EF2B726C": "into_room"},
+    "floor": 0,
+    "ro": {"name": "Coridorul laboratoarelor de la parter", "mention": "coridorul laboratoarelor de la parter"}
+  },
+  "panorama_19AB7AAA_3974_7C88_41AD_34A3EF2B726C": {
+    "ways": {"panorama_19AB0C70_3974_5B98_41A9_0BD0965619FC": "hall", "panorama_19AA9949_3974_5D88_41C2_4129452DB2D4": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_19AB0C70_3974_5B98_41A9_0BD0965619FC": {
+    "ways": {"panorama_19AB7AAA_3974_7C88_41AD_34A3EF2B726C": "hall"},
+    "floor": 0
+  },
+  "panorama_21C54498_3CC0_E967_4184_C5422B4960A6": {
+    "ways": {"panorama_20D827BF_3CC3_F699_41C4_62E57372C125": "hall", "panorama_21C5364D_3CC0_E9F9_41A5_375F714BC344": "hall"},
+    "floor": 3
+  },
+  "panorama_21C5364D_3CC0_E9F9_41A5_375F714BC344": {
+    "ways": {"panorama_21C54498_3CC0_E967_4184_C5422B4960A6": "hall"},
+    "floor": 3
+  },
+  "panorama_21CA07A0_3CC0_B6A7_41C8_56A2312F087A": {
+    "name": "Floor 3 hall",
+    "mention": "the floor 3 hall",
+    "ways": {"panorama_21CBFC7C_3CC0_599F_41B5_EC0DFDE1EE15": "corridor", "panorama_20D827BF_3CC3_F699_41C4_62E57372C125": "into_room", "panorama_21CA2932_3CC0_5BAB_41C1_3567C8A3ADC5": "doorway"},
+    "floor": 3,
+    "ro": {"name": "Holul de la etajul 3", "mention": "holul de la etajul 3"}
+  },
+  "panorama_21CA2932_3CC0_5BAB_41C1_3567C8A3ADC5": {
+    "name": "Floor 3 stair landing",
+    "mention": "the floor 3 stair landing",
+    "ways": {"panorama_25A76535_3954_D598_41C2_8B97B8EAEFCC": "stairs_down", "panorama_21CA07A0_3CC0_B6A7_41C8_56A2312F087A": "doorway", "panorama_25B81BC2_3954_DCF8_41B5_6B05C01321F5": "stairs_up"},
+    "floor": 3,
+    "ro": {"name": "Palierul scării de la etajul 3", "mention": "palierul scării de la etajul 3"}
+  },
+  "panorama_21CBFC7C_3CC0_599F_41B5_EC0DFDE1EE15": {
+    "name": "Floor 3 corridor at C301",
+    "mention": "the floor 3 corridor at C301",
+    "ways": {"panorama_21CA07A0_3CC0_B6A7_41C8_56A2312F087A": "corridor", "panorama_21CAB2CB_3CC1_AEF9_41CA_021213B57297": "into_room"},
+    "floor": 3,
+    "ro": {"name": "Coridorul de la etajul 3, în dreptul C301", "mention": "coridorul de la etajul 3, în dreptul C301"}
+  },
+  "panorama_21CAF178_3CC1_EBA7_41C3_BD1F0197D57F": {
+    "ways": {"panorama_21CAB2CB_3CC1_AEF9_41CA_021213B57297": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_21CAB2CB_3CC1_AEF9_41CA_021213B57297": {
+    "ways": {"panorama_21CBFC7C_3CC0_599F_41B5_EC0DFDE1EE15": "out_of_room", "panorama_21CAF178_3CC1_EBA7_41C3_BD1F0197D57F": "into_room"},
+    "floor": 3
+  },
+  "panorama_25B8A87A_3955_FB88_41C5_632A4C5359FC": {
+    "ways": {"panorama_25B84626_3955_D7B8_41BB_28EFA7492DFE": "hall", "panorama_1619359F_5226_57BD_41BB_4D3B560292A4": "hall"},
+    "floor": 0
+  },
+  "panorama_25B84626_3955_D7B8_41BB_28EFA7492DFE": {
+    "ways": {"panorama_25B8A87A_3955_FB88_41C5_632A4C5359FC": "hall", "panorama_25A6803B_3954_CB88_41CB_E663F1A29E1E": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_1619359F_5226_57BD_41BB_4D3B560292A4": {
+    "ways": {"panorama_25B8A87A_3955_FB88_41C5_632A4C5359FC": "hall", "panorama_25A6803B_3954_CB88_41CB_E663F1A29E1E": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_25A7513C_3954_4D88_41C7_FD219601720B": {
+    "ways": {"panorama_25A72E84_3954_5778_4199_E7C8DB153F3A": "hall", "panorama_25A7F788_3954_3488_41C1_14C4947D0C70": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_25A72E84_3954_5778_4199_E7C8DB153F3A": {
+    "ways": {"panorama_25A7513C_3954_4D88_41C7_FD219601720B": "hall"},
+    "floor": 1
+  },
+  "panorama_1834FEA0_393C_D4B8_41AF_E097101595D8": {
+    "ways": {"panorama_25A19C4B_393C_FB88_4191_CC62E95B8AAC": "hall", "panorama_121C6CFC_5226_D583_41D1_96A63081C230": "hall"},
+    "floor": 1
+  },
+  "panorama_25A19C4B_393C_FB88_4191_CC62E95B8AAC": {
+    "ways": {"panorama_1834FEA0_393C_D4B8_41AF_E097101595D8": "hall"},
+    "floor": 1
+  },
+  "panorama_121C6CFC_5226_D583_41D1_96A63081C230": {
+    "ways": {"panorama_1834FEA0_393C_D4B8_41AF_E097101595D8": "hall", "panorama_25A7F9EF_3954_5C88_41A7_4C54127DF47A": "out_of_room", "panorama_25A76C0F_3954_7B88_41AE_001558C59549": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_20D827BF_3CC3_F699_41C4_62E57372C125": {
+    "ways": {"panorama_21C5364D_3CC0_E9F9_41A5_375F714BC344": "hall", "panorama_21CA07A0_3CC0_B6A7_41C8_56A2312F087A": "out_of_room", "panorama_21C54498_3CC0_E967_4184_C5422B4960A6": "hall"},
+    "floor": 3
+  },
+  "panorama_19AB8EC0_3974_34F8_41C7_016040C69370": {
+    "ways": {"panorama_19AB2083_3974_CB78_41B2_38D754738B60": "enter_building"}
+  },
+  "panorama_19BA7D86_397C_5578_41C1_469ED56615CD": {
+    "ways": {"panorama_19BA3F80_397C_3578_41C0_626A355940F3": "enter_building"}
+  },
+  "panorama_19B73DCE_3974_3488_41B5_DEA885D69640": {
+    "ways": {"panorama_19B77FA7_3974_54B8_41B3_ADFB1AE24D02": "enter_building"}
+  },
+  "panorama_19AB2083_3974_CB78_41B2_38D754738B60": {
+    "name": "CMMC entrance lobby",
+    "mention": "the CMMC entrance lobby",
+    "ways": {"panorama_19AB8EC0_3974_34F8_41C7_016040C69370": "leave_building", "panorama_19A8B1E4_3974_CCB8_41B2_BDF56C204A4B": "into_room", "panorama_19A845D6_3974_5498_41CA_D64E73FBF06C": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Holul de la intrarea CMMC", "mention": "holul de la intrarea CMMC"}
+  },
+  "panorama_19A8B1E4_3974_CCB8_41B2_BDF56C204A4B": {
+    "ways": {"panorama_19AB2083_3974_CB78_41B2_38D754738B60": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_19A845D6_3974_5498_41CA_D64E73FBF06C": {
+    "name": "CMMC floor 1 landing",
+    "mention": "the CMMC floor 1 landing",
+    "ways": {"panorama_19A8E728_3974_7588_41C8_6A06EA0288FE": "stairs_up", "panorama_19AB2083_3974_CB78_41B2_38D754738B60": "stairs_down"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1 (CMMC)", "mention": "palierul de la etajul 1 (CMMC)"}
+  },
+  "panorama_19A8E728_3974_7588_41C8_6A06EA0288FE": {
+    "name": "CMMC floor 2 landing",
+    "mention": "the CMMC floor 2 landing",
+    "ways": {"panorama_19A845D6_3974_5498_41CA_D64E73FBF06C": "stairs_down", "panorama_19A88675_3974_3798_41CB_06033F6AE717": "into_room", "panorama_19A8221E_3974_4F88_41B4_E2C029D27C9C": "into_room"},
+    "floor": 2,
+    "ro": {"name": "Palierul de la etajul 2 (CMMC)", "mention": "palierul de la etajul 2 (CMMC)"}
+  },
+  "panorama_19A88675_3974_3798_41CB_06033F6AE717": {
+    "ways": {"panorama_19A8E728_3974_7588_41C8_6A06EA0288FE": "out_of_room", "panorama_19B7882A_3974_DB88_41B3_1900C0BAB4DB": "hall", "panorama_19B7CA35_3974_FF98_416F_41F3F1A6D0BF": "hall"},
+    "floor": 2
+  },
+  "panorama_19B7882A_3974_DB88_41B3_1900C0BAB4DB": {
+    "ways": {"panorama_19A88675_3974_3798_41CB_06033F6AE717": "hall", "panorama_19B7CA35_3974_FF98_416F_41F3F1A6D0BF": "hall"},
+    "floor": 2
+  },
+  "panorama_19B7CA35_3974_FF98_416F_41F3F1A6D0BF": {
+    "ways": {"panorama_19A8E728_3974_7588_41C8_6A06EA0288FE": "out_of_room", "panorama_19B7882A_3974_DB88_41B3_1900C0BAB4DB": "hall"},
+    "floor": 2
+  },
+  "panorama_19A8221E_3974_4F88_41B4_E2C029D27C9C": {
+    "ways": {"panorama_19A8E728_3974_7588_41C8_6A06EA0288FE": "out_of_room", "panorama_19A8E3A4_3974_4CB8_41C2_6B3D3E8AA0B5": "hall"},
+    "floor": 2
+  },
+  "panorama_19A8E3A4_3974_4CB8_41C2_6B3D3E8AA0B5": {
+    "ways": {"panorama_19A8F525_3974_55B8_41BF_D4E75426EFD9": "hall", "panorama_19A8221E_3974_4F88_41B4_E2C029D27C9C": "hall"},
+    "floor": 2
+  },
+  "panorama_19A8F525_3974_55B8_41BF_D4E75426EFD9": {
+    "ways": {"panorama_19A8E3A4_3974_4CB8_41C2_6B3D3E8AA0B5": "hall"},
+    "floor": 2
+  },
+  "panorama_19BA3F80_397C_3578_41C0_626A355940F3": {
+    "name": "Geotechnics entrance lobby",
+    "mention": "the geotechnics entrance lobby",
+    "ways": {"panorama_19BA7D86_397C_5578_41C1_469ED56615CD": "leave_building", "panorama_19BAEF27_397D_D5B8_41BE_3DEFF794AF47": "doorway", "panorama_19BA1136_397C_CD98_41C5_E81E88FA339B": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Holul de la intrarea Geotehnică", "mention": "holul de la intrarea Geotehnică"}
+  },
+  "panorama_19BA1136_397C_CD98_41C5_E81E88FA339B": {
+    "name": "Geotechnics floor 1 landing",
+    "mention": "the geotechnics floor 1 landing",
+    "ways": {"panorama_19BA22D9_397C_CC88_4191_8115B5892185": "doorway", "panorama_19BA3F80_397C_3578_41C0_626A355940F3": "stairs_down"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1 (Geotehnică)", "mention": "palierul de la etajul 1 (Geotehnică)"}
+  },
+  "panorama_19BA22D9_397C_CC88_4191_8115B5892185": {
+    "name": "Geotechnics floor 1 corridor",
+    "mention": "the geotechnics floor 1 corridor",
+    "ways": {"panorama_19BA1136_397C_CD98_41C5_E81E88FA339B": "corridor", "panorama_19BA442B_397C_CB88_41BB_2E2EF78AE8A4": "into_room", "panorama_19BBE6F0_397C_7498_41C1_E750791BC661": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1 (Geotehnică)", "mention": "coridorul de la etajul 1 (Geotehnică)"}
+  },
+  "panorama_19BA442B_397C_CB88_41BB_2E2EF78AE8A4": {
+    "ways": {"panorama_19BA22D9_397C_CC88_4191_8115B5892185": "out_of_room", "panorama_19BA25AB_397C_5488_41C3_5D380910F942": "hall"},
+    "floor": 1
+  },
+  "panorama_19BA25AB_397C_5488_41C3_5D380910F942": {
+    "ways": {"panorama_19BA442B_397C_CB88_41BB_2E2EF78AE8A4": "hall"},
+    "floor": 1
+  },
+  "panorama_19BBE6F0_397C_7498_41C1_E750791BC661": {
+    "ways": {"panorama_19BADDA2_397D_F4B8_41C7_A99F5025E075": "hall", "panorama_19BA22D9_397C_CC88_4191_8115B5892185": "out_of_room", "panorama_19BBD884_397C_5B78_41B5_5C52A393490A": "hall"},
+    "floor": 1
+  },
+  "panorama_19BBD884_397C_5B78_41B5_5C52A393490A": {
+    "ways": {"panorama_19BA6BDE_397D_DC88_41CA_E5D6EB4E6316": "hall", "panorama_19BBE6F0_397C_7498_41C1_E750791BC661": "hall", "panorama_19BB8A18_397C_3F88_41AA_C781A977E1A5": "hall"},
+    "floor": 1
+  },
+  "panorama_19BB8A18_397C_3F88_41AA_C781A977E1A5": {
+    "ways": {"panorama_19BBD884_397C_5B78_41B5_5C52A393490A": "hall"},
+    "floor": 1
+  },
+  "panorama_19BA6BDE_397D_DC88_41CA_E5D6EB4E6316": {
+    "ways": {"panorama_19BADDA2_397D_F4B8_41C7_A99F5025E075": "hall", "panorama_19BBD884_397C_5B78_41B5_5C52A393490A": "hall"},
+    "floor": 1
+  },
+  "panorama_19BADDA2_397D_F4B8_41C7_A99F5025E075": {
+    "ways": {"panorama_19BA6BDE_397D_DC88_41CA_E5D6EB4E6316": "hall", "panorama_19BBE6F0_397C_7498_41C1_E750791BC661": "hall"},
+    "floor": 1
+  },
+  "panorama_19BAEF27_397D_D5B8_41BE_3DEFF794AF47": {
+    "name": "Geotechnics ground-floor corridor",
+    "mention": "the geotechnics ground-floor corridor",
+    "ways": {"panorama_19BA3F80_397C_3578_41C0_626A355940F3": "corridor", "panorama_19BAA000_397C_4B78_41BA_8E7781657000": "into_room"},
+    "floor": 0,
+    "ro": {"name": "Coridorul de la parter (Geotehnică)", "mention": "coridorul de la parter (Geotehnică)"}
+  },
+  "panorama_19BAA000_397C_4B78_41BA_8E7781657000": {
+    "ways": {"panorama_19BD4186_397C_4D78_41B5_E5579A4D964F": "hall", "panorama_19BAEF27_397D_D5B8_41BE_3DEFF794AF47": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_19BD4186_397C_4D78_41B5_E5579A4D964F": {
+    "ways": {"panorama_19BAA000_397C_4B78_41BA_8E7781657000": "hall"},
+    "floor": 0
+  },
+  "panorama_19B77FA7_3974_54B8_41B3_ADFB1AE24D02": {
+    "name": "ASPC entrance hall",
+    "mention": "the ASPC entrance hall",
+    "ways": {"panorama_19B73DCE_3974_3488_41B5_DEA885D69640": "leave_building", "panorama_19B7013C_3974_4D88_41AD_C2F49484DD56": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Holul de la intrarea ASPC", "mention": "holul de la intrarea ASPC"}
+  },
+  "panorama_19B7013C_3974_4D88_41AD_C2F49484DD56": {
+    "name": "ASPC floor 1 landing",
+    "mention": "the ASPC floor 1 landing",
+    "ways": {"panorama_19B702CD_3974_4C88_41CB_74D9682B85F2": "hall", "panorama_19B77FA7_3974_54B8_41B3_ADFB1AE24D02": "stairs_down", "panorama_21C8CE3E_3CC0_B99B_41CB_6319743625BC": "stairs_up"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1 (ASPC)", "mention": "palierul de la etajul 1 (ASPC)"}
+  },
+  "panorama_19B702CD_3974_4C88_41CB_74D9682B85F2": {
+    "name": "ASPC floor 1 hall",
+    "mention": "the ASPC floor 1 hall",
+    "ways": {"panorama_19B924FB_397B_D488_419A_21F62435DB47": "hall", "panorama_19B7013C_3974_4D88_41AD_C2F49484DD56": "hall"},
+    "floor": 1,
+    "ro": {"name": "Holul de la etajul 1 (ASPC)", "mention": "holul de la etajul 1 (ASPC)"}
+  },
+  "panorama_19B924FB_397B_D488_419A_21F62435DB47": {
+    "name": "ASPC floor 1 hall at the glass door",
+    "mention": "the ASPC floor 1 hall at the glass door",
+    "ways": {"panorama_19B926DF_397B_F488_41BC_1BD24352A659": "doorway", "panorama_19B702CD_3974_4C88_41CB_74D9682B85F2": "hall"},
+    "floor": 1,
+    "ro": {"name": "Holul de la etajul 1, la ușa de sticlă (ASPC)", "mention": "holul de la etajul 1, la ușa de sticlă (ASPC)"}
+  },
+  "panorama_19B926DF_397B_F488_41BC_1BD24352A659": {
+    "name": "ASPC floor 1 corridor, A101–A109",
+    "mention": "the ASPC floor 1 corridor, A101–A109",
+    "ways": {"panorama_19B9595E_397C_3D88_41C7_3DABE1F47B5F": "into_room", "panorama_19B924FB_397B_D488_419A_21F62435DB47": "doorway"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1, A101–A109 (ASPC)", "mention": "coridorul de la etajul 1, A101–A109 (ASPC)"}
+  },
+  "panorama_19B9595E_397C_3D88_41C7_3DABE1F47B5F": {
+    "ways": {"panorama_19B926DF_397B_F488_41BC_1BD24352A659": "out_of_room", "panorama_19B9AA8F_397C_5C88_41C2_B01AB9C62AB9": "hall"},
+    "floor": 1
+  },
+  "panorama_19B9AA8F_397C_5C88_41C2_B01AB9C62AB9": {
+    "ways": {"panorama_19B9595E_397C_3D88_41C7_3DABE1F47B5F": "hall", "panorama_19B9BBF3_397C_7C98_41C6_7E0388779C5C": "hall"},
+    "floor": 1
+  },
+  "panorama_19B9BBF3_397C_7C98_41C6_7E0388779C5C": {
+    "ways": {"panorama_19B9AA8F_397C_5C88_41C2_B01AB9C62AB9": "hall"},
+    "floor": 1
+  },
+  "panorama_2754776E_3C41_D7BB_41A1_53A291AC94B0": {
+    "name": "ASPC floor 3 long corridor at A323",
+    "mention": "the ASPC floor 3 long corridor at A323",
+    "ways": {"panorama_2757287A_3C41_F99B_41AD_50C4824D2391": "into_room", "panorama_21C8EB35_3CC0_7FA9_41B4_0852B875E495": "corridor"},
+    "floor": 3,
+    "ro": {"name": "Coridorul lung de la etajul 3, în dreptul A323 (ASPC)", "mention": "coridorul lung de la etajul 3, în dreptul A323 (ASPC)"}
+  },
+  "panorama_2757287A_3C41_F99B_41AD_50C4824D2391": {
+    "ways": {"panorama_2754D9BC_3C41_DA9F_417F_31AA7C9B200E": "hall", "panorama_2754776E_3C41_D7BB_41A1_53A291AC94B0": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_2754D9BC_3C41_DA9F_417F_31AA7C9B200E": {
+    "ways": {"panorama_2757287A_3C41_F99B_41AD_50C4824D2391": "hall"},
+    "floor": 3
+  },
+  "panorama_21C9643D_3CC1_A999_41C3_A7164CE98E77": {
+    "name": "ASPC floor 2 long corridor at A225",
+    "mention": "the ASPC floor 2 long corridor at A225",
+    "ways": {"panorama_21CA9591_3CC0_6B69_41B6_DC3EEE364E88": "into_room", "panorama_21C89CAC_3CC0_DABF_41C5_0E2272E451B0": "corridor"},
+    "floor": 2,
+    "ro": {"name": "Coridorul lung de la etajul 2, în dreptul A225 (ASPC)", "mention": "coridorul lung de la etajul 2, în dreptul A225 (ASPC)"}
+  },
+  "panorama_21CA9591_3CC0_6B69_41B6_DC3EEE364E88": {
+    "ways": {"panorama_21C906E0_3CC0_56A7_41BF_ED89791B2EF5": "hall", "panorama_21C9643D_3CC1_A999_41C3_A7164CE98E77": "out_of_room"},
+    "floor": 2
+  },
+  "panorama_21C906E0_3CC0_56A7_41BF_ED89791B2EF5": {
+    "ways": {"panorama_21CA9591_3CC0_6B69_41B6_DC3EEE364E88": "hall"},
+    "floor": 2
+  },
+  "panorama_21C89CAC_3CC0_DABF_41C5_0E2272E451B0": {
+    "name": "ASPC floor 2 hall",
+    "mention": "the ASPC floor 2 hall",
+    "ways": {"panorama_21C89015_3CC0_6969_41B4_C6E09C1A9F0E": "doorway", "panorama_21C9643D_3CC1_A999_41C3_A7164CE98E77": "doorway", "panorama_21CBBC95_3CC1_D969_41C8_192BFC5D8271": "into_room", "panorama_21C8CE3E_3CC0_B99B_41CB_6319743625BC": "hall"},
+    "floor": 2,
+    "ro": {"name": "Holul de la etajul 2 (ASPC)", "mention": "holul de la etajul 2 (ASPC)"}
+  },
+  "panorama_21C8CE3E_3CC0_B99B_41CB_6319743625BC": {
+    "name": "ASPC floor 2 landing",
+    "mention": "the ASPC floor 2 landing",
+    "ways": {"panorama_21C8EB35_3CC0_7FA9_41B4_0852B875E495": "stairs_up", "panorama_21C89CAC_3CC0_DABF_41C5_0E2272E451B0": "hall", "panorama_19B7013C_3974_4D88_41AD_C2F49484DD56": "stairs_down"},
+    "floor": 2,
+    "ro": {"name": "Palierul de la etajul 2 (ASPC)", "mention": "palierul de la etajul 2 (ASPC)"}
+  },
+  "panorama_21C89015_3CC0_6969_41B4_C6E09C1A9F0E": {
+    "name": "ASPC floor 2 corridor, A203–A205",
+    "mention": "the ASPC floor 2 corridor, A203–A205",
+    "ways": {"panorama_21C82917_3CC7_BB69_41C8_0833C74A2706": "into_room", "panorama_21C89CAC_3CC0_DABF_41C5_0E2272E451B0": "corridor", "panorama_21C86154_3CC0_6BEF_41B5_E181DED4BE56": "into_room"},
+    "floor": 2,
+    "ro": {"name": "Coridorul de la etajul 2, A203–A205 (ASPC)", "mention": "coridorul de la etajul 2, A203–A205 (ASPC)"}
+  },
+  "panorama_21C86154_3CC0_6BEF_41B5_E181DED4BE56": {
+    "ways": {"panorama_21CF82C7_3CC7_AEE9_41A3_00EBE6911A03": "hall", "panorama_21C83740_3CC7_D7E7_41A8_B5E3696C5D4E": "hall", "panorama_21C89015_3CC0_6969_41B4_C6E09C1A9F0E": "out_of_room"},
+    "floor": 2
+  },
+  "panorama_21CF82C7_3CC7_AEE9_41A3_00EBE6911A03": {
+    "ways": {"panorama_21CFC43B_3CC7_A999_41CB_BCB9767A304C": "hall", "panorama_21C86154_3CC0_6BEF_41B5_E181DED4BE56": "hall"},
+    "floor": 2
+  },
+  "panorama_21CFC43B_3CC7_A999_41CB_BCB9767A304C": {
+    "ways": {"panorama_21CF82C7_3CC7_AEE9_41A3_00EBE6911A03": "hall", "panorama_21CFC58D_3CC7_EB79_41CD_0549126FF2BF": "hall"},
+    "floor": 2
+  },
+  "panorama_21CFC58D_3CC7_EB79_41CD_0549126FF2BF": {
+    "ways": {"panorama_21CFC43B_3CC7_A999_41CB_BCB9767A304C": "hall", "panorama_21C83740_3CC7_D7E7_41A8_B5E3696C5D4E": "corridor"},
+    "floor": 2
+  },
+  "panorama_21C83740_3CC7_D7E7_41A8_B5E3696C5D4E": {
+    "ways": {"panorama_21CFC58D_3CC7_EB79_41CD_0549126FF2BF": "corridor", "panorama_21C86154_3CC0_6BEF_41B5_E181DED4BE56": "hall"},
+    "floor": 2
+  },
+  "panorama_21C82917_3CC7_BB69_41C8_0833C74A2706": {
+    "ways": {"panorama_21C80A07_3CC0_5969_4114_7434DBD38388": "into_room", "panorama_21C89015_3CC0_6969_41B4_C6E09C1A9F0E": "out_of_room"},
+    "floor": 2
+  },
+  "panorama_21C80A07_3CC0_5969_4114_7434DBD38388": {
+    "ways": {"panorama_21C82917_3CC7_BB69_41C8_0833C74A2706": "out_of_room"},
+    "floor": 2
+  },
+  "panorama_21CBBC95_3CC1_D969_41C8_192BFC5D8271": {
+    "ways": {"panorama_21C89CAC_3CC0_DABF_41C5_0E2272E451B0": "out_of_room", "panorama_21CBEDE4_3CC1_BAAF_41CE_7670C7D476C1": "hall"},
+    "floor": 2
+  },
+  "panorama_21CBEDE4_3CC1_BAAF_41CE_7670C7D476C1": {
+    "ways": {"panorama_21CBBC95_3CC1_D969_41C8_192BFC5D8271": "hall", "panorama_21CA5F68_3CC0_57A7_41A6_CBD4FCA3DB14": "hall"},
+    "floor": 2
+  },
+  "panorama_21CA5F68_3CC0_57A7_41A6_CBD4FCA3DB14": {
+    "ways": {"panorama_21CBEDE4_3CC1_BAAF_41CE_7670C7D476C1": "hall"},
+    "floor": 2
+  },
+  "panorama_21C8EB35_3CC0_7FA9_41B4_0852B875E495": {
+    "name": "ASPC floor 3 hall",
+    "mention": "the ASPC floor 3 hall",
+    "ways": {"panorama_2754776E_3C41_D7BB_41A1_53A291AC94B0": "corridor", "panorama_21C9447D_3CC0_6999_41A8_F5FCD1D8012F": "doorway", "panorama_21C8CE3E_3CC0_B99B_41CB_6319743625BC": "stairs_down"},
+    "floor": 3,
+    "ro": {"name": "Holul de la etajul 3 (ASPC)", "mention": "holul de la etajul 3 (ASPC)"}
+  },
+  "panorama_21C85F7B_3CC0_D799_41C6_9D4B17F8EAB2": {
+    "ways": {"panorama_21C9447D_3CC0_6999_41A8_F5FCD1D8012F": "out_of_room", "panorama_21C9A057_3CC0_E9E9_41C1_739E092D5B51": "hall"},
+    "floor": 3
+  },
+  "panorama_21C9A057_3CC0_E9E9_41C1_739E092D5B51": {
+    "ways": {"panorama_21C85F7B_3CC0_D799_41C6_9D4B17F8EAB2": "hall"},
+    "floor": 3
+  },
+  "panorama_21C9820F_3CC0_A979_41BC_90889A12F099": {
+    "ways": {"panorama_21C9934D_3CC0_AFF9_41AB_D583408D6DBD": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_21C9934D_3CC0_AFF9_41AB_D583408D6DBD": {
+    "ways": {"panorama_21C9820F_3CC0_A979_41BC_90889A12F099": "into_room", "panorama_21C9447D_3CC0_6999_41A8_F5FCD1D8012F": "corridor", "panorama_21C905DF_3CC0_6A99_41CE_7E73547AEEF6": "into_room"},
+    "floor": 3
+  },
+  "panorama_21C9447D_3CC0_6999_41A8_F5FCD1D8012F": {
+    "name": "ASPC floor 3 corridor, A301–A306",
+    "mention": "the ASPC floor 3 corridor, A301–A306",
+    "ways": {"panorama_21C85F7B_3CC0_D799_41C6_9D4B17F8EAB2": "into_room", "panorama_21C9934D_3CC0_AFF9_41AB_D583408D6DBD": "corridor", "panorama_21C8EB35_3CC0_7FA9_41B4_0852B875E495": "doorway"},
+    "floor": 3,
+    "ro": {"name": "Coridorul de la etajul 3, A301–A306 (ASPC)", "mention": "coridorul de la etajul 3, A301–A306 (ASPC)"}
+  },
+  "panorama_21C905DF_3CC0_6A99_41CE_7E73547AEEF6": {
+    "ways": {"panorama_21C8C793_3CC1_B769_41C9_05518526F734": "hall", "panorama_21C9934D_3CC0_AFF9_41AB_D583408D6DBD": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_21C8C793_3CC1_B769_41C9_05518526F734": {
+    "ways": {"panorama_21C905DF_3CC0_6A99_41CE_7E73547AEEF6": "hall"},
+    "floor": 3
+  },
+  "panorama_1AD4C000_3C40_6967_41BF_10E1D5DFED00": {
+    "ways": {"panorama_78A71E35_4BFA_6181_41CC_7AAA02A72303": "enter_building"}
+  },
+  "panorama_02CB4852_1301_D438_4195_3D294045948D": {
+    "ways": {"panorama_1CDAE846_3C41_B9EB_41B3_E693E50486C2": "enter_building"}
+  },
+  "panorama_02CB6B7A_1301_D4E8_4175_EE787204B890": {
+    "name": "Remus 14 inner courtyard",
+    "mention": "the remus 14 inner courtyard",
+    "ways": {"panorama_1CDAE846_3C41_B9EB_41B3_E693E50486C2": "enter_building"},
+    "ro": {"name": "Curtea interioară, Str. Remus 14", "mention": "curtea interioară, Str. Remus 14"}
+  },
+  "panorama_78A71E35_4BFA_6181_41CC_7AAA02A72303": {
+    "ways": {"panorama_1F6FCB5E_3C40_DF9B_41BD_169D98521107": "stairs_up", "panorama_1AD4C000_3C40_6967_41BF_10E1D5DFED00": "leave_building"}
+  },
+  "panorama_1F6FCB5E_3C40_DF9B_41BD_169D98521107": {
+    "name": "Grand stair landing at the Senate Hall",
+    "mention": "the grand stair landing at the Senate Hall",
+    "ways": {"panorama_1F919B0E_3C40_FF7B_41A2_2B9C820EAFB3": "doorway", "panorama_1FDD9C96_3C40_596B_41C9_98D14092FC8F": "stairs_up", "panorama_78A71E35_4BFA_6181_41CC_7AAA02A72303": "stairs_down"},
+    "ro": {"name": "Palierul scării principale, la Sala Senatului", "mention": "palierul scării principale, la Sala Senatului"}
+  },
+  "panorama_1F919B0E_3C40_FF7B_41A2_2B9C820EAFB3": {
+    "name": "Senate Hall antechamber",
+    "mention": "the senate Hall antechamber",
+    "ways": {"panorama_1F6FCB5E_3C40_DF9B_41BD_169D98521107": "doorway", "panorama_1F820B14_3C40_DF6F_41B6_E2B200F7CE88": "into_room"},
+    "ro": {"name": "Anticamera Sălii Senatului", "mention": "anticamera Sălii Senatului"}
+  },
+  "panorama_1F820B14_3C40_DF6F_41B6_E2B200F7CE88": {
+    "ways": {"panorama_1F919B0E_3C40_FF7B_41A2_2B9C820EAFB3": "out_of_room", "panorama_1FB42B6F_3C40_BFB9_41CA_52DEA1A98D2E": "hall"}
+  },
+  "panorama_1FB42B6F_3C40_BFB9_41CA_52DEA1A98D2E": {
+    "ways": {"panorama_1F820B14_3C40_DF6F_41B6_E2B200F7CE88": "hall", "panorama_1FB93C07_3C40_5969_41BA_1B243A169E95": "hall", "panorama_1FABDC6D_3C40_79B9_41B8_D97608AF0F6C": "hall"}
+  },
+  "panorama_1FB93C07_3C40_5969_41BA_1B243A169E95": {
+    "ways": {"panorama_1FABDC6D_3C40_79B9_41B8_D97608AF0F6C": "hall", "panorama_1FB42B6F_3C40_BFB9_41CA_52DEA1A98D2E": "hall"}
+  },
+  "panorama_1FABDC6D_3C40_79B9_41B8_D97608AF0F6C": {
+    "ways": {"panorama_1F919B0E_3C40_FF7B_41A2_2B9C820EAFB3": "out_of_room", "panorama_1FB42B6F_3C40_BFB9_41CA_52DEA1A98D2E": "hall", "panorama_1FB93C07_3C40_5969_41BA_1B243A169E95": "hall"}
+  },
+  "panorama_1FDD9C96_3C40_596B_41C9_98D14092FC8F": {
+    "name": "Corridor at the Small Senate Hall",
+    "mention": "the corridor at the Small Senate Hall",
+    "ways": {"panorama_1F6FCB5E_3C40_DF9B_41BD_169D98521107": "stairs_down", "panorama_1FE68DC1_3C43_BAE9_41C5_8258EC4CC1E1": "doorway", "panorama_1FCCFCCA_3C43_BAFB_4195_8990E7D04FC9": "stairs_up"},
+    "ro": {"name": "Coridorul de la Sala Mică a Senatului", "mention": "coridorul de la Sala Mică a Senatului"}
+  },
+  "panorama_1FCCFCCA_3C43_BAFB_4195_8990E7D04FC9": {
+    "name": "Top landing of the grand stair",
+    "mention": "the top landing of the grand stair",
+    "ways": {"panorama_1FDD9C96_3C40_596B_41C9_98D14092FC8F": "stairs_down", "panorama_1FF26D77_3C43_DBA9_41C5_7D6EBD9A0C32": "into_room"},
+    "ro": {"name": "Palierul de sus al scării principale", "mention": "palierul de sus al scării principale"}
+  },
+  "panorama_1FF26D77_3C43_DBA9_41C5_7D6EBD9A0C32": {
+    "ways": {"panorama_1FE6EDAF_3C43_DAB9_41A9_E541FEB26C76": "hall", "panorama_1FCCFCCA_3C43_BAFB_4195_8990E7D04FC9": "out_of_room", "panorama_1FE66D79_3C43_FB99_41C7_749393ED7C85": "hall"}
+  },
+  "panorama_1FE66D79_3C43_FB99_41C7_749393ED7C85": {
+    "ways": {"panorama_1FE6EDAF_3C43_DAB9_41A9_E541FEB26C76": "hall", "panorama_1FF26D77_3C43_DBA9_41C5_7D6EBD9A0C32": "hall"}
+  },
+  "panorama_1FE6EDAF_3C43_DAB9_41A9_E541FEB26C76": {
+    "ways": {"panorama_1FF26D77_3C43_DBA9_41C5_7D6EBD9A0C32": "hall", "panorama_1FE66D79_3C43_FB99_41C7_749393ED7C85": "hall"}
+  },
+  "panorama_1FE68DC1_3C43_BAE9_41C5_8258EC4CC1E1": {
+    "name": "Small Senate Hall anteroom",
+    "mention": "the small Senate Hall anteroom",
+    "ways": {"panorama_1FDD9C96_3C40_596B_41C9_98D14092FC8F": "doorway", "panorama_1FE77DF8_3C40_5AA7_41CA_0BADAA20C823": "into_room"},
+    "ro": {"name": "Anticamera Sălii Mici a Senatului", "mention": "anticamera Sălii Mici a Senatului"}
+  },
+  "panorama_1FE77DF8_3C40_5AA7_41CA_0BADAA20C823": {
+    "ways": {"panorama_1FE68DC1_3C43_BAE9_41C5_8258EC4CC1E1": "out_of_room", "panorama_1FE6AE0E_3C40_797B_41CA_226CB4DE8E30": "hall"}
+  },
+  "panorama_1FE6AE0E_3C40_797B_41CA_226CB4DE8E30": {
+    "ways": {"panorama_1FE77DF8_3C40_5AA7_41CA_0BADAA20C823": "hall"}
+  },
+  "panorama_1EE7E2F5_0A05_404E_41A2_9EB097DFAC76": {
+    "name": "ARChA hall at the stairs",
+    "mention": "the ARChA hall at the stairs",
+    "ways": {"panorama_197AADC1_0A06_C046_41A3_E55617CB912E": "hall", "panorama_197B44EF_0A07_405A_418A_A2A4722E2255": "stairs_up", "panorama_197B1AC4_0A06_C04E_41A4_2B54D47146CE": "into_room", "panorama_197AE00B_0A05_3FDA_419F_D88AB7454D14": "hall", "panorama_197A61C6_0A06_C04A_418D_707137B58FED": "hall"},
+    "floor": 0,
+    "ro": {"name": "Sala mare ARChA, la scară", "mention": "sala mare ARChA, la scară"}
+  },
+  "panorama_197AE00B_0A05_3FDA_419F_D88AB7454D14": {
+    "name": "ARChA hall at the entrance",
+    "mention": "the ARChA hall at the entrance",
+    "ways": {"panorama_1979FB5B_0A06_C07A_4197_F1B7C74F3F6C": "hall", "panorama_197A61C6_0A06_C04A_418D_707137B58FED": "hall", "panorama_197B8937_0A07_41CA_4199_D35B2E1A6975": "hall", "panorama_197B44EF_0A07_405A_418A_A2A4722E2255": "stairs_up", "panorama_1EE7E2F5_0A05_404E_41A2_9EB097DFAC76": "hall", "panorama_02D9F5D6_1300_5C38_415F_38FBDCD2B5B0": "leave_building"},
+    "floor": 0,
+    "ro": {"name": "Sala mare ARChA, la intrare", "mention": "sala mare ARChA, la intrare"}
+  },
+  "panorama_1979FB5B_0A06_C07A_4197_F1B7C74F3F6C": {
+    "ways": {"panorama_197AE00B_0A05_3FDA_419F_D88AB7454D14": "hall", "panorama_19688588_0A06_C0C6_4199_A862571F1AD8": "hall", "panorama_19792737_0A06_C1CA_4160_F83C52EAFAA0": "hall"},
+    "floor": 0
+  },
+  "panorama_19792737_0A06_C1CA_4160_F83C52EAFAA0": {
+    "name": "ARChA hall, far platform",
+    "mention": "the ARChA hall, far platform",
+    "ways": {"panorama_1979FB5B_0A06_C07A_4197_F1B7C74F3F6C": "hall", "panorama_19688588_0A06_C0C6_4199_A862571F1AD8": "hall"},
+    "floor": 0,
+    "ro": {"name": "Sala mare ARChA, podiumul din capăt", "mention": "sala mare ARChA, podiumul din capăt"}
+  },
+  "panorama_19688588_0A06_C0C6_4199_A862571F1AD8": {
+    "ways": {"panorama_19792737_0A06_C1CA_4160_F83C52EAFAA0": "hall", "panorama_1979FB5B_0A06_C07A_4197_F1B7C74F3F6C": "hall", "panorama_197A61C6_0A06_C04A_418D_707137B58FED": "hall"},
+    "floor": 0
+  },
+  "panorama_197A61C6_0A06_C04A_418D_707137B58FED": {
+    "ways": {"panorama_197AADC1_0A06_C046_41A3_E55617CB912E": "hall", "panorama_1EE7E2F5_0A05_404E_41A2_9EB097DFAC76": "hall", "panorama_197AE00B_0A05_3FDA_419F_D88AB7454D14": "hall", "panorama_19688588_0A06_C0C6_4199_A862571F1AD8": "hall"},
+    "floor": 0
+  },
+  "panorama_197AADC1_0A06_C046_41A3_E55617CB912E": {
+    "ways": {"panorama_197B8937_0A07_41CA_4199_D35B2E1A6975": "hall", "panorama_1EE7E2F5_0A05_404E_41A2_9EB097DFAC76": "hall", "panorama_197A61C6_0A06_C04A_418D_707137B58FED": "hall"},
+    "floor": 0
+  },
+  "panorama_197B8937_0A07_41CA_4199_D35B2E1A6975": {
+    "ways": {"panorama_197AADC1_0A06_C046_41A3_E55617CB912E": "hall", "panorama_197B1AC4_0A06_C04E_41A4_2B54D47146CE": "into_room", "panorama_197AE00B_0A05_3FDA_419F_D88AB7454D14": "hall"},
+    "floor": 0
+  },
+  "panorama_197B44EF_0A07_405A_418A_A2A4722E2255": {
+    "name": "ARChA gallery at the stairs",
+    "mention": "the ARChA gallery at the stairs",
+    "ways": {"panorama_197A3B42_0A07_C04A_419E_94552FF95388": "into_room", "panorama_197B9076_0A07_404A_4199_EE78EB26D235": "corridor", "panorama_197AE00B_0A05_3FDA_419F_D88AB7454D14": "stairs_down", "panorama_197A6502_0A07_C1CA_4198_A9358D734825": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Cursiva ARChA, la scară", "mention": "cursiva ARChA, la scară"}
+  },
+  "panorama_197B9076_0A07_404A_4199_EE78EB26D235": {
+    "ways": {"panorama_197B4BB2_0A07_40CA_4191_D1CD5C065E52": "corridor", "panorama_197B44EF_0A07_405A_418A_A2A4722E2255": "corridor"},
+    "floor": 1
+  },
+  "panorama_197B4BB2_0A07_40CA_4191_D1CD5C065E52": {
+    "ways": {"panorama_197BD740_0A07_4046_41A2_C4619A136BEA": "corridor", "panorama_197B9076_0A07_404A_4199_EE78EB26D235": "corridor"},
+    "floor": 1
+  },
+  "panorama_197BD740_0A07_4046_41A2_C4619A136BEA": {
+    "ways": {"panorama_197B4BB2_0A07_40CA_4191_D1CD5C065E52": "corridor", "panorama_197B8347_0A07_C04A_41A0_F544C761FE39": "corridor"},
+    "floor": 1
+  },
+  "panorama_197B8347_0A07_C04A_41A0_F544C761FE39": {
+    "name": "ARChA gallery, far end",
+    "mention": "the ARChA gallery, far end",
+    "ways": {"panorama_197BD740_0A07_4046_41A2_C4619A136BEA": "corridor", "panorama_197A4E66_0A07_C04A_41A0_EC5BDEB0BB19": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Cursiva ARChA, capătul opus", "mention": "cursiva ARChA, capătul opus"}
+  },
+  "panorama_197A4E66_0A07_C04A_41A0_EC5BDEB0BB19": {
+    "name": "ARChA gallery at the spiral stair",
+    "mention": "the ARChA gallery at the spiral stair",
+    "ways": {"panorama_197B8347_0A07_C04A_41A0_F544C761FE39": "corridor", "panorama_197BA9D1_0A07_C046_419C_DA368B12F897": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Cursiva ARChA, la scara în spirală", "mention": "cursiva ARChA, la scara în spirală"}
+  },
+  "panorama_197BA9D1_0A07_C046_419C_DA368B12F897": {
+    "ways": {"panorama_197A6502_0A07_C1CA_4198_A9358D734825": "corridor", "panorama_197A4E66_0A07_C04A_41A0_EC5BDEB0BB19": "corridor"},
+    "floor": 1
+  },
+  "panorama_197A6502_0A07_C1CA_4198_A9358D734825": {
+    "ways": {"panorama_197BA9D1_0A07_C046_419C_DA368B12F897": "corridor", "panorama_197B44EF_0A07_405A_418A_A2A4722E2255": "corridor"},
+    "floor": 1
+  },
+  "panorama_197A3B42_0A07_C04A_419E_94552FF95388": {
+    "name": "Digital fabrication workshop",
+    "mention": "the digital fabrication workshop",
+    "ways": {"panorama_197A9637_0A07_43CA_416B_D6F7A3139F6E": "hall", "panorama_197B44EF_0A07_405A_418A_A2A4722E2255": "out_of_room"},
+    "floor": 1,
+    "ro": {"name": "Atelierul de fabricație digitală", "mention": "atelierul de fabricație digitală"}
+  },
+  "panorama_197A9637_0A07_43CA_416B_D6F7A3139F6E": {
+    "ways": {"panorama_197A3B42_0A07_C04A_419E_94552FF95388": "hall"},
+    "floor": 1
+  },
+  "panorama_197B1AC4_0A06_C04E_41A4_2B54D47146CE": {
+    "name": "Model workshop",
+    "mention": "the model workshop",
+    "ways": {"panorama_1EE7E2F5_0A05_404E_41A2_9EB097DFAC76": "out_of_room", "panorama_197AE5D9_0A06_C046_41A1_01CE416056F8": "hall"},
+    "floor": 0,
+    "ro": {"name": "Atelierul de machete", "mention": "atelierul de machete"}
+  },
+  "panorama_197AE5D9_0A06_C046_41A1_01CE416056F8": {
+    "ways": {"panorama_197B1AC4_0A06_C04E_41A4_2B54D47146CE": "hall"},
+    "floor": 0
+  },
+  "panorama_1CDAE846_3C41_B9EB_41B3_E693E50486C2": {
+    "ways": {"panorama_27250927_3C40_7BA9_41BB_0FEB77DC218D": "corridor", "panorama_27566A04_3C40_596F_41C7_7881D27C9511": "corridor", "panorama_02CB6B7A_1301_D4E8_4175_EE787204B890": "leave_building", "panorama_02CB4852_1301_D438_4195_3D294045948D": "leave_building"},
+    "floor": 0
+  },
+  "panorama_27250927_3C40_7BA9_41BB_0FEB77DC218D": {
+    "name": "Ground-floor hall at the stairs",
+    "mention": "the ground-floor hall at the stairs",
+    "ways": {"panorama_1CDAE846_3C41_B9EB_41B3_E693E50486C2": "corridor", "panorama_275B3709_3C47_B779_41BA_D394DC1F886F": "stairs_up", "panorama_275AF2DE_3C47_AE9B_41AE_96808959764A": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Holul de la parter, la scară", "mention": "holul de la parter, la scară"}
+  },
+  "panorama_27566A04_3C40_596F_41C7_7881D27C9511": {
+    "name": "Ground-floor corridor at Sala Consiliu",
+    "mention": "the ground-floor corridor at Sala Consiliu",
+    "ways": {"panorama_275E4B33_3C40_BFA9_41A8_E78F9F09C39E": "corridor", "panorama_1CDAE846_3C41_B9EB_41B3_E693E50486C2": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Coridorul de la parter, la Sala Consiliu", "mention": "coridorul de la parter, la Sala Consiliu"}
+  },
+  "panorama_275E4B33_3C40_BFA9_41A8_E78F9F09C39E": {
+    "ways": {"panorama_27566A04_3C40_596F_41C7_7881D27C9511": "corridor", "panorama_275E7C31_3C40_D9A9_41CA_8837AF476E78": "into_room", "panorama_275D80B1_3C40_6AA9_41CB_8E149E50957E": "corridor"},
+    "floor": 0
+  },
+  "panorama_275E7C31_3C40_D9A9_41CA_8837AF476E78": {
+    "ways": {"panorama_275DAD50_3C40_FBE7_41CD_984300DF740B": "into_room", "panorama_275E4B33_3C40_BFA9_41A8_E78F9F09C39E": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_275DAD50_3C40_FBE7_41CD_984300DF740B": {
+    "ways": {"panorama_275DBE50_3C40_D9E7_41C1_1A5E4E3FD9F7": "into_room", "panorama_275E7C31_3C40_D9A9_41CA_8837AF476E78": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_275DBE50_3C40_D9E7_41C1_1A5E4E3FD9F7": {
+    "ways": {"panorama_275DAD50_3C40_FBE7_41CD_984300DF740B": "out_of_room", "panorama_275D5F71_3C40_B7A9_41C6_45A8F6779DC7": "into_room"},
+    "floor": 0
+  },
+  "panorama_275D5F71_3C40_B7A9_41C6_45A8F6779DC7": {
+    "ways": {"panorama_275DBE50_3C40_D9E7_41C1_1A5E4E3FD9F7": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_275D80B1_3C40_6AA9_41CB_8E149E50957E": {
+    "ways": {"panorama_275D21BD_3C40_6A99_41A7_3286188DDC2C": "doorway", "panorama_275E4B33_3C40_BFA9_41A8_E78F9F09C39E": "corridor"},
+    "floor": 0
+  },
+  "panorama_275D21BD_3C40_6A99_41A7_3286188DDC2C": {
+    "ways": {"panorama_275D80B1_3C40_6AA9_41CB_8E149E50957E": "doorway"},
+    "floor": 0
+  },
+  "panorama_275AF2DE_3C47_AE9B_41AE_96808959764A": {
+    "name": "Ground-floor corridor at M014 and M015",
+    "mention": "the ground-floor corridor at M014 and M015",
+    "ways": {"panorama_27250927_3C40_7BA9_41BB_0FEB77DC218D": "corridor", "panorama_275B03CB_3C47_AEF9_41A1_B3A575ED070A": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Coridorul de la parter, în dreptul M014 și M015", "mention": "coridorul de la parter, în dreptul M014 și M015"}
+  },
+  "panorama_275B03CB_3C47_AEF9_41A1_B3A575ED070A": {
+    "ways": {"panorama_275B350B_3C47_EB79_41C5_EBFC1D0CC7A2": "into_room", "panorama_275AF2DE_3C47_AE9B_41AE_96808959764A": "corridor"},
+    "floor": 0
+  },
+  "panorama_275B350B_3C47_EB79_41C5_EBFC1D0CC7A2": {
+    "ways": {"panorama_275B03CB_3C47_AEF9_41A1_B3A575ED070A": "out_of_room", "panorama_275B963A_3C47_E99B_41BF_C115CB9F3A0D": "hall"},
+    "floor": 0
+  },
+  "panorama_275B963A_3C47_E99B_41BF_C115CB9F3A0D": {
+    "ways": {"panorama_275B350B_3C47_EB79_41C5_EBFC1D0CC7A2": "hall"},
+    "floor": 0
+  },
+  "panorama_275B3709_3C47_B779_41BA_D394DC1F886F": {
+    "name": "Floor 1 landing",
+    "mention": "the floor 1 landing",
+    "ways": {"panorama_27250927_3C40_7BA9_41BB_0FEB77DC218D": "stairs_down", "panorama_275B8825_3C40_59A9_41B9_CABA691A9575": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1", "mention": "palierul de la etajul 1"}
+  },
+  "panorama_275B8825_3C40_59A9_41B9_CABA691A9575": {
+    "name": "Floor 1 corridor at M105",
+    "mention": "the floor 1 corridor at M105",
+    "ways": {"panorama_275BF8F4_3C40_7AAF_41AB_10E52D09FC30": "corridor", "panorama_275B3709_3C47_B779_41BA_D394DC1F886F": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1, în dreptul M105", "mention": "coridorul de la etajul 1, în dreptul M105"}
+  },
+  "panorama_275BF8F4_3C40_7AAF_41AB_10E52D09FC30": {
+    "ways": {"panorama_275B8825_3C40_59A9_41B9_CABA691A9575": "corridor", "panorama_27547A34_3C40_59AF_41C8_373FF4525383": "into_room"},
+    "floor": 1
+  },
+  "panorama_27547A34_3C40_59AF_41C8_373FF4525383": {
+    "ways": {"panorama_275BF8F4_3C40_7AAF_41AB_10E52D09FC30": "out_of_room", "panorama_27549B74_3C40_BFAF_41C0_EC893817DB4F": "hall"},
+    "floor": 1
+  },
+  "panorama_27549B74_3C40_BFAF_41C0_EC893817DB4F": {
+    "ways": {"panorama_27547A34_3C40_59AF_41C8_373FF4525383": "hall"},
+    "floor": 1
+  },
+  "panorama_2754FCC5_3C40_DAE9_418F_D19CA2EB33D1": {
+    "ways": {"panorama_2755C2A0_3C40_6EA7_41BA_17D1879FD84C": "out_of_room", "panorama_2754DE17_3C40_F969_41B5_717095AD77D4": "hall"},
+    "floor": 0
+  },
+  "panorama_2754DE17_3C40_F969_41B5_717095AD77D4": {
+    "ways": {"panorama_27546FA9_3C40_D6B9_41B9_06D828F25BBD": "hall", "panorama_2754FCC5_3C40_DAE9_418F_D19CA2EB33D1": "hall"},
+    "floor": 0
+  },
+  "panorama_27546FA9_3C40_D6B9_41B9_06D828F25BBD": {
+    "ways": {"panorama_2754DE17_3C40_F969_41B5_717095AD77D4": "hall"},
+    "floor": 0
+  },
+  "panorama_27546171_3C40_ABA9_41BC_F1137EE41422": {
+    "ways": {"panorama_2755C2A0_3C40_6EA7_41BA_17D1879FD84C": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_2755C2A0_3C40_6EA7_41BA_17D1879FD84C": {
+    "name": "Lab hall lobby beside META MV",
+    "mention": "the lab hall lobby beside META MV",
+    "ways": {"panorama_02D8812C_131F_D468_41A7_CEB0564143F4": "leave_building", "panorama_27546171_3C40_ABA9_41BC_F1137EE41422": "into_room", "panorama_2754FCC5_3C40_DAE9_418F_D19CA2EB33D1": "into_room"},
+    "floor": 0,
+    "ro": {"name": "Holul halei de laboratoare de lângă META MV", "mention": "holul halei de laboratoare de lângă META MV"}
+  },
+  "panorama_1C120360_3FC3_AFA7_4188_001BE12A0612": {
+    "name": "Main entrance, street side",
+    "mention": "the main entrance, street side",
+    "ways": {"panorama_1DC431A6_3FC3_AAAB_41B9_5BFC001743F1": "enter_building"},
+    "ro": {"name": "Intrarea principală, dinspre stradă", "mention": "intrarea principală, dinspre stradă"}
+  },
+  "panorama_1C116C9B_3FC0_7A99_41C1_F5945B21E4CE": {
+    "name": "Car park behind Corp C",
+    "mention": "the car park behind Corp C",
+    "ways": {"panorama_1C11D381_3FC0_AF69_419B_982615EABD3F": "enter_building", "panorama_1C12FCED_3FC0_5AB9_41CD_FB68BBCDB200": "enter_building"},
+    "ro": {"name": "Parcarea din spatele corpului C", "mention": "parcarea din spatele corpului C"}
+  },
+  "panorama_1C124EF3_3FC0_F6A9_41C8_774CE6C9C7D5": {
+    "name": "Corp F yard",
+    "mention": "the Corp F yard",
+    "ways": {"panorama_1C124F2A_3FC0_D7BB_41B0_4F3DD8B503F0": "enter_building"},
+    "ro": {"name": "Curtea corpului F", "mention": "curtea corpului F"}
+  },
+  "panorama_1C1E20CD_3FCF_AAF9_41A8_8FEAAEA931B4": {
+    "name": "Corp B yard",
+    "mention": "the Corp B yard",
+    "ways": {"panorama_1C1E50F1_3FCF_EAA9_41CB_3F52BBBC8777": "enter_building"},
+    "ro": {"name": "Curtea corpului B", "mention": "curtea corpului B"}
+  },
+  "panorama_1DC431A6_3FC3_AAAB_41B9_5BFC001743F1": {
+    "ways": {"panorama_1C1E2368_3FC0_EFA7_41C4_34130E69CE98": "doorway", "panorama_1C120360_3FC3_AFA7_4188_001BE12A0612": "leave_building", "panorama_1C124C31_3FC0_B9A9_4188_20EE6FDC79DD": "stairs_up", "panorama_1C12FCED_3FC0_5AB9_41CD_FB68BBCDB200": "hall"},
+    "floor": 0
+  },
+  "panorama_1C12FCED_3FC0_5AB9_41CD_FB68BBCDB200": {
+    "name": "Main hall, library end",
+    "mention": "the main hall, library end",
+    "ways": {"panorama_1C124BE6_3FC1_FEAB_41CB_5E80116516D4": "into_room", "panorama_1DC431A6_3FC3_AAAB_41B9_5BFC001743F1": "hall", "panorama_1C116C9B_3FC0_7A99_41C1_F5945B21E4CE": "leave_building"},
+    "floor": 0,
+    "ro": {"name": "Holul principal, capătul dinspre bibliotecă", "mention": "holul principal, capătul dinspre bibliotecă"}
+  },
+  "panorama_1C1E2368_3FC0_EFA7_41C4_34130E69CE98": {
+    "ways": {"panorama_1C1E035C_3FC0_EF9F_41C2_9967724BEA64": "corridor", "panorama_1C1E03B6_3FC0_AEAB_41C4_AE45184A82FB": "into_room", "panorama_1DC431A6_3FC3_AAAB_41B9_5BFC001743F1": "doorway"},
+    "floor": 0
+  },
+  "panorama_1C1E035C_3FC0_EF9F_41C2_9967724BEA64": {
+    "ways": {"panorama_1C1E2368_3FC0_EFA7_41C4_34130E69CE98": "corridor", "panorama_1C11D381_3FC0_AF69_419B_982615EABD3F": "doorway", "panorama_1C11E36E_3FC0_6FBB_41C8_F811F1CFCC49": "into_room"},
+    "floor": 0
+  },
+  "panorama_1C11D381_3FC0_AF69_419B_982615EABD3F": {
+    "ways": {"panorama_1C1E035C_3FC0_EF9F_41C2_9967724BEA64": "doorway", "panorama_1C116C9B_3FC0_7A99_41C1_F5945B21E4CE": "leave_building"},
+    "floor": 0
+  },
+  "panorama_1C1E03B6_3FC0_AEAB_41C4_AE45184A82FB": {
+    "ways": {"panorama_1C1E2368_3FC0_EFA7_41C4_34130E69CE98": "out_of_room", "panorama_1C1E039A_3FC0_6E9B_41BD_9D8D322D1C6B": "into_room"},
+    "floor": 0
+  },
+  "panorama_1C1E039A_3FC0_6E9B_41BD_9D8D322D1C6B": {
+    "ways": {"panorama_1C1E03B6_3FC0_AEAB_41C4_AE45184A82FB": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_1C11E36E_3FC0_6FBB_41C8_F811F1CFCC49": {
+    "ways": {"panorama_1C1E035C_3FC0_EF9F_41C2_9967724BEA64": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_1C124C31_3FC0_B9A9_4188_20EE6FDC79DD": {
+    "name": "Corp C floor 1 landing",
+    "mention": "the Corp C floor 1 landing",
+    "ways": {"panorama_1C13CC08_3FC0_7967_41C8_DCE405ECF6EC": "stairs_up", "panorama_1DC431A6_3FC3_AAAB_41B9_5BFC001743F1": "stairs_down", "panorama_1C139BD0_3FC0_DEE7_41BC_342D7A949ED2": "hall"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1 al corpului C", "mention": "palierul de la etajul 1 al corpului C"}
+  },
+  "panorama_1C139BD0_3FC0_DEE7_41BC_342D7A949ED2": {
+    "name": "Aula Magna foyer",
+    "mention": "the Aula Magna foyer",
+    "ways": {"panorama_1C124C31_3FC0_B9A9_4188_20EE6FDC79DD": "hall", "panorama_1C124BB2_3FC0_FEAB_41C3_053FCC38C2BC": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Foaierul Aulei Magna", "mention": "foaierul Aulei Magna"}
+  },
+  "panorama_1C124BB2_3FC0_FEAB_41C3_053FCC38C2BC": {
+    "ways": {"panorama_1C122B57_3FC0_BFE9_41C5_5C3129AF0C77": "hall", "panorama_1C13FB7B_3FC0_5F99_41B5_B771EF544B91": "hall", "panorama_1C139BD0_3FC0_DEE7_41BC_342D7A949ED2": "out_of_room", "panorama_1C13AB87_3FC0_DF69_41CD_0331280162FE": "hall"},
+    "floor": 1
+  },
+  "panorama_1C13AB87_3FC0_DF69_41CD_0331280162FE": {
+    "ways": {"panorama_1C122B57_3FC0_BFE9_41C5_5C3129AF0C77": "hall", "panorama_1C124BB2_3FC0_FEAB_41C3_053FCC38C2BC": "hall", "panorama_1C139BD0_3FC0_DEE7_41BC_342D7A949ED2": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_1C122B57_3FC0_BFE9_41C5_5C3129AF0C77": {
+    "ways": {"panorama_1C124BB2_3FC0_FEAB_41C3_053FCC38C2BC": "hall", "panorama_1C13AB87_3FC0_DF69_41CD_0331280162FE": "hall"},
+    "floor": 1
+  },
+  "panorama_1C13FB7B_3FC0_5F99_41B5_B771EF544B91": {
+    "ways": {"panorama_1C124BB2_3FC0_FEAB_41C3_053FCC38C2BC": "hall"},
+    "floor": 1
+  },
+  "panorama_1C13CC08_3FC0_7967_41C8_DCE405ECF6EC": {
+    "name": "Corp C floor 2 landing",
+    "mention": "the Corp C floor 2 landing",
+    "ways": {"panorama_1C124C31_3FC0_B9A9_4188_20EE6FDC79DD": "stairs_down", "panorama_1C13BC1C_3FC0_599F_4193_0F5ED8E4B8EC": "into_room"},
+    "floor": 2,
+    "ro": {"name": "Palierul de la etajul 2 al corpului C", "mention": "palierul de la etajul 2 al corpului C"}
+  },
+  "panorama_1C13BC1C_3FC0_599F_4193_0F5ED8E4B8EC": {
+    "ways": {"panorama_1C13CC08_3FC0_7967_41C8_DCE405ECF6EC": "out_of_room", "panorama_1C121BED_3FC1_BEB9_41A1_F59A8058B1F6": "hall", "panorama_1C126BD2_3FC1_DEEB_41CD_E9CE11499F14": "hall"},
+    "floor": 2
+  },
+  "panorama_1C121BED_3FC1_BEB9_41A1_F59A8058B1F6": {
+    "ways": {"panorama_1C126BD2_3FC1_DEEB_41CD_E9CE11499F14": "hall", "panorama_1C13BC1C_3FC0_599F_4193_0F5ED8E4B8EC": "hall"},
+    "floor": 2
+  },
+  "panorama_1C126BD2_3FC1_DEEB_41CD_E9CE11499F14": {
+    "ways": {"panorama_1C121BED_3FC1_BEB9_41A1_F59A8058B1F6": "hall", "panorama_1C13BC1C_3FC0_599F_4193_0F5ED8E4B8EC": "hall"},
+    "floor": 2
+  },
+  "panorama_1C124BE6_3FC1_FEAB_41CB_5E80116516D4": {
+    "name": "Library reading room",
+    "mention": "the library reading room",
+    "ways": {"panorama_1C12ABB7_3FC1_DEA9_41CC_CE8C7F13F7DF": "into_room", "panorama_1C12FCED_3FC0_5AB9_41CD_FB68BBCDB200": "out_of_room"},
+    "floor": 0,
+    "ro": {"name": "Sala de lectură a bibliotecii", "mention": "sala de lectură a bibliotecii"}
+  },
+  "panorama_1C12ABB7_3FC1_DEA9_41CC_CE8C7F13F7DF": {
+    "ways": {"panorama_1C124BE6_3FC1_FEAB_41CB_5E80116516D4": "out_of_room", "panorama_1C12DBCB_3FC1_BEF9_41CC_B488CC39259E": "hall"},
+    "floor": 0
+  },
+  "panorama_1C12DBCB_3FC1_BEF9_41CC_B488CC39259E": {
+    "ways": {"panorama_1C12ABB7_3FC1_DEA9_41CC_CE8C7F13F7DF": "hall"},
+    "floor": 0
+  },
+  "panorama_1C124F2A_3FC0_D7BB_41B0_4F3DD8B503F0": {
+    "name": "Corp F entrance hall",
+    "mention": "the Corp F entrance hall",
+    "ways": {"panorama_1C128F3F_3FC0_B799_419E_5708BDCF1BEA": "into_room", "panorama_1C124EF3_3FC0_F6A9_41C8_774CE6C9C7D5": "leave_building"},
+    "floor": 0,
+    "ro": {"name": "Holul de la intrarea în corpul F", "mention": "holul de la intrarea în corpul F"}
+  },
+  "panorama_1C128F3F_3FC0_B799_419E_5708BDCF1BEA": {
+    "ways": {"panorama_1C124F2A_3FC0_D7BB_41B0_4F3DD8B503F0": "out_of_room", "panorama_1C11CF41_3FC0_57E9_41A2_621078D8BDFA": "hall", "panorama_1C115FEA_3FC0_76BB_41B0_47EFEB36BB14": "hall"},
+    "floor": 0
+  },
+  "panorama_1C11CF41_3FC0_57E9_41A2_621078D8BDFA": {
+    "ways": {"panorama_1C128F3F_3FC0_B799_419E_5708BDCF1BEA": "hall"},
+    "floor": 0
+  },
+  "panorama_1C115FEA_3FC0_76BB_41B0_47EFEB36BB14": {
+    "ways": {"panorama_1C128F3F_3FC0_B799_419E_5708BDCF1BEA": "hall"},
+    "floor": 0
+  },
+  "panorama_1C1E50F1_3FCF_EAA9_41CB_3F52BBBC8777": {
+    "name": "Corp B stair hall",
+    "mention": "the Corp B stair hall",
+    "ways": {"panorama_1C1E60D6_3FCF_EAEB_419A_4B9301D9C0EB": "doorway", "panorama_1C1E7099_3FC0_EA99_41C6_C1FD36545F2C": "stairs_up", "panorama_1C1E20CD_3FCF_AAF9_41A8_8FEAAEA931B4": "leave_building"},
+    "floor": 0,
+    "ro": {"name": "Casa scării din corpul B", "mention": "casa scării din corpul B"}
+  },
+  "panorama_1C1E60D6_3FCF_EAEB_419A_4B9301D9C0EB": {
+    "name": "Corp B ground-floor corridor at the stairs",
+    "mention": "the Corp B ground-floor corridor at the stairs",
+    "ways": {"panorama_1C1E50F1_3FCF_EAA9_41CB_3F52BBBC8777": "doorway", "panorama_1C1E60C8_3FCF_AAE7_41A6_A43215AC5A2B": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Coridorul de la parterul corpului B, lângă scară", "mention": "coridorul de la parterul corpului B, lângă scară"}
+  },
+  "panorama_1C1E60C8_3FCF_AAE7_41A6_A43215AC5A2B": {
+    "name": "Corp B ground-floor corridor at B0-6",
+    "mention": "the Corp B ground-floor corridor at B0-6",
+    "ways": {"panorama_1C1E60D6_3FCF_EAEB_419A_4B9301D9C0EB": "corridor", "panorama_1C1E0089_3FCF_A979_41A8_208762E2F60F": "into_room", "panorama_1C1EC113_3FC0_6B69_41CB_A7F03FD21D51": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Coridorul de la parterul corpului B, în dreptul B0-6", "mention": "coridorul de la parterul corpului B, în dreptul B0-6"}
+  },
+  "panorama_1C1E0089_3FCF_A979_41A8_208762E2F60F": {
+    "ways": {"panorama_1C1EE0F8_3FC0_6AA7_41C1_D4D3880B9856": "hall", "panorama_1C1E60C8_3FCF_AAE7_41A6_A43215AC5A2B": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_1C1EE0F8_3FC0_6AA7_41C1_D4D3880B9856": {
+    "ways": {"panorama_1C1E0089_3FCF_A979_41A8_208762E2F60F": "hall"},
+    "floor": 0
+  },
+  "panorama_1C1EC113_3FC0_6B69_41CB_A7F03FD21D51": {
+    "name": "Corp B ground-floor corridor at B0-5",
+    "mention": "the Corp B ground-floor corridor at B0-5",
+    "ways": {"panorama_1C1E60C8_3FCF_AAE7_41A6_A43215AC5A2B": "corridor", "panorama_1C1E30C8_3FC0_AAE7_4194_8F1C30D0DF1B": "into_room"},
+    "floor": 0,
+    "ro": {"name": "Coridorul de la parterul corpului B, în dreptul B0-5", "mention": "coridorul de la parterul corpului B, în dreptul B0-5"}
+  },
+  "panorama_1C1E30C8_3FC0_AAE7_4194_8F1C30D0DF1B": {
+    "ways": {"panorama_1C1EC113_3FC0_6B69_41CB_A7F03FD21D51": "out_of_room", "panorama_1C1E10C1_3FC0_AAE9_41C2_ED25DC23C51E": "hall"},
+    "floor": 0
+  },
+  "panorama_1C1E10C1_3FC0_AAE9_41C2_ED25DC23C51E": {
+    "ways": {"panorama_1C1E30C8_3FC0_AAE7_4194_8F1C30D0DF1B": "hall"},
+    "floor": 0
+  },
+  "panorama_1C1E7099_3FC0_EA99_41C6_C1FD36545F2C": {
+    "name": "Corp B floor 1 landing",
+    "mention": "the Corp B floor 1 landing",
+    "ways": {"panorama_1C1E50F1_3FCF_EAA9_41CB_3F52BBBC8777": "stairs_down", "panorama_1C1FF0B4_3FC1_AAAF_41CA_060804D86AB8": "stairs_up", "panorama_1C1E40E3_3FC0_AAA9_4194_A285D26ECE50": "doorway"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1 al corpului B", "mention": "palierul de la etajul 1 al corpului B"}
+  },
+  "panorama_1C1E40E3_3FC0_AAA9_4194_A285D26ECE50": {
+    "name": "Corp B floor 1 corridor at B1-11",
+    "mention": "the Corp B floor 1 corridor at B1-11",
+    "ways": {"panorama_1C1E1095_3FC0_A969_41BE_8E1783F2F383": "into_room", "panorama_1C1E7099_3FC0_EA99_41C6_C1FD36545F2C": "doorway"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1 al corpului B, în dreptul B1-11", "mention": "coridorul de la etajul 1 al corpului B, în dreptul B1-11"}
+  },
+  "panorama_1C1E1095_3FC0_A969_41BE_8E1783F2F383": {
+    "ways": {"panorama_1C1E108A_3FC0_697B_4162_A86AC6BD97F0": "hall", "panorama_1C1E40E3_3FC0_AAA9_4194_A285D26ECE50": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_1C1E108A_3FC0_697B_4162_A86AC6BD97F0": {
+    "ways": {"panorama_1C1E1095_3FC0_A969_41BE_8E1783F2F383": "hall", "panorama_1C1FE0AF_3FC0_6AB9_41CB_1CBCC355CFB6": "hall"},
+    "floor": 1
+  },
+  "panorama_1C1FE0AF_3FC0_6AB9_41CB_1CBCC355CFB6": {
+    "ways": {"panorama_1C1E108A_3FC0_697B_4162_A86AC6BD97F0": "hall"},
+    "floor": 1
+  },
+  "panorama_1C1FF0B4_3FC1_AAAF_41CA_060804D86AB8": {
+    "name": "Corp B floor 2 landing",
+    "mention": "the Corp B floor 2 landing",
+    "ways": {"panorama_1C1E1076_3FC1_A9AB_41C3_C78EB85E8013": "doorway", "panorama_1C1E7099_3FC0_EA99_41C6_C1FD36545F2C": "stairs_down"},
+    "floor": 2,
+    "ro": {"name": "Palierul de la etajul 2 al corpului B", "mention": "palierul de la etajul 2 al corpului B"}
+  },
+  "panorama_1C1E1076_3FC1_A9AB_41C3_C78EB85E8013": {
+    "ways": {"panorama_1C1E6027_3FC1_E9A9_41BC_C83DA1DA1CE6": "corridor", "panorama_1C1FF0B4_3FC1_AAAF_41CA_060804D86AB8": "corridor"},
+    "floor": 2
+  },
+  "panorama_1C1E6027_3FC1_E9A9_41BC_C83DA1DA1CE6": {
+    "name": "Corp B floor 2 corridor",
+    "mention": "the Corp B floor 2 corridor",
+    "ways": {"panorama_1C1E1076_3FC1_A9AB_41C3_C78EB85E8013": "corridor", "panorama_1C1E6FFB_3FC1_F699_4181_4D2BD367B5F2": "corridor"},
+    "floor": 2,
+    "ro": {"name": "Coridorul de la etajul 2 al corpului B", "mention": "coridorul de la etajul 2 al corpului B"}
+  },
+  "panorama_1C1E6FFB_3FC1_F699_4181_4D2BD367B5F2": {
+    "ways": {"panorama_1C1E6027_3FC1_E9A9_41BC_C83DA1DA1CE6": "corridor"},
+    "floor": 2
+  },
+  "panorama_1C1E2035_3FC1_A9A9_41C1_A529039DEC9F": {
+    "name": "Corp B park-side entrance",
+    "mention": "the Corp B park-side entrance",
+    "ro": {"name": "Intrarea în corpul B dinspre parc", "mention": "intrarea în corpul B dinspre parc"}
+  },
+  "panorama_02C85D09_1300_AC28_41B0_7F6D7882FD3A": {
+    "name": "Corp M courtyard door",
+    "mention": "the Corp M courtyard door",
+    "ways": {"panorama_13AF4631_3C43_A9A9_41C8_9973D04C27B4": "enter_building"},
+    "ro": {"name": "Ușa din curte a Corpului M", "mention": "ușa din curte a Corpului M"}
+  },
+  "panorama_02CAC958_1301_F428_419D_2732E1501191": {
+    "name": "Hydraulic Machines hall entrance",
+    "mention": "the hydraulic Machines hall entrance",
+    "ways": {"panorama_0AC055F4_3C40_AAAF_41A2_EBA76C6C9849": "enter_building"},
+    "ro": {"name": "Intrarea în hala de Mașini Hidraulice", "mention": "intrarea în hala de Mașini Hidraulice"}
+  },
+  "panorama_02C88A30_1300_D478_41AC_EB2F60FC8752": {
+    "ways": {"panorama_0AA0A6CB_3C41_B6F9_41B0_06594B39AF33": "enter_building"}
+  },
+  "panorama_0A5ED87D_3CC3_B999_41BB_CFF15540B8C5": {
+    "ways": {"panorama_0FB51427_3CC0_69A9_41BB_F9ED7B66D06E": "enter_building"}
+  },
+  "panorama_0B126EF0_3CC0_D6A7_41BC_B613EF273EFA": {
+    "ways": {"panorama_0D73B808_3CC0_D967_41B8_88F1D0106B35": "enter_building"}
+  },
+  "panorama_096716B8_3C40_B6A7_41C4_5720BAC84160": {
+    "ways": {"panorama_0D2E8BDA_3C40_FE9B_41B9_02ED64B6B4B5": "enter_building"}
+  },
+  "panorama_09525F7D_3C40_D799_41C7_EC7409B824DA": {
+    "ways": {"panorama_09C91EFC_3C40_569F_41C7_6FB04EC79218": "enter_building"}
+  },
+  "panorama_09C10CD3_3C40_5AE9_41C7_D4DFFC64D5A4": {
+    "ways": {"panorama_09C26EAE_3C40_76BB_4156_1E1F64CFF2D9": "enter_building"}
+  },
+  "panorama_02C8D528_3C40_6BA7_41CC_4F456139101D": {
+    "ways": {"panorama_09FBE782_3C41_F76B_41C4_E637AA4A25BD": "enter_building"}
+  },
+  "panorama_0D73CB8F_3CC0_5F79_41C2_BD04D695536C": {
+    "ways": {"panorama_0D72F99C_3CC0_BA9F_41CC_FB8D72F2FC33": "enter_building"},
+    "floor": 0
+  },
+  "panorama_0AA0A6CB_3C41_B6F9_41B0_06594B39AF33": {
+    "ways": {"panorama_02C88A30_1300_D478_41AC_EB2F60FC8752": "leave_building", "panorama_10017FE6_3C40_56AB_41B1_5ECB2AC24E52": "hall", "panorama_10167190_3C40_6B67_41C4_174956159D5D": "hall"},
+    "floor": 0
+  },
+  "panorama_0FB51427_3CC0_69A9_41BB_F9ED7B66D06E": {
+    "ways": {"panorama_0A5ED87D_3CC3_B999_41BB_CFF15540B8C5": "leave_building", "panorama_0FB42665_3CC0_A9A9_41B9_2473CED2E5D2": "hall", "panorama_0FB2B6D2_3CC0_B6EB_41CB_2D9013C680C6": "hall", "panorama_0F84E93B_3CC0_DB99_41B9_7809FCAEFD62": "hall"},
+    "floor": 0
+  },
+  "panorama_0D73B808_3CC0_D967_41B8_88F1D0106B35": {
+    "ways": {"panorama_0B126EF0_3CC0_D6A7_41BC_B613EF273EFA": "leave_building", "panorama_0D72F99C_3CC0_BA9F_41CC_FB8D72F2FC33": "hall"},
+    "floor": 0
+  },
+  "panorama_0D2E8BDA_3C40_FE9B_41B9_02ED64B6B4B5": {
+    "ways": {"panorama_096716B8_3C40_B6A7_41C4_5720BAC84160": "leave_building", "panorama_0D2C0D8E_3C40_DB7B_41A4_A76140937B1B": "doorway"},
+    "floor": 0
+  },
+  "panorama_0AE31AC2_3C43_DEEB_41CB_29731E71DDD5": {
+    "ways": {"panorama_0A2AD5B7_3C40_6AA9_41C1_BF6F32D06C95": "leave_building", "panorama_0AE2BDFA_3C43_FA9B_41BE_9985278D1E46": "doorway"},
+    "floor": 0
+  },
+  "panorama_09C91EFC_3C40_569F_41C7_6FB04EC79218": {
+    "ways": {"panorama_09525F7D_3C40_D799_41C7_EC7409B824DA": "leave_building", "panorama_09C9C308_3C40_6F67_41BD_C0C5368B655F": "hall", "panorama_09CB676A_3C43_B7BB_41C1_87290C7BBFD8": "hall"},
+    "floor": 0
+  },
+  "panorama_09FBE782_3C41_F76B_41C4_E637AA4A25BD": {
+    "ways": {"panorama_02C8D528_3C40_6BA7_41CC_4F456139101D": "leave_building", "panorama_04D7AA65_3C43_D9A9_41A8_776CC4C6965E": "into_room", "panorama_09FB4AA7_3C41_DEA9_41C8_A4F7D1B10FEC": "hall", "panorama_09FA1DFE_3C41_BA9B_41B3_03A1438462E2": "hall"},
+    "floor": 0
+  },
+  "panorama_09C26EAE_3C40_76BB_4156_1E1F64CFF2D9": {
+    "ways": {"panorama_09C10CD3_3C40_5AE9_41C7_D4DFFC64D5A4": "leave_building", "panorama_09C62021_3C47_A9A9_41CD_F8F595C9D8C9": "hall", "panorama_09C64305_3C47_EF69_41BE_6628E8AD0B14": "hall"},
+    "floor": 0
+  },
+  "panorama_0D72F99C_3CC0_BA9F_41CC_FB8D72F2FC33": {
+    "ways": {"panorama_0D73CB8F_3CC0_5F79_41C2_BD04D695536C": "leave_building", "panorama_0D73B808_3CC0_D967_41B8_88F1D0106B35": "hall"},
+    "floor": 0
+  },
+  "panorama_10167190_3C40_6B67_41C4_174956159D5D": {
+    "name": "Foot of the main stairs",
+    "mention": "the foot of the main stairs",
+    "ways": {"panorama_106FDA28_3C40_B9A7_4176_D11F80BBC1B4": "stairs_up", "panorama_0AA0A6CB_3C41_B6F9_41B0_06594B39AF33": "hall", "panorama_10200394_3C40_AF6F_41CC_8826B1A94852": "doorway"},
+    "floor": 0,
+    "ro": {"name": "Baza scării principale", "mention": "baza scării principale"}
+  },
+  "panorama_106FDA28_3C40_B9A7_4176_D11F80BBC1B4": {
+    "name": "Corp N floor 1 landing",
+    "mention": "the Corp N floor 1 landing",
+    "ways": {"panorama_10167190_3C40_6B67_41C4_174956159D5D": "stairs_down", "panorama_107F5BED_3C40_5EB9_41BA_2275AD4E99DA": "hall", "panorama_138F2D43_3C40_7BE9_41B6_87EE59FEADE3": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1 al Corpului N", "mention": "palierul de la etajul 1 al Corpului N"}
+  },
+  "panorama_13AF4631_3C43_A9A9_41C8_9973D04C27B4": {
+    "name": "Corp M floor 1 stair landing",
+    "mention": "the Corp M floor 1 stair landing",
+    "ways": {"panorama_02C85D09_1300_AC28_41B0_7F6D7882FD3A": "stairs_down", "panorama_13AF54BF_3C43_AA99_41BF_095C30D249B9": "doorway", "panorama_13AF57C6_3C40_76EB_41BC_908273647CBA": "doorway"},
+    "floor": 1,
+    "ro": {"name": "Palierul scării de la etajul 1 al Corpului M", "mention": "palierul scării de la etajul 1 al Corpului M"}
+  },
+  "panorama_10017FE6_3C40_56AB_41B1_5ECB2AC24E52": {
+    "name": "Main hall, far end",
+    "mention": "the main hall, far end",
+    "ways": {"panorama_0AA0A6CB_3C41_B6F9_41B0_06594B39AF33": "hall"},
+    "floor": 0,
+    "ro": {"name": "Capătul holului principal", "mention": "capătul holului principal"}
+  },
+  "panorama_107F5BED_3C40_5EB9_41BA_2275AD4E99DA": {
+    "name": "Corp N floor 1 lobby",
+    "mention": "the Corp N floor 1 lobby",
+    "ways": {"panorama_106FDA28_3C40_B9A7_4176_D11F80BBC1B4": "hall", "panorama_13AF033B_3C43_EF99_41AA_8C072A462ACF": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Holul de la etajul 1 al Corpului N", "mention": "holul de la etajul 1 al Corpului N"}
+  },
+  "panorama_10200394_3C40_AF6F_41CC_8826B1A94852": {
+    "name": "Dean's office corridor entrance",
+    "mention": "the dean's office corridor entrance",
+    "ways": {"panorama_10167190_3C40_6B67_41C4_174956159D5D": "doorway", "panorama_1032854D_3C40_ABF9_41C8_9A2350D33F42": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Intrarea în coridorul Decanatului", "mention": "intrarea în coridorul Decanatului"}
+  },
+  "panorama_105D58A3_3C40_DAA9_4195_13CC9B0188E2": {
+    "ways": {"panorama_1032854D_3C40_ABF9_41C8_9A2350D33F42": "doorway"},
+    "floor": 0
+  },
+  "panorama_13AF54BF_3C43_AA99_41BF_095C30D249B9": {
+    "name": "Corp N floor 1 gallery at N116",
+    "mention": "the Corp N floor 1 gallery at N116",
+    "ways": {"panorama_13AF4631_3C43_A9A9_41C8_9973D04C27B4": "doorway", "panorama_13AF033B_3C43_EF99_41AA_8C072A462ACF": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Galeria de la etajul 1 al Corpului N, în dreptul N116", "mention": "galeria de la etajul 1 al Corpului N, în dreptul N116"}
+  },
+  "panorama_13AF57C6_3C40_76EB_41BC_908273647CBA": {
+    "name": "Corp M floor 1 corridor",
+    "mention": "the Corp M floor 1 corridor",
+    "ways": {"panorama_13AF4631_3C43_A9A9_41C8_9973D04C27B4": "doorway", "panorama_13AFF8D3_3C40_5AE9_41B7_1D5A3343C0FB": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1 al Corpului M", "mention": "coridorul de la etajul 1 al Corpului M"}
+  },
+  "panorama_0D2C0D8E_3C40_DB7B_41A4_A76140937B1B": {
+    "ways": {"panorama_0D2E8BDA_3C40_FE9B_41B9_02ED64B6B4B5": "doorway", "panorama_0D2D5F54_3C40_B7EF_41C2_4AC591FEE8A5": "hall"},
+    "floor": 0
+  },
+  "panorama_0AE2BDFA_3C43_FA9B_41BE_9985278D1E46": {
+    "ways": {"panorama_0AE31AC2_3C43_DEEB_41CB_29731E71DDD5": "doorway", "panorama_0AE3B2C4_3C43_AEEF_41C4_FC570121166F": "into_room"},
+    "floor": 0
+  },
+  "panorama_1032854D_3C40_ABF9_41C8_9A2350D33F42": {
+    "ways": {"panorama_10200394_3C40_AF6F_41CC_8826B1A94852": "corridor", "panorama_105D58A3_3C40_DAA9_4195_13CC9B0188E2": "corridor"},
+    "floor": 0
+  },
+  "panorama_13AF033B_3C43_EF99_41AA_8C072A462ACF": {
+    "name": "Corp N floor 1 corridor at N103",
+    "mention": "the Corp N floor 1 corridor at N103",
+    "ways": {"panorama_107F5BED_3C40_5EB9_41BA_2275AD4E99DA": "corridor", "panorama_13AF54BF_3C43_AA99_41BF_095C30D249B9": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1 al Corpului N, în dreptul N103", "mention": "coridorul de la etajul 1 al Corpului N, în dreptul N103"}
+  },
+  "panorama_13AFF8D3_3C40_5AE9_41B7_1D5A3343C0FB": {
+    "name": "Corp M floor 1 corridor at Traian Lalescu",
+    "mention": "the Corp M floor 1 corridor at Traian Lalescu",
+    "ways": {"panorama_13AF57C6_3C40_76EB_41BC_908273647CBA": "corridor", "panorama_13AC8F68_3C40_D7A7_41B3_418E3096596E": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1 al Corpului M, la AMF Traian Lalescu", "mention": "coridorul de la etajul 1 al Corpului M, la AMF Traian Lalescu"}
+  },
+  "panorama_0AC7DA43_3C40_79E9_41C8_39553CF21B3D": {
+    "ways": {"panorama_0AC0B05A_3C47_E99B_419A_923800900B37": "into_room", "panorama_0AC055F4_3C40_AAAF_41A2_EBA76C6C9849": "hall", "panorama_0AC0CE55_3C47_B9E9_41BD_26948C208932": "hall", "panorama_0AC7DC3B_3C40_5999_41C3_8478C4AD52FF": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC0B05A_3C47_E99B_419A_923800900B37": {
+    "ways": {"panorama_0AC11645_3C47_A9E9_41C3_4054AEDDAB90": "into_room", "panorama_0AC7DA43_3C40_79E9_41C8_39553CF21B3D": "out_of_room", "panorama_0AC13254_3C47_E9EF_41AE_CF54A0CD5FF5": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC11645_3C47_A9E9_41C3_4054AEDDAB90": {
+    "ways": {"panorama_0AC1DA54_3C40_59EF_41C6_67CF09E7AB3F": "into_room", "panorama_0AC0B05A_3C47_E99B_419A_923800900B37": "out_of_room", "panorama_0AC16880_3C40_7967_41C9_90BA05A201AA": "hall"},
+    "floor": 0
+  },
+  "panorama_138F2D43_3C40_7BE9_41B6_87EE59FEADE3": {
+    "ways": {"panorama_106FDA28_3C40_B9A7_4176_D11F80BBC1B4": "out_of_room", "panorama_139E5EE2_3C40_56AB_41BB_33B054882509": "hall"},
+    "floor": 1
+  },
+  "panorama_13AEF1FA_3C43_EA9B_41CA_1363EBFCD82D": {
+    "ways": {"panorama_106FDA28_3C40_B9A7_4176_D11F80BBC1B4": "out_of_room", "panorama_13AF909B_3C43_AA99_41C7_2D6AAE8B3D6C": "hall"},
+    "floor": 1
+  },
+  "panorama_13AC8F68_3C40_D7A7_41B3_418E3096596E": {
+    "ways": {"panorama_13AFF8D3_3C40_5AE9_41B7_1D5A3343C0FB": "out_of_room", "panorama_13ACD10A_3C40_AB7B_41C5_EEC3E716B74B": "hall", "panorama_13AF5BFC_3C40_DE9F_41C2_477382C6E08D": "hall"},
+    "floor": 1
+  },
+  "panorama_13ACD10A_3C40_AB7B_41C5_EEC3E716B74B": {
+    "ways": {"panorama_13AFF8D3_3C40_5AE9_41B7_1D5A3343C0FB": "out_of_room", "panorama_13ACD2C1_3C40_6EE9_41CD_6FDDCA0419EF": "hall", "panorama_13AF5BFC_3C40_DE9F_41C2_477382C6E08D": "hall"},
+    "floor": 1
+  },
+  "panorama_0AC1DA54_3C40_59EF_41C6_67CF09E7AB3F": {
+    "ways": {"panorama_0AC11645_3C47_A9E9_41C3_4054AEDDAB90": "out_of_room", "panorama_0AC11BDB_3C40_BE99_41C1_E55294F5E4C7": "hall", "panorama_0AC2AF12_3C40_F768_41C5_8076574BD27B": "hall"},
+    "floor": 0
+  },
+  "panorama_0AE3B2C4_3C43_AEEF_41C4_FC570121166F": {
+    "ways": {"panorama_0AE2BDFA_3C43_FA9B_41BE_9985278D1E46": "out_of_room", "panorama_0AE3E065_3C43_A9A9_41A7_BE4351036391": "hall"},
+    "floor": 0
+  },
+  "panorama_0AE3E065_3C43_A9A9_41A7_BE4351036391": {
+    "ways": {"panorama_0AE2BDFA_3C43_FA9B_41BE_9985278D1E46": "out_of_room", "panorama_0AE3B2C4_3C43_AEEF_41C4_FC570121166F": "hall"},
+    "floor": 0
+  },
+  "panorama_04D7AA65_3C43_D9A9_41A8_776CC4C6965E": {
+    "ways": {"panorama_09FBE782_3C41_F76B_41C4_E637AA4A25BD": "out_of_room", "panorama_09CB07F0_3C43_D6A7_41B3_E0CD0A49E31E": "hall"},
+    "floor": 0
+  },
+  "panorama_139E5EE2_3C40_56AB_41BB_33B054882509": {
+    "ways": {"panorama_13AF909B_3C43_AA99_41C7_2D6AAE8B3D6C": "hall", "panorama_138F2D43_3C40_7BE9_41B6_87EE59FEADE3": "hall"},
+    "floor": 1
+  },
+  "panorama_13AF909B_3C43_AA99_41C7_2D6AAE8B3D6C": {
+    "ways": {"panorama_13AEF1FA_3C43_EA9B_41CA_1363EBFCD82D": "hall", "panorama_139E5EE2_3C40_56AB_41BB_33B054882509": "hall"},
+    "floor": 1
+  },
+  "panorama_13AF5BFC_3C40_DE9F_41C2_477382C6E08D": {
+    "ways": {"panorama_13ACD10A_3C40_AB7B_41C5_EEC3E716B74B": "hall", "panorama_13ACD2C1_3C40_6EE9_41CD_6FDDCA0419EF": "hall", "panorama_13ACADF4_3C40_FAAF_41CD_29BBDE3D25FB": "hall", "panorama_13AC8F68_3C40_D7A7_41B3_418E3096596E": "hall"},
+    "floor": 1
+  },
+  "panorama_13ACADF4_3C40_FAAF_41CD_29BBDE3D25FB": {
+    "ways": {"panorama_13AF5BFC_3C40_DE9F_41C2_477382C6E08D": "hall"},
+    "floor": 1
+  },
+  "panorama_13ACD2C1_3C40_6EE9_41CD_6FDDCA0419EF": {
+    "ways": {"panorama_13ACD10A_3C40_AB7B_41C5_EEC3E716B74B": "hall", "panorama_13ACADF4_3C40_FAAF_41CD_29BBDE3D25FB": "hall", "panorama_13AF5BFC_3C40_DE9F_41C2_477382C6E08D": "hall"},
+    "floor": 1
+  },
+  "panorama_0FB42665_3CC0_A9A9_41B9_2473CED2E5D2": {
+    "ways": {"panorama_0FB28155_3CC0_EBE9_41C2_7C46B69B16F7": "hall", "panorama_0FB51427_3CC0_69A9_41BB_F9ED7B66D06E": "hall"},
+    "floor": 0
+  },
+  "panorama_0F84E93B_3CC0_DB99_41B9_7809FCAEFD62": {
+    "ways": {"panorama_0FB28155_3CC0_EBE9_41C2_7C46B69B16F7": "hall", "panorama_0FB35C83_3CC0_5969_41C9_BF1A64AE494C": "hall", "panorama_0FB51427_3CC0_69A9_41BB_F9ED7B66D06E": "hall"},
+    "floor": 0
+  },
+  "panorama_0FB28155_3CC0_EBE9_41C2_7C46B69B16F7": {
+    "ways": {"panorama_0FB42665_3CC0_A9A9_41B9_2473CED2E5D2": "hall", "panorama_0F84E93B_3CC0_DB99_41B9_7809FCAEFD62": "hall"},
+    "floor": 0
+  },
+  "panorama_0FB2B6D2_3CC0_B6EB_41CB_2D9013C680C6": {
+    "ways": {"panorama_0FB51427_3CC0_69A9_41BB_F9ED7B66D06E": "hall"},
+    "floor": 0
+  },
+  "panorama_0FB35C83_3CC0_5969_41C9_BF1A64AE494C": {
+    "ways": {"panorama_0FB3C1FE_3CC0_6A9B_41C6_8C17FFEB3EC7": "hall", "panorama_0F84E93B_3CC0_DB99_41B9_7809FCAEFD62": "hall"},
+    "floor": 0
+  },
+  "panorama_0FB3C1FE_3CC0_6A9B_41C6_8C17FFEB3EC7": {
+    "ways": {"panorama_0FB35C83_3CC0_5969_41C9_BF1A64AE494C": "hall"},
+    "floor": 0
+  },
+  "panorama_0D2D5F54_3C40_B7EF_41C2_4AC591FEE8A5": {
+    "ways": {"panorama_0D2C0D8E_3C40_DB7B_41A4_A76140937B1B": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC103E6_3C40_EEAB_4189_4BE8F6DCC56D": {
+    "ways": {"panorama_0AC055F4_3C40_AAAF_41A2_EBA76C6C9849": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC7D828_3C40_59A7_41C2_3A556FCE544C": {
+    "ways": {"panorama_0AC055F4_3C40_AAAF_41A2_EBA76C6C9849": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC7DC3B_3C40_5999_41C3_8478C4AD52FF": {
+    "ways": {"panorama_0AC7DA43_3C40_79E9_41C8_39553CF21B3D": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC0CE55_3C47_B9E9_41BD_26948C208932": {
+    "ways": {"panorama_0AC7DA43_3C40_79E9_41C8_39553CF21B3D": "hall", "panorama_0AC055F4_3C40_AAAF_41A2_EBA76C6C9849": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC13254_3C47_E9EF_41AE_CF54A0CD5FF5": {
+    "ways": {"panorama_0AC1441A_3C47_A99B_41BD_65AB61781010": "hall", "panorama_0AC0B05A_3C47_E99B_419A_923800900B37": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC1441A_3C47_A99B_41BD_65AB61781010": {
+    "ways": {"panorama_0AC13254_3C47_E9EF_41AE_CF54A0CD5FF5": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC16880_3C40_7967_41C9_90BA05A201AA": {
+    "ways": {"panorama_0AC11645_3C47_A9E9_41C3_4054AEDDAB90": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC11BDB_3C40_BE99_41C1_E55294F5E4C7": {
+    "ways": {"panorama_0AC1DA54_3C40_59EF_41C6_67CF09E7AB3F": "hall", "panorama_0AC17D6D_3C40_DBB9_4162_68568322BF22": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC17D6D_3C40_DBB9_4162_68568322BF22": {
+    "ways": {"panorama_0AC11BDB_3C40_BE99_41C1_E55294F5E4C7": "hall", "panorama_0AC2AF12_3C40_F768_41C5_8076574BD27B": "hall"},
+    "floor": 0
+  },
+  "panorama_0AC2AF12_3C40_F768_41C5_8076574BD27B": {
+    "ways": {"panorama_0AC1DA54_3C40_59EF_41C6_67CF09E7AB3F": "hall", "panorama_0AC17D6D_3C40_DBB9_4162_68568322BF22": "hall"},
+    "floor": 0
+  },
+  "panorama_09C9C308_3C40_6F67_41BD_C0C5368B655F": {
+    "ways": {"panorama_09C91EFC_3C40_569F_41C7_6FB04EC79218": "hall"},
+    "floor": 0
+  },
+  "panorama_09CB676A_3C43_B7BB_41C1_87290C7BBFD8": {
+    "ways": {"panorama_09C91EFC_3C40_569F_41C7_6FB04EC79218": "hall"},
+    "floor": 0
+  },
+  "panorama_09FB4AA7_3C41_DEA9_41C8_A4F7D1B10FEC": {
+    "ways": {"panorama_09FBE782_3C41_F76B_41C4_E637AA4A25BD": "hall"},
+    "floor": 0
+  },
+  "panorama_09FA1DFE_3C41_BA9B_41B3_03A1438462E2": {
+    "ways": {"panorama_09FAE0AC_3C40_6ABF_41C9_9CAD38C14A4D": "hall", "panorama_09FBE782_3C41_F76B_41C4_E637AA4A25BD": "hall"},
+    "floor": 0
+  },
+  "panorama_09FAE0AC_3C40_6ABF_41C9_9CAD38C14A4D": {
+    "ways": {"panorama_09FA1DFE_3C41_BA9B_41B3_03A1438462E2": "hall"},
+    "floor": 0
+  },
+  "panorama_09CB07F0_3C43_D6A7_41B3_E0CD0A49E31E": {
+    "ways": {"panorama_04D7AA65_3C43_D9A9_41A8_776CC4C6965E": "hall"},
+    "floor": 0
+  },
+  "panorama_09C62021_3C47_A9A9_41CD_F8F595C9D8C9": {
+    "ways": {"panorama_09C26EAE_3C40_76BB_4156_1E1F64CFF2D9": "hall", "panorama_09C66192_3C47_AB6B_41A3_85FB5934C2B8": "hall"},
+    "floor": 0
+  },
+  "panorama_09C66192_3C47_AB6B_41A3_85FB5934C2B8": {
+    "ways": {"panorama_09C62021_3C47_A9A9_41CD_F8F595C9D8C9": "hall", "panorama_09C64305_3C47_EF69_41BE_6628E8AD0B14": "hall"},
+    "floor": 0
+  },
+  "panorama_09C64305_3C47_EF69_41BE_6628E8AD0B14": {
+    "ways": {"panorama_09C26EAE_3C40_76BB_4156_1E1F64CFF2D9": "hall", "panorama_09C66192_3C47_AB6B_41A3_85FB5934C2B8": "hall"},
+    "floor": 0
+  },
+  "panorama_2FA5D011_3C40_A969_41C3_03CB5D6F9362": {
+    "ways": {"panorama_2AA62E4C_3C40_B9FF_41CD_52880A208968": "enter_building"}
+  },
+  "panorama_2AA62E4C_3C40_B9FF_41CD_52880A208968": {
+    "ways": {"panorama_2FAD4D65_3C40_DBA9_419F_4967F817FA7D": "hall", "panorama_2FA5D011_3C40_A969_41C3_03CB5D6F9362": "leave_building", "panorama_2FAC9D0C_3C40_FB7F_41C2_2C919ECC648A": "hall"},
+    "floor": 0
+  },
+  "panorama_2FAC9D0C_3C40_FB7F_41C2_2C919ECC648A": {
+    "name": "Stairs to the old building",
+    "mention": "the stairs to the old building",
+    "ways": {"panorama_2AA62E4C_3C40_B9FF_41CD_52880A208968": "hall", "panorama_2FB5E3A5_3C5F_AEA9_41BE_37BF0C1E7A74": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Scara spre clădirea veche", "mention": "scara spre clădirea veche"}
+  },
+  "panorama_2FAD4D65_3C40_DBA9_419F_4967F817FA7D": {
+    "ways": {"panorama_7DC67324_53DE_4C83_41CA_0AACEF64C053": "hall", "panorama_2AA62E4C_3C40_B9FF_41CD_52880A208968": "hall"},
+    "floor": 0
+  },
+  "panorama_7DC67324_53DE_4C83_41CA_0AACEF64C053": {
+    "name": "Steps to the new building's lifts",
+    "mention": "the steps to the new building's lifts",
+    "ways": {"panorama_2FAD4D65_3C40_DBA9_419F_4967F817FA7D": "hall", "panorama_2FABCE02_3C40_596B_41B4_3B970691F96B": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Treptele spre lifturile clădirii noi", "mention": "treptele spre lifturile clădirii noi"}
+  },
+  "panorama_2FABCE02_3C40_596B_41B4_3B970691F96B": {
+    "ways": {"panorama_7DC67324_53DE_4C83_41CA_0AACEF64C053": "stairs_down", "panorama_2FAB6F01_3C40_7769_41C4_4B42D7EB4368": "hall"},
+    "floor": 0
+  },
+  "panorama_2FAB6F01_3C40_7769_41C4_4B42D7EB4368": {
+    "ways": {"panorama_2FABCE02_3C40_596B_41B4_3B970691F96B": "hall", "panorama_2FABAFCD_3C40_56F9_41BE_16C9CAAC267B": "hall", "panorama_2FB510CB_3C5F_AAF9_41A5_7D48B52842FF": "lift"},
+    "floor": 0
+  },
+  "panorama_2FABAFCD_3C40_56F9_41BE_16C9CAAC267B": {
+    "name": "Park-side exit",
+    "mention": "the park-side exit",
+    "ways": {"panorama_2FAB6F01_3C40_7769_41C4_4B42D7EB4368": "hall"},
+    "floor": 0,
+    "ro": {"name": "Ieșirea spre parc", "mention": "ieșirea spre parc"}
+  },
+  "panorama_2FB510CB_3C5F_AAF9_41A5_7D48B52842FF": {
+    "ways": {"panorama_2FAB6F01_3C40_7769_41C4_4B42D7EB4368": "lift", "panorama_2FB52133_3C5F_EBA9_41B5_BAA69DB2EFA4": "corridor", "panorama_2FBDE2B9_3C40_EE99_41AD_439977C3E62F": "lift"},
+    "floor": 1
+  },
+  "panorama_2FB52133_3C5F_EBA9_41B5_BAA69DB2EFA4": {
+    "name": "Floor 1 corridor, new building",
+    "mention": "the floor 1 corridor, new building",
+    "ways": {"panorama_2FB510CB_3C5F_AAF9_41A5_7D48B52842FF": "corridor", "panorama_2FB562CA_3C5F_AEFB_41BD_3FA23838BF13": "into_room", "panorama_2FB521EB_3C5F_EAB9_41AD_1F259273D5AD": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Coridorul de la etajul 1, clădirea nouă", "mention": "coridorul de la etajul 1, clădirea nouă"}
+  },
+  "panorama_2FB521EB_3C5F_EAB9_41AD_1F259273D5AD": {
+    "ways": {"panorama_2FB52133_3C5F_EBA9_41B5_BAA69DB2EFA4": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_2FB562CA_3C5F_AEFB_41BD_3FA23838BF13": {
+    "ways": {"panorama_2FB52133_3C5F_EBA9_41B5_BAA69DB2EFA4": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_2FBDE2B9_3C40_EE99_41AD_439977C3E62F": {
+    "ways": {"panorama_2FBD5353_3C40_AFE9_41C5_B6DE97736CC6": "corridor", "panorama_2FB9D2EA_3C40_EEBB_41AA_AE51A9350ED8": "lift", "panorama_2FB510CB_3C5F_AAF9_41A5_7D48B52842FF": "lift"},
+    "floor": 2
+  },
+  "panorama_2FBD5353_3C40_AFE9_41C5_B6DE97736CC6": {
+    "name": "Floor 2 corridor by the stairwell",
+    "mention": "the floor 2 corridor by the stairwell",
+    "ways": {"panorama_2FBD4462_3C40_A9AB_41C6_FA7CCF20D354": "corridor", "panorama_2FBDE2B9_3C40_EE99_41AD_439977C3E62F": "corridor"},
+    "floor": 2,
+    "ro": {"name": "Coridorul de la etajul 2, lângă casa scării", "mention": "coridorul de la etajul 2, lângă casa scării"}
+  },
+  "panorama_2FBD4462_3C40_A9AB_41C6_FA7CCF20D354": {
+    "name": "Floor 2 corridor at lab V1",
+    "mention": "the floor 2 corridor at lab V1",
+    "ways": {"panorama_2FBD5353_3C40_AFE9_41C5_B6DE97736CC6": "corridor", "panorama_2FBCC4FC_3C40_6A9F_4162_671D8D640E14": "into_room", "panorama_2FBBE8F4_3C47_FAAF_4192_AE77068253CA": "corridor"},
+    "floor": 2,
+    "ro": {"name": "Coridorul de la etajul 2, la laboratorul V1", "mention": "coridorul de la etajul 2, la laboratorul V1"}
+  },
+  "panorama_2FBCC4FC_3C40_6A9F_4162_671D8D640E14": {
+    "ways": {"panorama_2FBD4462_3C40_A9AB_41C6_FA7CCF20D354": "out_of_room", "panorama_2FBD05E9_3C40_6AB9_41CE_2665C1F1AD0A": "hall", "panorama_2FBB483A_3C47_D99B_41C3_62EC90777A79": "hall"},
+    "floor": 2
+  },
+  "panorama_2FBD05E9_3C40_6AB9_41CE_2665C1F1AD0A": {
+    "ways": {"panorama_2FBB76F9_3C47_B699_41C0_0E197927A7DA": "hall", "panorama_2FBCC4FC_3C40_6A9F_4162_671D8D640E14": "hall"},
+    "floor": 2
+  },
+  "panorama_2FBB76F9_3C47_B699_41C0_0E197927A7DA": {
+    "ways": {"panorama_2FBB483A_3C47_D99B_41C3_62EC90777A79": "hall", "panorama_2FBD05E9_3C40_6AB9_41CE_2665C1F1AD0A": "hall"},
+    "floor": 2
+  },
+  "panorama_2FBB483A_3C47_D99B_41C3_62EC90777A79": {
+    "ways": {"panorama_2FBB76F9_3C47_B699_41C0_0E197927A7DA": "hall", "panorama_2FBCC4FC_3C40_6A9F_4162_671D8D640E14": "hall"},
+    "floor": 2
+  },
+  "panorama_2FBBE8F4_3C47_FAAF_4192_AE77068253CA": {
+    "name": "Floor 2 corridor at lab V2",
+    "mention": "the floor 2 corridor at lab V2",
+    "ways": {"panorama_2FBD4462_3C40_A9AB_41C6_FA7CCF20D354": "corridor", "panorama_2FBBA9A1_3C47_DAA9_41B9_FA9A26A5E909": "into_room"},
+    "floor": 2,
+    "ro": {"name": "Coridorul de la etajul 2, la laboratorul V2", "mention": "coridorul de la etajul 2, la laboratorul V2"}
+  },
+  "panorama_2FBBA9A1_3C47_DAA9_41B9_FA9A26A5E909": {
+    "ways": {"panorama_2FA4FCBE_3C40_5A9B_41C6_2417AB7FB2E1": "hall", "panorama_2FBBE8F4_3C47_FAAF_4192_AE77068253CA": "out_of_room", "panorama_2FA46A38_3C47_B9A7_41A4_AE91BB60D8E3": "hall"},
+    "floor": 2
+  },
+  "panorama_2FA46A38_3C47_B9A7_41A4_AE91BB60D8E3": {
+    "ways": {"panorama_2FBBBB05_3C40_5F69_41BB_65CBB94D8124": "hall", "panorama_2FBBA9A1_3C47_DAA9_41B9_FA9A26A5E909": "hall"},
+    "floor": 2
+  },
+  "panorama_2FBBBB05_3C40_5F69_41BB_65CBB94D8124": {
+    "ways": {"panorama_2FA41BC0_3C40_7EE7_41CC_493A89D89A92": "hall", "panorama_2FA46A38_3C47_B9A7_41A4_AE91BB60D8E3": "hall"},
+    "floor": 2
+  },
+  "panorama_2FA41BC0_3C40_7EE7_41CC_493A89D89A92": {
+    "ways": {"panorama_2FA4FCBE_3C40_5A9B_41C6_2417AB7FB2E1": "hall", "panorama_2FBBBB05_3C40_5F69_41BB_65CBB94D8124": "hall"},
+    "floor": 2
+  },
+  "panorama_2FA4FCBE_3C40_5A9B_41C6_2417AB7FB2E1": {
+    "ways": {"panorama_2FA41BC0_3C40_7EE7_41CC_493A89D89A92": "hall", "panorama_2FBBA9A1_3C47_DAA9_41B9_FA9A26A5E909": "hall"},
+    "floor": 2
+  },
+  "panorama_2FB9D2EA_3C40_EEBB_41AA_AE51A9350ED8": {
+    "ways": {"panorama_2FBD91DD_3C40_EA99_41B5_74EF6BE17D18": "corridor", "panorama_2FBEA42C_3C40_E9BF_41BE_D314E44656D5": "corridor", "panorama_2FBDE2B9_3C40_EE99_41AD_439977C3E62F": "lift"},
+    "floor": 3
+  },
+  "panorama_2FBEA42C_3C40_E9BF_41BE_D314E44656D5": {
+    "name": "Floor 3 corridor by the stairwell",
+    "mention": "the floor 3 corridor by the stairwell",
+    "ways": {"panorama_2FB9D2EA_3C40_EEBB_41AA_AE51A9350ED8": "corridor", "panorama_2FB9153B_3C40_AB99_41C4_AFED330FC140": "into_room", "panorama_2FBF8965_3C41_BBA9_41A2_AB28F7AEF19C": "corridor"},
+    "floor": 3,
+    "ro": {"name": "Coridorul de la etajul 3, lângă casa scării", "mention": "coridorul de la etajul 3, lângă casa scării"}
+  },
+  "panorama_2FB9153B_3C40_AB99_41C4_AFED330FC140": {
+    "ways": {"panorama_2FBEA42C_3C40_E9BF_41BE_D314E44656D5": "out_of_room", "panorama_2FBE8639_3C40_A999_41CD_1D54F358781F": "hall", "panorama_2FBE7877_3C40_59A9_41B0_7E76BF125C10": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBE8639_3C40_A999_41CD_1D54F358781F": {
+    "ways": {"panorama_2FB9153B_3C40_AB99_41C4_AFED330FC140": "hall", "panorama_2FBEF746_3C40_77EB_41B7_C550D0F19EF6": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBEF746_3C40_77EB_41B7_C550D0F19EF6": {
+    "ways": {"panorama_2FBE8639_3C40_A999_41CD_1D54F358781F": "hall", "panorama_2FBE7877_3C40_59A9_41B0_7E76BF125C10": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBE7877_3C40_59A9_41B0_7E76BF125C10": {
+    "ways": {"panorama_2FB9153B_3C40_AB99_41C4_AFED330FC140": "hall", "panorama_2FBEF746_3C40_77EB_41B7_C550D0F19EF6": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBF8965_3C41_BBA9_41A2_AB28F7AEF19C": {
+    "name": "Floor 3 corridor end, organic synthesis lab",
+    "mention": "the floor 3 corridor end, organic synthesis lab",
+    "ways": {"panorama_2FBFC9FD_3C41_DA99_41C8_EADB36F888D9": "into_room", "panorama_2FBEA42C_3C40_E9BF_41BE_D314E44656D5": "corridor"},
+    "floor": 3,
+    "ro": {"name": "Capătul coridorului de la etajul 3, la sinteze organice", "mention": "capătul coridorului de la etajul 3, la sinteze organice"}
+  },
+  "panorama_2FBFC9FD_3C41_DA99_41C8_EADB36F888D9": {
+    "ways": {"panorama_2FBF9B2E_3C41_FFBB_41BB_A8C37B98084C": "hall", "panorama_2FBE7CA4_3C41_BAAF_41BC_8116DE3BBC8C": "hall", "panorama_2FBF8965_3C41_BBA9_41A2_AB28F7AEF19C": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_2FBF9B2E_3C41_FFBB_41BB_A8C37B98084C": {
+    "ways": {"panorama_2FBE6BE9_3C41_DEB9_41C3_29392A5851FA": "hall", "panorama_2FBEDD60_3C40_5BA7_4189_51E587EFB784": "out_of_room", "panorama_2FBFC9FD_3C41_DA99_41C8_EADB36F888D9": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBE6BE9_3C41_DEB9_41C3_29392A5851FA": {
+    "ways": {"panorama_2FBF9B2E_3C41_FFBB_41BB_A8C37B98084C": "hall", "panorama_2FBE7CA4_3C41_BAAF_41BC_8116DE3BBC8C": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBE7CA4_3C41_BAAF_41BC_8116DE3BBC8C": {
+    "ways": {"panorama_2FBE6BE9_3C41_DEB9_41C3_29392A5851FA": "hall", "panorama_2FBFC9FD_3C41_DA99_41C8_EADB36F888D9": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBEDD60_3C40_5BA7_4189_51E587EFB784": {
+    "name": "Floor 3 corridor end, biosynthesis lab",
+    "mention": "the floor 3 corridor end, biosynthesis lab",
+    "ways": {"panorama_2FBF9B2E_3C41_FFBB_41BB_A8C37B98084C": "into_room", "panorama_2FBEEDDA_3C40_7A9B_41B0_02978D33A2B7": "into_room", "panorama_2FBD91DD_3C40_EA99_41B5_74EF6BE17D18": "corridor"},
+    "floor": 3,
+    "ro": {"name": "Capătul coridorului de la etajul 3, la biosinteză", "mention": "capătul coridorului de la etajul 3, la biosinteză"}
+  },
+  "panorama_2FBEEDDA_3C40_7A9B_41B0_02978D33A2B7": {
+    "ways": {"panorama_2FBEDD60_3C40_5BA7_4189_51E587EFB784": "out_of_room", "panorama_2FBEAFAF_3C40_56B9_41C6_0EA253106C47": "hall", "panorama_2FBE70AD_3C40_AAB9_41C2_52CC3B6C15EC": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBEAFAF_3C40_56B9_41C6_0EA253106C47": {
+    "ways": {"panorama_2FBEEDDA_3C40_7A9B_41B0_02978D33A2B7": "hall", "panorama_2FBE70AD_3C40_AAB9_41C2_52CC3B6C15EC": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBE70AD_3C40_AAB9_41C2_52CC3B6C15EC": {
+    "ways": {"panorama_2FBEEDDA_3C40_7A9B_41B0_02978D33A2B7": "hall", "panorama_2FBEAFAF_3C40_56B9_41C6_0EA253106C47": "hall"},
+    "floor": 3
+  },
+  "panorama_2FBD91DD_3C40_EA99_41B5_74EF6BE17D18": {
+    "name": "Floor 3 corridor by the second stairwell",
+    "mention": "the floor 3 corridor by the second stairwell",
+    "ways": {"panorama_2FB9D2EA_3C40_EEBB_41AA_AE51A9350ED8": "corridor", "panorama_2FBEDD60_3C40_5BA7_4189_51E587EFB784": "corridor"},
+    "floor": 3,
+    "ro": {"name": "Coridorul de la etajul 3, lângă a doua casă a scării", "mention": "coridorul de la etajul 3, lângă a doua casă a scării"}
+  },
+  "panorama_2FB5E3A5_3C5F_AEA9_41BE_37BF0C1E7A74": {
+    "name": "Side-entrance lobby, old building",
+    "mention": "the side-entrance lobby, old building",
+    "ways": {"panorama_2FAC9D0C_3C40_FB7F_41C2_2C919ECC648A": "stairs_down", "panorama_2FA41DBC_3C40_BA9F_41C0_DB01517E715B": "doorway", "panorama_2FB5D494_3C40_696F_4191_25B87C1288B9": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Holul intrării laterale, clădirea veche", "mention": "holul intrării laterale, clădirea veche"}
+  },
+  "panorama_2FB5D494_3C40_696F_4191_25B87C1288B9": {
+    "name": "Portrait hall, floor 1",
+    "mention": "the portrait hall, floor 1",
+    "ways": {"panorama_2FB64604_3C40_696F_41AF_C60E4B8C905C": "doorway", "panorama_2FB5E3A5_3C5F_AEA9_41BE_37BF0C1E7A74": "stairs_down"},
+    "floor": 1,
+    "ro": {"name": "Holul cu portrete, etajul 1", "mention": "holul cu portrete, etajul 1"}
+  },
+  "panorama_2FB64604_3C40_696F_41AF_C60E4B8C905C": {
+    "name": "Steps to the Dean's corridor",
+    "mention": "the steps to the Dean's corridor",
+    "ways": {"panorama_2FB6C6E3_3C40_B6A9_41C6_CEA3B456919B": "stairs_up", "panorama_2FB5D494_3C40_696F_4191_25B87C1288B9": "doorway"},
+    "floor": 1,
+    "ro": {"name": "Treptele spre coridorul Decanatului", "mention": "treptele spre coridorul Decanatului"}
+  },
+  "panorama_2FB6C6E3_3C40_B6A9_41C6_CEA3B456919B": {
+    "name": "Corp B corridor at 1B",
+    "mention": "the Corp B corridor at 1B",
+    "ways": {"panorama_2FB64604_3C40_696F_41AF_C60E4B8C905C": "stairs_down", "panorama_2FB6599B_3C40_DA99_41C1_41A5FF80C9AA": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Coridorul corpului B, în dreptul 1B", "mention": "coridorul corpului B, în dreptul 1B"}
+  },
+  "panorama_2FB6E7C1_3C40_D6E9_41AA_1AC627F733D4": {
+    "ways": {"panorama_2FB6C878_3C40_F998_41CA_888D0A1A862A": "into_room", "panorama_2FB6599B_3C40_DA99_41C1_41A5FF80C9AA": "corridor", "panorama_2FB66A56_3C40_B9EB_41C4_637189E3F071": "corridor"},
+    "floor": 1
+  },
+  "panorama_2FB6C878_3C40_F998_41CA_888D0A1A862A": {
+    "ways": {"panorama_2FB6E7C1_3C40_D6E9_41AA_1AC627F733D4": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_2FB6599B_3C40_DA99_41C1_41A5FF80C9AA": {
+    "name": "Secretariat doors 2B and 3B",
+    "mention": "the Secretariat doors 2B and 3B",
+    "ways": {"panorama_2FB6C6E3_3C40_B6A9_41C6_CEA3B456919B": "corridor", "panorama_2FB6E7C1_3C40_D6E9_41AA_1AC627F733D4": "corridor"},
+    "floor": 1,
+    "ro": {"name": "Ușile Secretariatului, 2B și 3B", "mention": "ușile Secretariatului, 2B și 3B"}
+  },
+  "panorama_2FB66A56_3C40_B9EB_41C4_637189E3F071": {
+    "ways": {"panorama_2FB6E7C1_3C40_D6E9_41AA_1AC627F733D4": "corridor"},
+    "floor": 1
+  },
+  "panorama_2FB78B22_3C40_5FAB_4192_FB61EFEAD5EF": {
+    "name": "Main staircase landing, floor 1",
+    "mention": "the main staircase landing, floor 1",
+    "ways": {"panorama_2FB6EF3B_3C41_D799_41C6_D7A47B56A9DE": "stairs_up", "panorama_2FA41DBC_3C40_BA9F_41C0_DB01517E715B": "stairs_down", "panorama_2FB7CC94_3C40_796F_418D_B38D348E47BC": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Palierul scării principale, etajul 1", "mention": "palierul scării principale, etajul 1"}
+  },
+  "panorama_2FB7CC94_3C40_796F_418D_B38D348E47BC": {
+    "ways": {"panorama_2FB78B22_3C40_5FAB_4192_FB61EFEAD5EF": "out_of_room", "panorama_2FB78D4F_3C40_5BF9_41AA_F59B04FC1906": "hall"},
+    "floor": 1
+  },
+  "panorama_2FB78D4F_3C40_5BF9_41AA_F59B04FC1906": {
+    "ways": {"panorama_2FB65E5E_3C41_B99B_41BD_6886CD28D7FB": "hall", "panorama_2FB7CC94_3C40_796F_418D_B38D348E47BC": "hall"},
+    "floor": 1
+  },
+  "panorama_2FB65E5E_3C41_B99B_41BD_6886CD28D7FB": {
+    "ways": {"panorama_2FB78D4F_3C40_5BF9_41AA_F59B04FC1906": "hall"},
+    "floor": 1
+  },
+  "panorama_2FB6EF3B_3C41_D799_41C6_D7A47B56A9DE": {
+    "name": "Main staircase landing, floor 2",
+    "mention": "the main staircase landing, floor 2",
+    "ways": {"panorama_2FB6D016_3C41_E96B_41C7_109D766F020C": "into_room", "panorama_2FB91203_3C41_A969_41C1_A0959FE3061A": "stairs_up", "panorama_2FB78B22_3C40_5FAB_4192_FB61EFEAD5EF": "stairs_down"},
+    "floor": 2,
+    "ro": {"name": "Palierul scării principale, etajul 2", "mention": "palierul scării principale, etajul 2"}
+  },
+  "panorama_2FB6D016_3C41_E96B_41C7_109D766F020C": {
+    "ways": {"panorama_2FB6EF3B_3C41_D799_41C6_D7A47B56A9DE": "out_of_room", "panorama_2FB96105_3C41_AB69_41AF_13EDE7086E91": "hall"},
+    "floor": 2
+  },
+  "panorama_2FB96105_3C41_AB69_41AF_13EDE7086E91": {
+    "ways": {"panorama_2FB6D016_3C41_E96B_41C7_109D766F020C": "hall"},
+    "floor": 2
+  },
+  "panorama_2FB91203_3C41_A969_41C1_A0959FE3061A": {
+    "name": "Main staircase landing, floor 3",
+    "mention": "the main staircase landing, floor 3",
+    "ways": {"panorama_2FB6EF3B_3C41_D799_41C6_D7A47B56A9DE": "stairs_down", "panorama_2FB93311_3C40_6F69_41A8_0262FA192FE4": "stairs_up", "panorama_2FB8B5CC_3C40_EAF8_41A7_411BA19C8F17": "into_room"},
+    "floor": 3,
+    "ro": {"name": "Palierul scării principale, etajul 3", "mention": "palierul scării principale, etajul 3"}
+  },
+  "panorama_2FB93311_3C40_6F69_41A8_0262FA192FE4": {
+    "name": "Main staircase top landing, floor 4",
+    "mention": "the main staircase top landing, floor 4",
+    "ways": {"panorama_2FB91203_3C41_A969_41C1_A0959FE3061A": "stairs_down", "panorama_2FB90379_3C40_6F99_41C5_2C99D8AE9413": "doorway", "panorama_2FB80C8C_3C43_D97F_41BE_0EF62CDD3249": "doorway"},
+    "floor": 4,
+    "ro": {"name": "Palierul de sus al scării principale, etajul 4", "mention": "palierul de sus al scării principale, etajul 4"}
+  },
+  "panorama_2FB90379_3C40_6F99_41C5_2C99D8AE9413": {
+    "name": "Floor 4 hall at A3",
+    "mention": "the floor 4 hall at A3",
+    "ways": {"panorama_2FB93311_3C40_6F69_41A8_0262FA192FE4": "doorway", "panorama_2FB95435_3C40_A9A9_416B_F66949C6B4EE": "into_room"},
+    "floor": 4,
+    "ro": {"name": "Holul de la etajul 4, la A3", "mention": "holul de la etajul 4, la A3"}
+  },
+  "panorama_2FB95435_3C40_A9A9_416B_F66949C6B4EE": {
+    "ways": {"panorama_2FB90379_3C40_6F99_41C5_2C99D8AE9413": "out_of_room", "panorama_2FB93501_3C40_AB69_41C2_E98CD72747D4": "hall"},
+    "floor": 4
+  },
+  "panorama_2FB93501_3C40_AB69_41C2_E98CD72747D4": {
+    "ways": {"panorama_2FB95435_3C40_A9A9_416B_F66949C6B4EE": "hall"},
+    "floor": 4
+  },
+  "panorama_2FB8B5CC_3C40_EAF8_41A7_411BA19C8F17": {
+    "ways": {"panorama_2FB886DB_3C40_D699_41B9_7ACA9AF36BB1": "hall", "panorama_2FB91203_3C41_A969_41C1_A0959FE3061A": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_2FB886DB_3C40_D699_41B9_7ACA9AF36BB1": {
+    "ways": {"panorama_2FB8B797_3C40_B769_41B1_17AEA6CB926B": "hall", "panorama_2FB8B5CC_3C40_EAF8_41A7_411BA19C8F17": "hall"},
+    "floor": 3
+  },
+  "panorama_2FB8B797_3C40_B769_41B1_17AEA6CB926B": {
+    "ways": {"panorama_2FB84872_3C40_59AB_41B8_A2D4102FAC1F": "hall", "panorama_2FB886DB_3C40_D699_41B9_7ACA9AF36BB1": "hall"},
+    "floor": 3
+  },
+  "panorama_2FB84872_3C40_59AB_41B8_A2D4102FAC1F": {
+    "ways": {"panorama_2FB8B797_3C40_B769_41B1_17AEA6CB926B": "hall", "panorama_2FB80971_3C40_7BA9_41C3_CF6208B38A78": "doorway"},
+    "floor": 3
+  },
+  "panorama_2FB80971_3C40_7BA9_41C3_CF6208B38A78": {
+    "ways": {"panorama_2FB84872_3C40_59AB_41B8_A2D4102FAC1F": "doorway", "panorama_2FB81A5F_3C40_5999_41C7_E44744044448": "hall"},
+    "floor": 3
+  },
+  "panorama_2FB81A5F_3C40_5999_41C7_E44744044448": {
+    "ways": {"panorama_2FB82B9F_3C43_BE99_41C6_57E5A584A67C": "doorway", "panorama_2FB80971_3C40_7BA9_41C3_CF6208B38A78": "hall"},
+    "floor": 3
+  },
+  "panorama_2FB82B9F_3C43_BE99_41C6_57E5A584A67C": {
+    "ways": {"panorama_2FB91203_3C41_A969_41C1_A0959FE3061A": "out_of_room", "panorama_2FB81A5F_3C40_5999_41C7_E44744044448": "doorway"},
+    "floor": 3
+  },
+  "panorama_2FB80C8C_3C43_D97F_41BE_0EF62CDD3249": {
+    "name": "Floor 4 lab corridor",
+    "mention": "the floor 4 lab corridor",
+    "ways": {"panorama_2FB960B9_3C40_6A99_41C2_EBF3CE203CA5": "into_room", "panorama_2FB93311_3C40_6F69_41A8_0262FA192FE4": "doorway", "panorama_2FB8AD47_3C43_FBE9_4192_BEA88D6403B8": "into_room"},
+    "floor": 4,
+    "ro": {"name": "Coridorul laboratoarelor de la etajul 4", "mention": "coridorul laboratoarelor de la etajul 4"}
+  },
+  "panorama_2FB8AD47_3C43_FBE9_4192_BEA88D6403B8": {
+    "ways": {"panorama_2FB80C8C_3C43_D97F_41BE_0EF62CDD3249": "out_of_room", "panorama_2FB8AE12_3C43_D96B_4179_E5174DB65647": "hall"},
+    "floor": 4
+  },
+  "panorama_2FB8AE12_3C43_D96B_4179_E5174DB65647": {
+    "ways": {"panorama_2FB8AD47_3C43_FBE9_4192_BEA88D6403B8": "hall", "panorama_2FB8AEDF_3C43_B699_4182_117A6D0C16AD": "hall"},
+    "floor": 4
+  },
+  "panorama_2FB8AEDF_3C43_B699_4182_117A6D0C16AD": {
+    "ways": {"panorama_2FB88FCC_3C40_56FF_41A3_534C5EB3F3CB": "hall", "panorama_2FB8AE12_3C43_D96B_4179_E5174DB65647": "hall"},
+    "floor": 4
+  },
+  "panorama_2FB88FCC_3C40_56FF_41A3_534C5EB3F3CB": {
+    "ways": {"panorama_2FB8AEDF_3C43_B699_4182_117A6D0C16AD": "hall", "panorama_2FB9023F_3C40_A999_41CA_8998192AD14A": "doorway"},
+    "floor": 4
+  },
+  "panorama_2FB960B9_3C40_6A99_41C2_EBF3CE203CA5": {
+    "ways": {"panorama_2FB80C8C_3C43_D97F_41BE_0EF62CDD3249": "out_of_room", "panorama_2FB99175_3C40_ABA9_41B1_C54CF13B7864": "hall"},
+    "floor": 4
+  },
+  "panorama_2FB99175_3C40_ABA9_41B1_C54CF13B7864": {
+    "ways": {"panorama_2FB960B9_3C40_6A99_41C2_EBF3CE203CA5": "hall", "panorama_2FB9023F_3C40_A999_41CA_8998192AD14A": "hall"},
+    "floor": 4
+  },
+  "panorama_2FB9023F_3C40_A999_41CA_8998192AD14A": {
+    "ways": {"panorama_2FB99175_3C40_ABA9_41B1_C54CF13B7864": "hall", "panorama_2FB88FCC_3C40_56FF_41A3_534C5EB3F3CB": "doorway"},
+    "floor": 4
+  },
+  "panorama_2FA41DBC_3C40_BA9F_41C0_DB01517E715B": {
+    "name": "Main hall at the main staircase",
+    "mention": "the main hall at the main staircase",
+    "ways": {"panorama_2FA43E25_3C40_D9A9_41C1_9A7AB7EB0CB9": "hall", "panorama_2FB5E3A5_3C5F_AEA9_41BE_37BF0C1E7A74": "doorway", "panorama_2FB78B22_3C40_5FAB_4192_FB61EFEAD5EF": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Holul principal, la scara principală", "mention": "holul principal, la scara principală"}
+  },
+  "panorama_2FA43E25_3C40_D9A9_41C1_9A7AB7EB0CB9": {
+    "ways": {"panorama_2FA5AEC1_3C40_F6E9_41C2_AB70B42F9601": "leave_building", "panorama_2FA41DBC_3C40_BA9F_41C0_DB01517E715B": "hall"},
+    "floor": 0
+  },
+  "panorama_02CCF98D_1303_B428_41AC_A99ED728B562": {
+    "ways": {"panorama_02B3D755_4A39_AF81_4191_90E6D77E29D2": "enter_building"}
+  },
+  "panorama_26548CF7_376C_F498_4184_F4BBE04EFB73": {
+    "ways": {"panorama_265CFC80_3774_3B78_4187_0DD008F0C388": "leave_building", "panorama_2655F3C4_376D_CCF8_41C7_68EEDAA8F30F": "hall", "panorama_26543BD2_376C_DC98_4157_01B120D5FAC0": "hall", "panorama_2654EAFE_376C_3C88_41C0_1D162AFD02CA": "hall"},
+    "floor": 1
+  },
+  "panorama_26543BD2_376C_DC98_4157_01B120D5FAC0": {
+    "ways": {"panorama_26545993_376C_5C98_41BA_5F8703252036": "hall", "panorama_2655A1F5_376D_CC98_41C6_DE8AEA8210EA": "hall", "panorama_26548CF7_376C_F498_4184_F4BBE04EFB73": "hall", "panorama_2655F3C4_376D_CCF8_41C7_68EEDAA8F30F": "hall", "panorama_2654EAFE_376C_3C88_41C0_1D162AFD02CA": "hall"},
+    "floor": 1
+  },
+  "panorama_2654EAFE_376C_3C88_41C0_1D162AFD02CA": {
+    "ways": {"panorama_26547647_376C_57F8_4193_0F4420806125": "hall", "panorama_265D9467_3774_CBB8_41A6_D2D7B908DD51": "doorway", "panorama_26548CF7_376C_F498_4184_F4BBE04EFB73": "hall", "panorama_26543BD2_376C_DC98_4157_01B120D5FAC0": "hall", "panorama_26ECE633_376C_7798_4193_E8B3484F387B": "into_room"},
+    "floor": 1
+  },
+  "panorama_26ECE633_376C_7798_4193_E8B3484F387B": {
+    "ways": {"panorama_2654018E_376C_4C88_41C8_8C1CD198DE2B": "hall", "panorama_2654EAFE_376C_3C88_41C0_1D162AFD02CA": "out_of_room", "panorama_2653F000_376C_CB78_41C9_08DA63601080": "hall"},
+    "floor": 1
+  },
+  "panorama_2654018E_376C_4C88_41C8_8C1CD198DE2B": {
+    "ways": {"panorama_26ECE633_376C_7798_4193_E8B3484F387B": "hall"},
+    "floor": 1
+  },
+  "panorama_2653F000_376C_CB78_41C9_08DA63601080": {
+    "ways": {"panorama_2654EAFE_376C_3C88_41C0_1D162AFD02CA": "out_of_room", "panorama_26ECE633_376C_7798_4193_E8B3484F387B": "hall"},
+    "floor": 1
+  },
+  "panorama_26545993_376C_5C98_41BA_5F8703252036": {
+    "ways": {"panorama_2654B7C5_376C_74F8_41AB_0440F6476FA3": "hall", "panorama_2655A1F5_376D_CC98_41C6_DE8AEA8210EA": "hall", "panorama_26543BD2_376C_DC98_4157_01B120D5FAC0": "hall"},
+    "floor": 1
+  },
+  "panorama_2654B7C5_376C_74F8_41AB_0440F6476FA3": {
+    "ways": {"panorama_26545993_376C_5C98_41BA_5F8703252036": "hall", "panorama_26547647_376C_57F8_4193_0F4420806125": "hall"},
+    "floor": 1
+  },
+  "panorama_26547647_376C_57F8_4193_0F4420806125": {
+    "ways": {"panorama_2654B7C5_376C_74F8_41AB_0440F6476FA3": "hall", "panorama_265444FE_376C_3488_41B0_B2A999735DAE": "hall", "panorama_2654EAFE_376C_3C88_41C0_1D162AFD02CA": "hall"},
+    "floor": 1
+  },
+  "panorama_265444FE_376C_3488_41B0_B2A999735DAE": {
+    "ways": {"panorama_26547647_376C_57F8_4193_0F4420806125": "hall", "panorama_2654EAFE_376C_3C88_41C0_1D162AFD02CA": "hall"},
+    "floor": 1
+  },
+  "panorama_2655F3C4_376D_CCF8_41C7_68EEDAA8F30F": {
+    "ways": {"panorama_26548CF7_376C_F498_4184_F4BBE04EFB73": "hall", "panorama_26543BD2_376C_DC98_4157_01B120D5FAC0": "hall", "panorama_2655A1F5_376D_CC98_41C6_DE8AEA8210EA": "hall"},
+    "floor": 1
+  },
+  "panorama_2655A1F5_376D_CC98_41C6_DE8AEA8210EA": {
+    "ways": {"panorama_26545993_376C_5C98_41BA_5F8703252036": "hall", "panorama_2654D4A4_376C_D4B8_41B4_79E6CA773205": "hall", "panorama_2655F3C4_376D_CCF8_41C7_68EEDAA8F30F": "hall", "panorama_26543BD2_376C_DC98_4157_01B120D5FAC0": "hall", "panorama_265420AF_376D_CC88_41B5_6C62FCE1CB75": "corridor"},
+    "floor": 1
+  },
+  "panorama_265420AF_376D_CC88_41B5_6C62FCE1CB75": {
+    "name": "Floor 1 lift corridor",
+    "mention": "the floor 1 lift corridor",
+    "ways": {"panorama_2655A1F5_376D_CC98_41C6_DE8AEA8210EA": "corridor", "panorama_2655EF20_376D_D5B8_41C5_364C27E75E6E": "doorway"},
+    "floor": 1,
+    "ro": {"name": "Culoarul lifturilor de la etajul 1", "mention": "culoarul lifturilor de la etajul 1"}
+  },
+  "panorama_2655EF20_376D_D5B8_41C5_364C27E75E6E": {
+    "ways": {"panorama_26543D64_376C_35B8_41C5_5CBD3E178CE1": "hall", "panorama_26547915_376C_5D98_4172_B00B0A04D99C": "into_room", "panorama_265420AF_376D_CC88_41B5_6C62FCE1CB75": "doorway", "panorama_2655ABC5_376C_5CF8_418F_37B01472021B": "hall"},
+    "floor": 1
+  },
+  "panorama_26543D64_376C_35B8_41C5_5CBD3E178CE1": {
+    "ways": {"panorama_2654C6A2_376C_D4B8_41B7_A50DC8EBF2F6": "hall", "panorama_26541567_376C_F5B8_41C8_26B307920A25": "hall", "panorama_2654D317_376C_CD98_41B6_BD4F77E7016C": "into_room", "panorama_2655EF20_376D_D5B8_41C5_364C27E75E6E": "hall"},
+    "floor": 1
+  },
+  "panorama_2655ABC5_376C_5CF8_418F_37B01472021B": {
+    "ways": {"panorama_26547A5C_376C_7F88_419F_4C79B44E6F8C": "hall", "panorama_2655EF20_376D_D5B8_41C5_364C27E75E6E": "hall"},
+    "floor": 1
+  },
+  "panorama_26547A5C_376C_7F88_419F_4C79B44E6F8C": {
+    "ways": {"panorama_265447CC_376C_3488_41C4_E7B327428529": "hall", "panorama_2655ABC5_376C_5CF8_418F_37B01472021B": "hall"},
+    "floor": 1
+  },
+  "panorama_26547915_376C_5D98_4172_B00B0A04D99C": {
+    "ways": {"panorama_2655EF20_376D_D5B8_41C5_364C27E75E6E": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_265447CC_376C_3488_41C4_E7B327428529": {
+    "ways": {"panorama_26547A5C_376C_7F88_419F_4C79B44E6F8C": "hall", "panorama_2654C6A2_376C_D4B8_41B7_A50DC8EBF2F6": "hall", "panorama_26541567_376C_F5B8_41C8_26B307920A25": "hall"},
+    "floor": 1
+  },
+  "panorama_2654C6A2_376C_D4B8_41B7_A50DC8EBF2F6": {
+    "ways": {"panorama_265447CC_376C_3488_41C4_E7B327428529": "hall", "panorama_26543D64_376C_35B8_41C5_5CBD3E178CE1": "hall"},
+    "floor": 1
+  },
+  "panorama_26541567_376C_F5B8_41C8_26B307920A25": {
+    "ways": {"panorama_265447CC_376C_3488_41C4_E7B327428529": "hall", "panorama_26543D64_376C_35B8_41C5_5CBD3E178CE1": "hall"},
+    "floor": 1
+  },
+  "panorama_2654D4A4_376C_D4B8_41B4_79E6CA773205": {
+    "ways": {"panorama_2655A1F5_376D_CC98_41C6_DE8AEA8210EA": "hall"},
+    "floor": 1
+  },
+  "panorama_2654D317_376C_CD98_41B6_BD4F77E7016C": {
+    "ways": {"panorama_265C55DD_3774_D488_41A0_893F2A3E1729": "out_of_room", "panorama_26543D64_376C_35B8_41C5_5CBD3E178CE1": "out_of_room", "panorama_2654918E_376C_4C88_419B_B989EADBEC2B": "hall"},
+    "floor": 1
+  },
+  "panorama_2654918E_376C_4C88_419B_B989EADBEC2B": {
+    "ways": {"panorama_2654D317_376C_CD98_41B6_BD4F77E7016C": "hall", "panorama_26541014_376C_4B98_41C5_AB6B5D838981": "hall"},
+    "floor": 1
+  },
+  "panorama_26541014_376C_4B98_41C5_AB6B5D838981": {
+    "ways": {"panorama_26540D1A_376C_5588_41C4_DC073C6DA894": "hall", "panorama_2654918E_376C_4C88_419B_B989EADBEC2B": "hall", "panorama_26545E88_376C_7488_41C2_03A15A0D1B2D": "hall"},
+    "floor": 1
+  },
+  "panorama_26545E88_376C_7488_41C2_03A15A0D1B2D": {
+    "ways": {"panorama_26540D1A_376C_5588_41C4_DC073C6DA894": "hall", "panorama_26541014_376C_4B98_41C5_AB6B5D838981": "hall"},
+    "floor": 1
+  },
+  "panorama_26540D1A_376C_5588_41C4_DC073C6DA894": {
+    "ways": {"panorama_26541014_376C_4B98_41C5_AB6B5D838981": "hall", "panorama_26545E88_376C_7488_41C2_03A15A0D1B2D": "hall"},
+    "floor": 1
+  },
+  "panorama_2657D897_376F_FC98_41C9_B0D8A791B8B7": {
+    "ways": {"panorama_265CA779_3774_3588_41AC_86DBBC979FE0": "doorway", "panorama_265436EC_376F_D488_41B4_4808D8EDA2DB": "hall", "panorama_26541448_376C_4B88_41C9_DE0BF7EE9334": "corridor"},
+    "floor": 2
+  },
+  "panorama_265436EC_376F_D488_41B4_4808D8EDA2DB": {
+    "ways": {"panorama_2657D897_376F_FC98_41C9_B0D8A791B8B7": "hall", "panorama_2657D5A2_376C_34B9_41BD_ECDB1E9281D6": "hall", "panorama_265460E0_376C_4CB8_41B8_BF8823BE1D36": "hall"},
+    "floor": 2
+  },
+  "panorama_2657D5A2_376C_34B9_41BD_ECDB1E9281D6": {
+    "ways": {"panorama_265436EC_376F_D488_41B4_4808D8EDA2DB": "hall", "panorama_2654FFC9_376C_3488_41B7_011478039379": "hall"},
+    "floor": 2
+  },
+  "panorama_26541448_376C_4B88_41C9_DE0BF7EE9334": {
+    "ways": {"panorama_2654DEB0_376C_D498_41A7_D07F9FB9036C": "doorway", "panorama_2657D897_376F_FC98_41C9_B0D8A791B8B7": "corridor", "panorama_2654433E_376C_4D89_4199_8B226CC12621": "into_room", "panorama_26545209_376C_4F88_41C4_D6FD82F12504": "into_room", "panorama_265460E0_376C_4CB8_41B8_BF8823BE1D36": "hall"},
+    "floor": 2
+  },
+  "panorama_2654433E_376C_4D89_4199_8B226CC12621": {
+    "ways": {"panorama_26541448_376C_4B88_41C9_DE0BF7EE9334": "out_of_room"},
+    "floor": 2
+  },
+  "panorama_26545209_376C_4F88_41C4_D6FD82F12504": {
+    "ways": {"panorama_26541448_376C_4B88_41C9_DE0BF7EE9334": "out_of_room"},
+    "floor": 2
+  },
+  "panorama_265460E0_376C_4CB8_41B8_BF8823BE1D36": {
+    "ways": {"panorama_265436EC_376F_D488_41B4_4808D8EDA2DB": "hall", "panorama_26541448_376C_4B88_41C9_DE0BF7EE9334": "hall", "panorama_2654FFC9_376C_3488_41B7_011478039379": "hall"},
+    "floor": 2
+  },
+  "panorama_2654FFC9_376C_3488_41B7_011478039379": {
+    "ways": {"panorama_2657D5A2_376C_34B9_41BD_ECDB1E9281D6": "hall", "panorama_265460E0_376C_4CB8_41B8_BF8823BE1D36": "hall"},
+    "floor": 2
+  },
+  "panorama_2654DEB0_376C_D498_41A7_D07F9FB9036C": {
+    "name": "Floor 2 lift corridor",
+    "mention": "the floor 2 lift corridor",
+    "ways": {"panorama_26541448_376C_4B88_41C9_DE0BF7EE9334": "doorway", "panorama_26541D49_376C_F588_41B4_467670670F4A": "corridor"},
+    "floor": 2,
+    "ro": {"name": "Culoarul lifturilor de la etajul 2", "mention": "culoarul lifturilor de la etajul 2"}
+  },
+  "panorama_26541D49_376C_F588_41B4_467670670F4A": {
+    "ways": {"panorama_2654607E_376C_4B88_41C7_E072BD256DE6": "hall", "panorama_2654FC10_376C_DB98_41C5_6C51949B2A23": "hall", "panorama_2655F303_376D_CD78_4194_F0640ED97369": "hall", "panorama_2654DEB0_376C_D498_41A7_D07F9FB9036C": "corridor"},
+    "floor": 2
+  },
+  "panorama_2654FC10_376C_DB98_41C5_6C51949B2A23": {
+    "ways": {"panorama_26541D49_376C_F588_41B4_467670670F4A": "hall", "panorama_26547AF6_376C_3C98_41B9_63167EAB6F43": "hall", "panorama_265479C0_376C_5CF8_41B4_1FBA5E9ED8E8": "hall"},
+    "floor": 2
+  },
+  "panorama_26547AF6_376C_3C98_41B9_63167EAB6F43": {
+    "ways": {"panorama_2654FC10_376C_DB98_41C5_6C51949B2A23": "hall"},
+    "floor": 2
+  },
+  "panorama_265479C0_376C_5CF8_41B4_1FBA5E9ED8E8": {
+    "ways": {"panorama_26541872_376C_7B98_41C9_28351119F49F": "hall", "panorama_2654FC10_376C_DB98_41C5_6C51949B2A23": "hall"},
+    "floor": 2
+  },
+  "panorama_26541872_376C_7B98_41C9_28351119F49F": {
+    "ways": {"panorama_2654ECA2_376C_54B8_41AE_F48878DE3CBC": "hall", "panorama_265479C0_376C_5CF8_41B4_1FBA5E9ED8E8": "hall", "panorama_2654E8F8_376C_FC88_41C4_7E9306C57EDA": "hall", "panorama_26542791_376C_5498_4192_58BAF0894027": "hall", "panorama_2655D570_376D_D598_4185_4E7C28B81A85": "hall"},
+    "floor": 2
+  },
+  "panorama_26542791_376C_5498_4192_58BAF0894027": {
+    "name": "Floor 2 corner by the stairwell door",
+    "mention": "the floor 2 corner by the stairwell door",
+    "ways": {"panorama_26541872_376C_7B98_41C9_28351119F49F": "hall", "panorama_265DF2A4_3774_CCB8_41C8_B5E83777B325": "doorway"},
+    "floor": 2,
+    "ro": {"name": "Colțul de lângă ușa casei scării, etajul 2", "mention": "colțul de lângă ușa casei scării, etajul 2"}
+  },
+  "panorama_2655D570_376D_D598_4185_4E7C28B81A85": {
+    "ways": {"panorama_26543A53_376C_DF98_418B_2181E7AD094C": "hall", "panorama_26541872_376C_7B98_41C9_28351119F49F": "hall", "panorama_26541438_376D_CB88_41C4_958940F4E7AA": "hall"},
+    "floor": 2
+  },
+  "panorama_26541438_376D_CB88_41C4_958940F4E7AA": {
+    "ways": {"panorama_2655D570_376D_D598_4185_4E7C28B81A85": "hall", "panorama_2655F303_376D_CD78_4194_F0640ED97369": "hall"},
+    "floor": 2
+  },
+  "panorama_2655F303_376D_CD78_4194_F0640ED97369": {
+    "ways": {"panorama_26541D49_376C_F588_41B4_467670670F4A": "hall", "panorama_26540F13_376C_5598_41BF_723B4EAEF070": "hall", "panorama_26541438_376D_CB88_41C4_958940F4E7AA": "hall"},
+    "floor": 2
+  },
+  "panorama_2654607E_376C_4B88_41C7_E072BD256DE6": {
+    "ways": {"panorama_26541D49_376C_F588_41B4_467670670F4A": "hall", "panorama_26540F13_376C_5598_41BF_723B4EAEF070": "hall"},
+    "floor": 2
+  },
+  "panorama_26540F13_376C_5598_41BF_723B4EAEF070": {
+    "ways": {"panorama_2655F303_376D_CD78_4194_F0640ED97369": "hall", "panorama_2654607E_376C_4B88_41C7_E072BD256DE6": "hall"},
+    "floor": 2
+  },
+  "panorama_2654ECA2_376C_54B8_41AE_F48878DE3CBC": {
+    "ways": {"panorama_26541872_376C_7B98_41C9_28351119F49F": "hall", "panorama_26542BAC_376C_3C88_41BB_ED26A50FCB1C": "hall"},
+    "floor": 2
+  },
+  "panorama_26542BAC_376C_3C88_41BB_ED26A50FCB1C": {
+    "ways": {"panorama_2654ECA2_376C_54B8_41AE_F48878DE3CBC": "hall", "panorama_26543A53_376C_DF98_418B_2181E7AD094C": "hall", "panorama_2654E8F8_376C_FC88_41C4_7E9306C57EDA": "hall"},
+    "floor": 2
+  },
+  "panorama_26543A53_376C_DF98_418B_2181E7AD094C": {
+    "ways": {"panorama_26542BAC_376C_3C88_41BB_ED26A50FCB1C": "hall", "panorama_2655D570_376D_D598_4185_4E7C28B81A85": "hall"},
+    "floor": 2
+  },
+  "panorama_2654E8F8_376C_FC88_41C4_7E9306C57EDA": {
+    "ways": {"panorama_26541872_376C_7B98_41C9_28351119F49F": "hall", "panorama_26542BAC_376C_3C88_41BB_ED26A50FCB1C": "hall"},
+    "floor": 2
+  },
+  "panorama_265407AF_376C_D488_41A9_0856DC673038": {
+    "name": "Floor 3 corner by the stairwell door",
+    "mention": "the floor 3 corner by the stairwell door",
+    "ways": {"panorama_265DA107_3774_CD78_41B2_A7E353F09104": "doorway", "panorama_26543656_376C_3798_41C3_D656047900D4": "hall"},
+    "floor": 3,
+    "ro": {"name": "Colțul de lângă ușa casei scării, etajul 3", "mention": "colțul de lângă ușa casei scării, etajul 3"}
+  },
+  "panorama_26543656_376C_3798_41C3_D656047900D4": {
+    "ways": {"panorama_2654150B_376C_5588_41C8_A466D1457517": "hall", "panorama_265407AF_376C_D488_41A9_0856DC673038": "hall", "panorama_265C08C1_3774_5CF8_41A9_6081EBABA68A": "hall", "panorama_265BA236_376C_4F98_41BC_D0CABCF4FD9E": "hall"},
+    "floor": 3
+  },
+  "panorama_2654150B_376C_5588_41C8_A466D1457517": {
+    "ways": {"panorama_26543656_376C_3798_41C3_D656047900D4": "hall", "panorama_265423A3_376C_4CB8_41B8_583E1CAC4F1F": "hall"},
+    "floor": 3
+  },
+  "panorama_265423A3_376C_4CB8_41B8_583E1CAC4F1F": {
+    "ways": {"panorama_265BA236_376C_4F98_41BC_D0CABCF4FD9E": "hall", "panorama_2654150B_376C_5588_41C8_A466D1457517": "hall"},
+    "floor": 3
+  },
+  "panorama_265BA236_376C_4F98_41BC_D0CABCF4FD9E": {
+    "ways": {"panorama_265BB10D_376C_4D8B_41BB_BDBBC7E711F7": "hall", "panorama_26543656_376C_3798_41C3_D656047900D4": "hall", "panorama_265423A3_376C_4CB8_41B8_583E1CAC4F1F": "hall"},
+    "floor": 3
+  },
+  "panorama_265BB10D_376C_4D8B_41BB_BDBBC7E711F7": {
+    "name": "Floor 3 atrium balcony",
+    "mention": "the floor 3 atrium balcony",
+    "ways": {"panorama_265BAFB4_376C_3498_41B2_050841E3CA5A": "hall", "panorama_265BA236_376C_4F98_41BC_D0CABCF4FD9E": "hall"},
+    "floor": 3,
+    "ro": {"name": "Balconul atriumului de la etajul 3", "mention": "balconul atriumului de la etajul 3"}
+  },
+  "panorama_265BAFB4_376C_3498_41B2_050841E3CA5A": {
+    "ways": {"panorama_265BB10D_376C_4D8B_41BB_BDBBC7E711F7": "hall", "panorama_265C5E7E_376B_D788_41CA_4F9A478A1A57": "hall", "panorama_265C6B53_376B_DD98_41B8_8F78311318C6": "hall"},
+    "floor": 3
+  },
+  "panorama_265C5E7E_376B_D788_41CA_4F9A478A1A57": {
+    "ways": {"panorama_265BAFB4_376C_3498_41B2_050841E3CA5A": "hall", "panorama_265C3D00_376B_F578_41B8_7E313B6EDD92": "hall"},
+    "floor": 3
+  },
+  "panorama_265C3D00_376B_F578_41B8_7E313B6EDD92": {
+    "ways": {"panorama_265C6B53_376B_DD98_41B8_8F78311318C6": "hall", "panorama_265C5E7E_376B_D788_41CA_4F9A478A1A57": "hall"},
+    "floor": 3
+  },
+  "panorama_265C6B53_376B_DD98_41B8_8F78311318C6": {
+    "ways": {"panorama_265BAFB4_376C_3498_41B2_050841E3CA5A": "hall", "panorama_265C3D00_376B_F578_41B8_7E313B6EDD92": "hall", "panorama_265C4A0A_3774_3F88_4173_DA75566A75BC": "hall", "panorama_265CE745_3774_75F8_41BD_1C05841E2DD6": "corridor"},
+    "floor": 3
+  },
+  "panorama_265C4A0A_3774_3F88_4173_DA75566A75BC": {
+    "ways": {"panorama_265C6B53_376B_DD98_41B8_8F78311318C6": "hall", "panorama_265C08C1_3774_5CF8_41A9_6081EBABA68A": "hall"},
+    "floor": 3
+  },
+  "panorama_265C08C1_3774_5CF8_41A9_6081EBABA68A": {
+    "ways": {"panorama_265C4A0A_3774_3F88_4173_DA75566A75BC": "hall", "panorama_26543656_376C_3798_41C3_D656047900D4": "hall"},
+    "floor": 3
+  },
+  "panorama_265CE745_3774_75F8_41BD_1C05841E2DD6": {
+    "name": "Floor 3 lift corridor",
+    "mention": "the floor 3 lift corridor",
+    "ways": {"panorama_265C6B53_376B_DD98_41B8_8F78311318C6": "corridor", "panorama_265CC5EB_3774_5488_4199_3F9643900415": "doorway"},
+    "floor": 3,
+    "ro": {"name": "Culoarul lifturilor de la etajul 3", "mention": "culoarul lifturilor de la etajul 3"}
+  },
+  "panorama_265CC5EB_3774_5488_4199_3F9643900415": {
+    "ways": {"panorama_265CE745_3774_75F8_41BD_1C05841E2DD6": "doorway", "panorama_265D8202_3774_CF78_41C3_FA02E12EFCB9": "into_room", "panorama_265DFCB8_3774_5488_41C1_16FDFC67F545": "hall", "panorama_265CC4A2_3774_34B8_41CB_23ECC35F5A79": "corridor"},
+    "floor": 3
+  },
+  "panorama_265CC4A2_3774_34B8_41CB_23ECC35F5A79": {
+    "ways": {"panorama_265C0349_3774_CD88_41AE_06759E1BD31E": "into_room", "panorama_265C60B5_3774_CC98_41BA_F4C4D93A9251": "corridor", "panorama_265C6DC0_3774_34F8_419F_9E2AA1B3FFE0": "hall", "panorama_265CC5EB_3774_5488_4199_3F9643900415": "corridor"},
+    "floor": 3
+  },
+  "panorama_265C0349_3774_CD88_41AE_06759E1BD31E": {
+    "ways": {"panorama_265CC4A2_3774_34B8_41CB_23ECC35F5A79": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_265D8202_3774_CF78_41C3_FA02E12EFCB9": {
+    "ways": {"panorama_265CC5EB_3774_5488_4199_3F9643900415": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_265C60B5_3774_CC98_41BA_F4C4D93A9251": {
+    "ways": {"panorama_265D68E5_3774_5CB8_41A6_6A53FD75BE59": "doorway", "panorama_265C4F27_3774_D5B8_41C5_6D1FDCCAB6E2": "hall", "panorama_265CC4A2_3774_34B8_41CB_23ECC35F5A79": "corridor"},
+    "floor": 3
+  },
+  "panorama_265C4F27_3774_D5B8_41C5_6D1FDCCAB6E2": {
+    "ways": {"panorama_265C6DC0_3774_34F8_419F_9E2AA1B3FFE0": "hall", "panorama_265C60B5_3774_CC98_41BA_F4C4D93A9251": "hall"},
+    "floor": 3
+  },
+  "panorama_265C6DC0_3774_34F8_419F_9E2AA1B3FFE0": {
+    "ways": {"panorama_265C4F27_3774_D5B8_41C5_6D1FDCCAB6E2": "hall", "panorama_265DFCB8_3774_5488_41C1_16FDFC67F545": "hall", "panorama_265CC4A2_3774_34B8_41CB_23ECC35F5A79": "hall"},
+    "floor": 3
+  },
+  "panorama_265DFCB8_3774_5488_41C1_16FDFC67F545": {
+    "ways": {"panorama_265C6DC0_3774_34F8_419F_9E2AA1B3FFE0": "hall", "panorama_265CC5EB_3774_5488_4199_3F9643900415": "hall"},
+    "floor": 3
+  },
+  "panorama_265DCB5E_3774_7D88_41C6_739E1B5680FD": {
+    "ways": {"panorama_265C99FD_3774_7C88_4179_9A2348C471C2": "doorway", "panorama_265CB2E0_3775_CCB8_4197_64DFBD129056": "into_room", "panorama_265C9ECF_3774_7488_41C4_4110C0BF4DFE": "into_room", "panorama_265D69D4_3774_5C98_41B7_77117B8522B3": "corridor"},
+    "floor": 4
+  },
+  "panorama_265D69D4_3774_5C98_41B7_77117B8522B3": {
+    "ways": {"panorama_265C35B5_3775_F498_41BC_245B529D432F": "hall", "panorama_265DCB5E_3774_7D88_41C6_739E1B5680FD": "corridor", "panorama_265DA867_3774_3BB8_4186_50CA527748FC": "corridor"},
+    "floor": 4
+  },
+  "panorama_265DA867_3774_3BB8_4186_50CA527748FC": {
+    "ways": {"panorama_265D69D4_3774_5C98_41B7_77117B8522B3": "corridor", "panorama_265CC03B_3774_4B88_4195_6E43A1A353BC": "into_room", "panorama_265CFD75_3774_5598_41C4_08A24B13BB31": "doorway", "panorama_265C86FF_3775_D488_4174_BFA5B6AE816B": "hall"},
+    "floor": 4
+  },
+  "panorama_265C86FF_3775_D488_4174_BFA5B6AE816B": {
+    "ways": {"panorama_265C35B5_3775_F498_41BC_245B529D432F": "hall", "panorama_265CB44F_3775_CB88_4190_54EEDB32F9F0": "hall", "panorama_265DA867_3774_3BB8_4186_50CA527748FC": "hall"},
+    "floor": 4
+  },
+  "panorama_265C35B5_3775_F498_41BC_245B529D432F": {
+    "ways": {"panorama_265C86FF_3775_D488_4174_BFA5B6AE816B": "hall", "panorama_265CB44F_3775_CB88_4190_54EEDB32F9F0": "hall", "panorama_265D69D4_3774_5C98_41B7_77117B8522B3": "hall"},
+    "floor": 4
+  },
+  "panorama_265CB44F_3775_CB88_4190_54EEDB32F9F0": {
+    "ways": {"panorama_265C35B5_3775_F498_41BC_245B529D432F": "hall", "panorama_265C86FF_3775_D488_4174_BFA5B6AE816B": "hall"},
+    "floor": 4
+  },
+  "panorama_265CB2E0_3775_CCB8_4197_64DFBD129056": {
+    "ways": {"panorama_265DCB5E_3774_7D88_41C6_739E1B5680FD": "out_of_room", "panorama_265C8189_3774_4C88_41B5_28951D679BFB": "hall"},
+    "floor": 4
+  },
+  "panorama_265C8189_3774_4C88_41B5_28951D679BFB": {
+    "ways": {"panorama_265CB2E0_3775_CCB8_4197_64DFBD129056": "hall"},
+    "floor": 4
+  },
+  "panorama_265CC03B_3774_4B88_4195_6E43A1A353BC": {
+    "ways": {"panorama_265DA867_3774_3BB8_4186_50CA527748FC": "out_of_room"},
+    "floor": 4
+  },
+  "panorama_265C9ECF_3774_7488_41C4_4110C0BF4DFE": {
+    "ways": {"panorama_265DCB5E_3774_7D88_41C6_739E1B5680FD": "out_of_room"},
+    "floor": 4
+  },
+  "panorama_265CFD75_3774_5598_41C4_08A24B13BB31": {
+    "name": "Floor 4 lift corridor",
+    "mention": "the floor 4 lift corridor",
+    "ways": {"panorama_265DA867_3774_3BB8_4186_50CA527748FC": "doorway", "panorama_265F7C0B_3774_3B88_41CA_578EF92BA954": "corridor"},
+    "floor": 4,
+    "ro": {"name": "Culoarul lifturilor de la etajul 4", "mention": "culoarul lifturilor de la etajul 4"}
+  },
+  "panorama_265F7C0B_3774_3B88_41CA_578EF92BA954": {
+    "ways": {"panorama_265C6840_3774_DBF8_41A6_6BE1A41E7024": "hall", "panorama_265C8EE0_3777_F4B8_419F_EE104082AFE4": "hall", "panorama_265CFD75_3774_5598_41C4_08A24B13BB31": "corridor", "panorama_265C5AA6_3774_DCB8_41C6_7F87E8B8FBB0": "hall"},
+    "floor": 4
+  },
+  "panorama_265C5AA6_3774_DCB8_41C6_7F87E8B8FBB0": {
+    "ways": {"panorama_265F898B_3774_FC88_41C6_577B89A9A655": "hall", "panorama_265F7C0B_3774_3B88_41CA_578EF92BA954": "hall"},
+    "floor": 4
+  },
+  "panorama_265F898B_3774_FC88_41C6_577B89A9A655": {
+    "ways": {"panorama_265C6840_3774_DBF8_41A6_6BE1A41E7024": "hall", "panorama_265C5AA6_3774_DCB8_41C6_7F87E8B8FBB0": "hall"},
+    "floor": 4
+  },
+  "panorama_265C6840_3774_DBF8_41A6_6BE1A41E7024": {
+    "ways": {"panorama_265F898B_3774_FC88_41C6_577B89A9A655": "hall", "panorama_265F870C_3774_3588_41C7_1D9B95FA24C1": "hall", "panorama_265F7C0B_3774_3B88_41CA_578EF92BA954": "hall"},
+    "floor": 4
+  },
+  "panorama_265F870C_3774_3588_41C7_1D9B95FA24C1": {
+    "name": "Floor 4 atrium balcony",
+    "mention": "the floor 4 atrium balcony",
+    "ways": {"panorama_265C6840_3774_DBF8_41A6_6BE1A41E7024": "hall", "panorama_265FE5DD_3774_5488_41BC_EE799E370D09": "hall"},
+    "floor": 4,
+    "ro": {"name": "Balconul atriumului de la etajul 4", "mention": "balconul atriumului de la etajul 4"}
+  },
+  "panorama_265FE5DD_3774_5488_41BC_EE799E370D09": {
+    "ways": {"panorama_265F870C_3774_3588_41C7_1D9B95FA24C1": "hall", "panorama_265F750C_3774_7588_41C2_C65A7CD92C7E": "hall", "panorama_265C714F_3777_CD88_41C7_49CEC2129562": "hall"},
+    "floor": 4
+  },
+  "panorama_265F750C_3774_7588_41C2_C65A7CD92C7E": {
+    "ways": {"panorama_265FE5DD_3774_5488_41BC_EE799E370D09": "hall", "panorama_265FD424_3774_4BB8_4112_3109CBB1EFE0": "hall", "panorama_265C714F_3777_CD88_41C7_49CEC2129562": "hall"},
+    "floor": 4
+  },
+  "panorama_265FD424_3774_4BB8_4112_3109CBB1EFE0": {
+    "ways": {"panorama_265F750C_3774_7588_41C2_C65A7CD92C7E": "hall"},
+    "floor": 4
+  },
+  "panorama_265C714F_3777_CD88_41C7_49CEC2129562": {
+    "ways": {"panorama_265FE5DD_3774_5488_41BC_EE799E370D09": "hall", "panorama_265F750C_3774_7588_41C2_C65A7CD92C7E": "hall", "panorama_265CA008_3777_CB88_41BB_1ADA57ED0AAF": "hall", "panorama_265C8EE0_3777_F4B8_419F_EE104082AFE4": "hall"},
+    "floor": 4
+  },
+  "panorama_265CA008_3777_CB88_41BB_1ADA57ED0AAF": {
+    "name": "Floor 4 corner by the stairwell door",
+    "mention": "the floor 4 corner by the stairwell door",
+    "ways": {"panorama_265C714F_3777_CD88_41C7_49CEC2129562": "hall", "panorama_265D9F5B_3774_3588_4186_572114118AF7": "doorway"},
+    "floor": 4,
+    "ro": {"name": "Colțul de lângă ușa casei scării, etajul 4", "mention": "colțul de lângă ușa casei scării, etajul 4"}
+  },
+  "panorama_265C8EE0_3777_F4B8_419F_EE104082AFE4": {
+    "ways": {"panorama_265C714F_3777_CD88_41C7_49CEC2129562": "hall", "panorama_265CCDA5_3777_D4B8_41C6_FB982C389F5B": "hall", "panorama_265F7C0B_3774_3B88_41CA_578EF92BA954": "hall"},
+    "floor": 4
+  },
+  "panorama_265CCDA5_3777_D4B8_41C6_FB982C389F5B": {
+    "ways": {"panorama_265C8EE0_3777_F4B8_419F_EE104082AFE4": "hall"},
+    "floor": 4
+  },
+  "panorama_265C99FD_3774_7C88_4179_9A2348C471C2": {
+    "name": "Floor 4 landing, study-side stairs",
+    "mention": "the floor 4 landing, study-side stairs",
+    "ways": {"panorama_265D68E5_3774_5CB8_41A6_6A53FD75BE59": "stairs_down", "panorama_265DCB5E_3774_7D88_41C6_739E1B5680FD": "doorway"},
+    "floor": 4,
+    "ro": {"name": "Palierul de la etajul 4, scara dinspre sălile de studiu", "mention": "palierul de la etajul 4, scara dinspre sălile de studiu"}
+  },
+  "panorama_265D68E5_3774_5CB8_41A6_6A53FD75BE59": {
+    "name": "Floor 3 landing, study-side stairs",
+    "mention": "the floor 3 landing, study-side stairs",
+    "ways": {"panorama_265CA779_3774_3588_41AC_86DBBC979FE0": "stairs_down", "panorama_265C60B5_3774_CC98_41BA_F4C4D93A9251": "doorway", "panorama_265C99FD_3774_7C88_4179_9A2348C471C2": "stairs_up"},
+    "floor": 3,
+    "ro": {"name": "Palierul de la etajul 3, scara dinspre sălile de studiu", "mention": "palierul de la etajul 3, scara dinspre sălile de studiu"}
+  },
+  "panorama_265CA779_3774_3588_41AC_86DBBC979FE0": {
+    "name": "Floor 2 landing, study-side stairs",
+    "mention": "the floor 2 landing, study-side stairs",
+    "ways": {"panorama_265D68E5_3774_5CB8_41A6_6A53FD75BE59": "stairs_up", "panorama_2657D897_376F_FC98_41C9_B0D8A791B8B7": "doorway", "panorama_265C55DD_3774_D488_41A0_893F2A3E1729": "stairs_down"},
+    "floor": 2,
+    "ro": {"name": "Palierul de la etajul 2, scara dinspre sălile de studiu", "mention": "palierul de la etajul 2, scara dinspre sălile de studiu"}
+  },
+  "panorama_265C55DD_3774_D488_41A0_893F2A3E1729": {
+    "name": "Floor 1 landing, study-side stairs",
+    "mention": "the floor 1 landing, study-side stairs",
+    "ways": {"panorama_265CA779_3774_3588_41AC_86DBBC979FE0": "stairs_up", "panorama_2654D317_376C_CD98_41B6_BD4F77E7016C": "into_room"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1, scara dinspre sălile de studiu", "mention": "palierul de la etajul 1, scara dinspre sălile de studiu"}
+  },
+  "panorama_265D9467_3774_CBB8_41A6_D2D7B908DD51": {
+    "name": "Floor 1 landing, atrium-side stairs",
+    "mention": "the floor 1 landing, atrium-side stairs",
+    "ways": {"panorama_265DF2A4_3774_CCB8_41C8_B5E83777B325": "stairs_up", "panorama_2654EAFE_376C_3C88_41C0_1D162AFD02CA": "doorway"},
+    "floor": 1,
+    "ro": {"name": "Palierul de la etajul 1, scara dinspre atrium", "mention": "palierul de la etajul 1, scara dinspre atrium"}
+  },
+  "panorama_265DF2A4_3774_CCB8_41C8_B5E83777B325": {
+    "name": "Floor 2 landing, atrium-side stairs",
+    "mention": "the floor 2 landing, atrium-side stairs",
+    "ways": {"panorama_265D9467_3774_CBB8_41A6_D2D7B908DD51": "stairs_down", "panorama_265DA107_3774_CD78_41B2_A7E353F09104": "stairs_up", "panorama_26542791_376C_5498_4192_58BAF0894027": "doorway"},
+    "floor": 2,
+    "ro": {"name": "Palierul de la etajul 2, scara dinspre atrium", "mention": "palierul de la etajul 2, scara dinspre atrium"}
+  },
+  "panorama_265DA107_3774_CD78_41B2_A7E353F09104": {
+    "name": "Floor 3 landing, atrium-side stairs",
+    "mention": "the floor 3 landing, atrium-side stairs",
+    "ways": {"panorama_265DF2A4_3774_CCB8_41C8_B5E83777B325": "stairs_down", "panorama_265407AF_376C_D488_41A9_0856DC673038": "doorway", "panorama_265D9F5B_3774_3588_4186_572114118AF7": "stairs_up"},
+    "floor": 3,
+    "ro": {"name": "Palierul de la etajul 3, scara dinspre atrium", "mention": "palierul de la etajul 3, scara dinspre atrium"}
+  },
+  "panorama_265D9F5B_3774_3588_4186_572114118AF7": {
+    "name": "Floor 4 landing, atrium-side stairs",
+    "mention": "the floor 4 landing, atrium-side stairs",
+    "ways": {"panorama_265DA107_3774_CD78_41B2_A7E353F09104": "stairs_down", "panorama_265CA008_3777_CB88_41BB_1ADA57ED0AAF": "doorway"},
+    "floor": 4,
+    "ro": {"name": "Palierul de la etajul 4, scara dinspre atrium", "mention": "palierul de la etajul 4, scara dinspre atrium"}
+  },
+  "panorama_02B3D755_4A39_AF81_4191_90E6D77E29D2": {
+    "ways": {"panorama_02CCF98D_1303_B428_41AC_A99ED728B562": "leave_building", "panorama_0CE837AD_4A3A_AE81_41BA_1AB543088FE6": "stairs_up"},
+    "floor": 0
+  },
+  "panorama_0CE837AD_4A3A_AE81_41BA_1AB543088FE6": {
+    "name": "CeL floor 4 landing",
+    "mention": "the CeL floor 4 landing",
+    "ways": {"panorama_02B3D755_4A39_AF81_4191_90E6D77E29D2": "stairs_down", "panorama_0CC65AD5_4A3A_6681_41CB_A8F72E54BE8C": "doorway"},
+    "floor": 4,
+    "ro": {"name": "Palierul de la etajul 4 (CeL)", "mention": "palierul de la etajul 4 (CeL)"}
+  },
+  "panorama_0CC65AD5_4A3A_6681_41CB_A8F72E54BE8C": {
+    "ways": {"panorama_0CDBBC4B_4A39_A181_41C8_4B8C3FB65EE8": "corridor", "panorama_0CE837AD_4A3A_AE81_41BA_1AB543088FE6": "doorway", "panorama_0CD55BE1_4A3B_A681_41A7_61405706F06F": "into_room"},
+    "floor": 4
+  },
+  "panorama_0CD55BE1_4A3B_A681_41A7_61405706F06F": {
+    "ways": {"panorama_0CC1A1C6_4A3A_A283_41B5_F51A9A4BA547": "hall", "panorama_0CC65AD5_4A3A_6681_41CB_A8F72E54BE8C": "out_of_room"},
+    "floor": 4
+  },
+  "panorama_0CC1A1C6_4A3A_A283_41B5_F51A9A4BA547": {
+    "ways": {"panorama_0CD55BE1_4A3B_A681_41A7_61405706F06F": "hall"},
+    "floor": 4
+  },
+  "panorama_0CDBBC4B_4A39_A181_41C8_4B8C3FB65EE8": {
+    "name": "CeL floor 4 corridor at C403",
+    "mention": "the CeL floor 4 corridor at C403",
+    "ways": {"panorama_0C2F4B9E_4A26_6683_41D0_E35A2B1FF332": "into_room", "panorama_0CC65AD5_4A3A_6681_41CB_A8F72E54BE8C": "corridor"},
+    "floor": 4,
+    "ro": {"name": "Culoarul de la etajul 4, în dreptul C403 (CeL)", "mention": "culoarul de la etajul 4, în dreptul C403 (CeL)"}
+  },
+  "panorama_0C2F4B9E_4A26_6683_41D0_E35A2B1FF332": {
+    "ways": {"panorama_0CDBBC4B_4A39_A181_41C8_4B8C3FB65EE8": "out_of_room", "panorama_0C25A24C_4A26_E187_4194_A411E551C502": "hall", "panorama_0CD6F064_4A27_E187_41C9_DA74C0A4581F": "hall"},
+    "floor": 4
+  },
+  "panorama_0C25A24C_4A26_E187_4194_A411E551C502": {
+    "ways": {"panorama_0C2F4B9E_4A26_6683_41D0_E35A2B1FF332": "hall", "panorama_0CD6F064_4A27_E187_41C9_DA74C0A4581F": "hall"},
+    "floor": 4
+  },
+  "panorama_0CD6F064_4A27_E187_41C9_DA74C0A4581F": {
+    "ways": {"panorama_0C2F4B9E_4A26_6683_41D0_E35A2B1FF332": "hall"},
+    "floor": 4
+  },
+  "panorama_2BF79BAD_36D4_3C88_41C5_2DB7DF09E048": {
+    "ways": {"panorama_02DA0F9D_1301_EC28_41A3_4FFDBBBE5A25": "leave_building", "panorama_2C0526CA_36DC_5488_41B2_AAD899B02FCF": "hall", "panorama_2BF6FD41_36D4_D5F8_41CA_7D5E3D117BC4": "hall", "panorama_2BF706E0_36D4_54B8_41B1_93456598AD59": "stairs_up"},
+    "floor": 0
+  },
+  "panorama_2BF6FD41_36D4_D5F8_41CA_7D5E3D117BC4": {
+    "name": "Lower hall at the foot of the side stairs",
+    "mention": "the lower hall at the foot of the side stairs",
+    "ways": {"panorama_2BF79BAD_36D4_3C88_41C5_2DB7DF09E048": "hall", "panorama_2BF6BE66_36D4_F7B8_41C6_35B2979733D7": "hall", "panorama_2BF7C933_36D4_5D98_41C7_412822C738B9": "stairs_up"},
+    "floor": 0,
+    "ro": {"name": "Holul de jos, la baza scării laterale", "mention": "holul de jos, la baza scării laterale"}
+  },
+  "panorama_2BF6BE66_36D4_F7B8_41C6_35B2979733D7": {
+    "ways": {"panorama_2C0526CA_36DC_5488_41B2_AAD899B02FCF": "corridor", "panorama_2BF6FD41_36D4_D5F8_41CA_7D5E3D117BC4": "hall"},
+    "floor": 0
+  },
+  "panorama_2C0C23DB_36D5_CC88_41B9_C966E447ACE5": {
+    "name": "Foyer outside the Auditorium doors",
+    "mention": "the foyer outside the Auditorium doors",
+    "ways": {"panorama_2BF706E0_36D4_54B8_41B1_93456598AD59": "hall", "panorama_173B01F0_36D4_CC98_4187_39DAE8E76BF6": "into_room"},
+    "ro": {"name": "Foaierul din fața ușilor Auditoriumului", "mention": "foaierul din fața ușilor Auditoriumului"}
+  },
+  "panorama_2BF706E0_36D4_54B8_41B1_93456598AD59": {
+    "name": "Foyer at the top of the main steps",
+    "mention": "the foyer at the top of the main steps",
+    "ways": {"panorama_2BF7C933_36D4_5D98_41C7_412822C738B9": "hall", "panorama_2BF79BAD_36D4_3C88_41C5_2DB7DF09E048": "stairs_down", "panorama_2BF7D7CD_36D4_7488_41BA_B79C9B08B17E": "hall", "panorama_2C0C23DB_36D5_CC88_41B9_C966E447ACE5": "hall"},
+    "ro": {"name": "Foaierul din capul scărilor principale", "mention": "foaierul din capul scărilor principale"}
+  },
+  "panorama_173B01F0_36D4_CC98_4187_39DAE8E76BF6": {
+    "ways": {"panorama_2C0B5B93_36D4_5C98_41C6_32F2BFBE7DD6": "hall", "panorama_2C0C23DB_36D5_CC88_41B9_C966E447ACE5": "out_of_room"}
+  },
+  "panorama_2C0B5B93_36D4_5C98_41C6_32F2BFBE7DD6": {
+    "ways": {"panorama_2C0E2D88_36D4_7488_41A2_8D9383BAE9A5": "hall", "panorama_2C0F008B_36D4_4C88_41AF_3A1F0F3737C0": "hall", "panorama_2C0D2127_36D5_CDB8_41B8_C62BF95015BE": "hall", "panorama_173B01F0_36D4_CC98_4187_39DAE8E76BF6": "hall"}
+  },
+  "panorama_2C0E2D88_36D4_7488_41A2_8D9383BAE9A5": {
+    "ways": {"panorama_2C0B5B93_36D4_5C98_41C6_32F2BFBE7DD6": "hall"}
+  },
+  "panorama_2C0F008B_36D4_4C88_41AF_3A1F0F3737C0": {
+    "ways": {"panorama_2C0B5B93_36D4_5C98_41C6_32F2BFBE7DD6": "hall"}
+  },
+  "panorama_2C0D2127_36D5_CDB8_41B8_C62BF95015BE": {
+    "ways": {"panorama_2C0B5B93_36D4_5C98_41C6_32F2BFBE7DD6": "hall", "panorama_2C0D81E3_36D5_CCB8_41C7_94B13230AA0B": "hall"}
+  },
+  "panorama_2C0D81E3_36D5_CCB8_41C7_94B13230AA0B": {
+    "ways": {"panorama_2C0DA303_36D5_CD78_41C1_856D19BEECA8": "hall", "panorama_2C0D2127_36D5_CDB8_41B8_C62BF95015BE": "hall"}
+  },
+  "panorama_2C0DA303_36D5_CD78_41C1_856D19BEECA8": {
+    "ways": {"panorama_2C0D81E3_36D5_CCB8_41C7_94B13230AA0B": "hall"}
+  },
+  "panorama_2BF7D7CD_36D4_7488_41BA_B79C9B08B17E": {
+    "ways": {"panorama_2BF706E0_36D4_54B8_41B1_93456598AD59": "hall"}
+  },
+  "panorama_2BF7C933_36D4_5D98_41C7_412822C738B9": {
+    "name": "Foyer, at the side stairs",
+    "mention": "the foyer, at the side stairs",
+    "ways": {"panorama_2BF6FD41_36D4_D5F8_41CA_7D5E3D117BC4": "stairs_down", "panorama_2BF706E0_36D4_54B8_41B1_93456598AD59": "hall", "panorama_2BF69F72_36D4_D598_41C4_81EFC03B91BE": "stairs_up"},
+    "ro": {"name": "Foaierul, la scara laterală", "mention": "foaierul, la scara laterală"}
+  },
+  "panorama_2BF69F72_36D4_D598_41C4_81EFC03B91BE": {
+    "ways": {"panorama_2BF651D2_36D4_4C98_417F_5CA02A91158B": "hall", "panorama_2BFA1605_36DB_D77B_41C3_F1014352C873": "hall", "panorama_2BF7C933_36D4_5D98_41C7_412822C738B9": "stairs_down"}
+  },
+  "panorama_2BF651D2_36D4_4C98_417F_5CA02A91158B": {
+    "ways": {"panorama_2BF5A3BB_36D4_4C8F_41AD_7D295C066E58": "hall", "panorama_2C06A569_36DC_3588_418D_2EA2B9D8F42A": "into_room", "panorama_2BF69F72_36D4_D598_41C4_81EFC03B91BE": "hall"}
+  },
+  "panorama_2BF5A3BB_36D4_4C8F_41AD_7D295C066E58": {
+    "ways": {"panorama_2BF651D2_36D4_4C98_417F_5CA02A91158B": "hall", "panorama_2BF614E7_36D4_34B8_41B3_8E65EAF62D5B": "hall"}
+  },
+  "panorama_2BF614E7_36D4_34B8_41B3_8E65EAF62D5B": {
+    "ways": {"panorama_2BF5A3BB_36D4_4C8F_41AD_7D295C066E58": "hall", "panorama_2BFA1605_36DB_D77B_41C3_F1014352C873": "hall"}
+  },
+  "panorama_2BFA1605_36DB_D77B_41C3_F1014352C873": {
+    "name": "Gallery outside Amfiteatru 1 and 2",
+    "mention": "the gallery outside Amfiteatru 1 and 2",
+    "ways": {"panorama_2BF69F72_36D4_D598_41C4_81EFC03B91BE": "hall", "panorama_2BF614E7_36D4_34B8_41B3_8E65EAF62D5B": "hall", "panorama_2C056E1A_36DC_7788_41CB_5EE2D8042CEA": "into_room", "panorama_2BFACCAB_36DC_5488_41C8_886E1444D536": "into_room"},
+    "ro": {"name": "Galeria din fața Amfiteatrelor 1 și 2", "mention": "galeria din fața Amfiteatrelor 1 și 2"}
+  },
+  "panorama_2BF9F769_36DB_F588_41A2_6D123521DACF": {
+    "ways": {"panorama_2BFA68FC_36DB_DC88_41C7_F22209AD51C8": "hall", "panorama_2BFACCAB_36DC_5488_41C8_886E1444D536": "hall"}
+  },
+  "panorama_2BFA68FC_36DB_DC88_41C7_F22209AD51C8": {
+    "ways": {"panorama_2BF9F769_36DB_F588_41A2_6D123521DACF": "hall", "panorama_2BFA7AA1_36DC_3CB8_41AB_A7676E4DA3AD": "hall"}
+  },
+  "panorama_2BFA7AA1_36DC_3CB8_41AB_A7676E4DA3AD": {
+    "ways": {"panorama_2BFA68FC_36DB_DC88_41C7_F22209AD51C8": "hall", "panorama_2BFA1605_36DB_D77B_41C3_F1014352C873": "out_of_room"}
+  },
+  "panorama_2BFACCAB_36DC_5488_41C8_886E1444D536": {
+    "ways": {"panorama_2BF9F769_36DB_F588_41A2_6D123521DACF": "hall", "panorama_2BFA1605_36DB_D77B_41C3_F1014352C873": "out_of_room"}
+  },
+  "panorama_2C056E1A_36DC_7788_41CB_5EE2D8042CEA": {
+    "ways": {"panorama_2C050F9F_36DC_5488_41A8_473FC9F39509": "hall", "panorama_2BFA1605_36DB_D77B_41C3_F1014352C873": "out_of_room"}
+  },
+  "panorama_2C050F9F_36DC_5488_41A8_473FC9F39509": {
+    "ways": {"panorama_2C05C154_36DC_CD98_41C6_6FCEA8385FC7": "hall", "panorama_2C056E1A_36DC_7788_41CB_5EE2D8042CEA": "hall"}
+  },
+  "panorama_2C05C154_36DC_CD98_41C6_6FCEA8385FC7": {
+    "ways": {"panorama_2C05F2A6_36DC_CCB8_41B6_B310C29459C3": "hall", "panorama_2C050F9F_36DC_5488_41A8_473FC9F39509": "hall"}
+  },
+  "panorama_2C05F2A6_36DC_CCB8_41B6_B310C29459C3": {
+    "ways": {"panorama_2C05C154_36DC_CD98_41C6_6FCEA8385FC7": "hall", "panorama_2C0563D6_36DC_CC98_41C0_D93D44503F93": "hall"}
+  },
+  "panorama_2C0563D6_36DC_CC98_41C0_D93D44503F93": {
+    "ways": {"panorama_2C05F2A6_36DC_CCB8_41B6_B310C29459C3": "hall", "panorama_2BFA1605_36DB_D77B_41C3_F1014352C873": "out_of_room"}
+  },
+  "panorama_2C06A569_36DC_3588_418D_2EA2B9D8F42A": {
+    "ways": {"panorama_2BF651D2_36D4_4C98_417F_5CA02A91158B": "out_of_room"}
+  },
+  "panorama_2C0526CA_36DC_5488_41B2_AAD899B02FCF": {
+    "name": "Lower hall left of the main steps",
+    "mention": "the lower hall left of the main steps",
+    "ways": {"panorama_2BF79BAD_36D4_3C88_41C5_2DB7DF09E048": "hall", "panorama_2BF6BE66_36D4_F7B8_41C6_35B2979733D7": "corridor"},
+    "floor": 0,
+    "ro": {"name": "Holul de jos, în stânga scărilor principale", "mention": "holul de jos, în stânga scărilor principale"}
+  },
+  "panorama_0B1E5E1C_4A59_E187_41CC_588D848B2678": {
+    "name": "Main entrance forecourt",
+    "mention": "the main entrance forecourt",
+    "ways": {"panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "enter_building"},
+    "ro": {"name": "Esplanada intrării principale", "mention": "esplanada intrării principale"}
+  },
+  "panorama_02CAA3E8_1301_BBE8_41A5_C5AEE2682992": {
+    "name": "Garden path by the Corp B side door",
+    "mention": "the garden path by the Corp B side door",
+    "ways": {"panorama_1815934B_39DB_CD88_41A1_B0AAF3DC67CF": "enter_building"},
+    "ro": {"name": "Aleea din grădină, la ușa laterală a Corpului B", "mention": "aleea din grădină, la ușa laterală a Corpului B"}
+  },
+  "panorama_02CBB0FE_1300_55E8_4176_13585EEB3D02": {
+    "name": "Rear lane toward Corp D",
+    "mention": "the rear lane toward Corp D",
+    "ways": {"panorama_1815934B_39DB_CD88_41A1_B0AAF3DC67CF": "enter_building"},
+    "ro": {"name": "Aleea din spate, spre Corpul D", "mention": "aleea din spate, spre Corpul D"}
+  },
+  "panorama_23DF14C3_167C_8912_41B6_3F80F4029B28": {
+    "ways": {"panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "enter_building"}
+  },
+  "panorama_224C344E_167C_8915_41B2_58C0469E10D8": {
+    "ways": {"panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "enter_building"}
+  },
+  "panorama_1819BC93_39DC_3498_4197_A1D380F1B658": {
+    "ways": {"panorama_181AF9DB_39DF_DC88_417D_99F618CA12AC": "hall", "panorama_18181BCE_39DC_5C88_41C8_0E4B3A71EF35": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_181AF9DB_39DF_DC88_417D_99F618CA12AC": {
+    "ways": {"panorama_1819BC93_39DC_3498_4197_A1D380F1B658": "hall"},
+    "floor": 3
+  },
+  "panorama_181BE701_39DF_F578_419C_4E2FC995E1B7": {
+    "ways": {"panorama_181BD417_39DF_CB98_41B8_68D25C0916C7": "hall", "panorama_1818116E_39DF_CD88_41AF_152C0A8035E8": "hall", "panorama_18184EEA_39DC_3488_41C7_F2EFF00A0FA4": "out_of_room"},
+    "floor": 3
+  },
+  "panorama_181BD417_39DF_CB98_41B8_68D25C0916C7": {
+    "ways": {"panorama_181BE701_39DF_F578_419C_4E2FC995E1B7": "hall"},
+    "floor": 3
+  },
+  "panorama_1818116E_39DF_CD88_41AF_152C0A8035E8": {
+    "ways": {"panorama_181BE701_39DF_F578_419C_4E2FC995E1B7": "hall"},
+    "floor": 3
+  },
+  "panorama_71E5AABE_52E2_BDFF_41D4_0B09116ABDD8": {
+    "name": "Display hall by the lifts",
+    "mention": "the display hall by the lifts",
+    "ways": {"panorama_181832BD_39DC_4C88_41C6_FFBD631E9088": "hall", "panorama_18184C96_39DC_D498_41C3_2ABED05ECF27": "doorway"},
+    "floor": 4,
+    "ro": {"name": "Holul cu vitrine, lângă lifturi", "mention": "holul cu vitrine, lângă lifturi"}
+  },
+  "panorama_18184C96_39DC_D498_41C3_2ABED05ECF27": {
+    "name": "Floor 4 lift lobby",
+    "mention": "the floor 4 lift lobby",
+    "ways": {"panorama_71E5AABE_52E2_BDFF_41D4_0B09116ABDD8": "doorway"},
+    "floor": 4,
+    "ro": {"name": "Holul lifturilor de la etajul 4", "mention": "holul lifturilor de la etajul 4"}
+  },
+  "panorama_18198703_39DC_D578_41C8_40F4D40A6B15": {
+    "ways": {"panorama_1819A98C_39DC_FC88_41B2_B91A7036DD57": "hall"},
+    "floor": 4
+  },
+  "panorama_181EC81E_39DC_5B88_41C5_A5884882AD4A": {
+    "ways": {"panorama_181F72E0_39DD_CCB8_41C7_C28446146C44": "hall", "panorama_181F901A_39DD_CB88_41A7_FC4EEA4F336A": "out_of_room", "panorama_181ED5B8_39DC_3488_41C5_AEB6ED875572": "hall"},
+    "floor": 6
+  },
+  "panorama_181ED5B8_39DC_3488_41C5_AEB6ED875572": {
+    "ways": {"panorama_181EC81E_39DC_5B88_41C5_A5884882AD4A": "hall"},
+    "floor": 6
+  },
+  "panorama_181F72E0_39DD_CCB8_41C7_C28446146C44": {
+    "ways": {"panorama_181EC81E_39DC_5B88_41C5_A5884882AD4A": "hall"},
+    "floor": 6
+  },
+  "panorama_181F9A12_39DD_DF98_41C1_4A811B15EB03": {
+    "ways": {"panorama_181FCD0D_39DD_F588_41B7_E69BCBEDB5FB": "hall"}
+  },
+  "panorama_181FB3EC_39DC_4C88_41C5_0EB185F18926": {
+    "name": "AC dean's office",
+    "mention": "the AC dean's office",
+    "ways": {"panorama_181E709B_39DC_4C88_41A0_4D7E03FE44BC": "into_room", "panorama_18153971_39DB_DD98_41CA_0B75E3EDCE48": "out_of_room"},
+    "floor": 0,
+    "ro": {"name": "Decanatul AC", "mention": "decanatul AC"}
+  },
+  "panorama_181E709B_39DC_4C88_41A0_4D7E03FE44BC": {
+    "ways": {"panorama_181FB3EC_39DC_4C88_41C5_0EB185F18926": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_181E6E59_39DC_7788_41B2_690A78A5E8E4": {
+    "name": "AC secretariat office",
+    "mention": "the AC secretariat office",
+    "ways": {"panorama_1812FF55_39DC_5598_418C_12F8A481A7D5": "out_of_room"},
+    "floor": 0,
+    "ro": {"name": "Secretariatul AC", "mention": "secretariatul AC"}
+  },
+  "panorama_18137509_39DC_7588_4193_9ADE649F33AD": {
+    "name": "Main hall, middle",
+    "mention": "the main hall, middle",
+    "ways": {"panorama_1813221F_39DC_4F88_41C2_5DEE6ABF27D0": "hall", "panorama_3231A050_3C40_69E7_4176_995FCB5564CA": "hall", "panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "hall"},
+    "floor": 0,
+    "ro": {"name": "Holul principal, mijloc", "mention": "holul principal, mijloc"}
+  },
+  "panorama_1813221F_39DC_4F88_41C2_5DEE6ABF27D0": {
+    "name": "Main hall by the staircase doors",
+    "mention": "the main hall by the staircase doors",
+    "ways": {"panorama_18137509_39DC_7588_4193_9ADE649F33AD": "hall", "panorama_18130AFC_39DC_3C88_4194_DB4A912171C5": "hall"},
+    "floor": 0,
+    "ro": {"name": "Holul principal, lângă ușile scării", "mention": "holul principal, lângă ușile scării"}
+  },
+  "panorama_1812FF55_39DC_5598_418C_12F8A481A7D5": {
+    "ways": {"panorama_22AE4453_3C40_A9E9_419E_50DA73DE4193": "corridor", "panorama_3231A050_3C40_69E7_4176_995FCB5564CA": "corridor", "panorama_181E6E59_39DC_7788_41B2_690A78A5E8E4": "into_room", "panorama_18130AFC_39DC_3C88_4194_DB4A912171C5": "corridor", "panorama_18136869_39DC_5B88_4172_ED32CAAB533E": "hall"},
+    "floor": 0
+  },
+  "panorama_181FCD0D_39DD_F588_41B7_E69BCBEDB5FB": {
+    "ways": {"panorama_181F9A12_39DD_DF98_41C1_4A811B15EB03": "hall"},
+    "floor": null
+  },
+  "panorama_3231A050_3C40_69E7_4176_995FCB5564CA": {
+    "ways": {"panorama_18137509_39DC_7588_4193_9ADE649F33AD": "hall", "panorama_1812FF55_39DC_5598_418C_12F8A481A7D5": "corridor", "panorama_18130AFC_39DC_3C88_4194_DB4A912171C5": "corridor"},
+    "floor": 0
+  },
+  "panorama_32E6D54B_3C40_6BF9_41B7_875203D04C18": {
+    "ways": {"panorama_3222A6FB_3C40_5699_41C3_E869CF90AEB2": "hall"},
+    "floor": 1
+  },
+  "panorama_3222A6FB_3C40_5699_41C3_E869CF90AEB2": {
+    "ways": {"panorama_32E6D54B_3C40_6BF9_41B7_875203D04C18": "hall", "panorama_32360F24_3C40_57AF_41B4_F866C479CFF6": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_3236A056_3C40_69EB_4191_DCA2FD84BB30": {
+    "ways": {"panorama_32364069_3C41_A9B9_41AD_5EEC335BD8AB": "hall", "panorama_32360F24_3C40_57AF_41B4_F866C479CFF6": "out_of_room"},
+    "floor": 1
+  },
+  "panorama_32364069_3C41_A9B9_41AD_5EEC335BD8AB": {
+    "ways": {"panorama_3236A056_3C40_69EB_4191_DCA2FD84BB30": "hall"},
+    "floor": 1
+  },
+  "panorama_32312037_3C41_A9A9_41C5_C0A23D8658E7": {
+    "name": "InfoCenter and lifts, floor 1",
+    "mention": "the InfoCenter and lifts, floor 1",
+    "ways": {"panorama_3231A044_3C41_E9EF_41C3_743B76AF490A": "doorway"},
+    "floor": 1,
+    "ro": {"name": "InfoCenter și lifturi, etajul 1", "mention": "InfoCenter și lifturi, etajul 1"}
+  },
+  "panorama_22A049D2_3C40_FAEB_41CD_A075224CBAA5": {
+    "name": "IEE dean's office",
+    "mention": "the IEE dean's office",
+    "ways": {"panorama_22AF26E9_3C40_D6B9_418B_177A3BB9A98A": "into_room", "panorama_22014CC7_3C40_DAE9_41C4_2759259E29EC": "out_of_room"},
+    "floor": 0,
+    "ro": {"name": "Decanatul IEE", "mention": "decanatul IEE"}
+  },
+  "panorama_22AF26E9_3C40_D6B9_418B_177A3BB9A98A": {
+    "ways": {"panorama_22A049D2_3C40_FAEB_41CD_A075224CBAA5": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_22AE4453_3C40_A9E9_419E_50DA73DE4193": {
+    "ways": {"panorama_1812FF55_39DC_5598_418C_12F8A481A7D5": "corridor", "panorama_22AEB178_3C40_ABA7_41C3_B05695B32E2C": "into_room", "panorama_22014CC7_3C40_DAE9_41C4_2759259E29EC": "corridor"},
+    "floor": 0
+  },
+  "panorama_22AEB178_3C40_ABA7_41C3_B05695B32E2C": {
+    "name": "IEE secretariat office",
+    "mention": "the IEE secretariat office",
+    "ways": {"panorama_22AE4453_3C40_A9E9_419E_50DA73DE4193": "out_of_room"},
+    "floor": 0,
+    "ro": {"name": "Secretariatul IEE", "mention": "secretariatul IEE"}
+  },
+  "panorama_22AE1ED4_3C40_56EF_41CD_4DA7D1446ABD": {
+    "ways": {"panorama_22ACE8BF_3C4F_BA99_41B6_B4FA5A8315BA": "hall", "panorama_22AEFC93_3C4F_D969_41C9_9A59E19ED969": "out_of_room", "panorama_22AE3B97_3C4F_FF69_41BB_D290BACBDBB5": "hall"},
+    "floor": 1
+  },
+  "panorama_22ACE8BF_3C4F_BA99_41B6_B4FA5A8315BA": {
+    "ways": {"panorama_22AE1ED4_3C40_56EF_41CD_4DA7D1446ABD": "hall", "panorama_22AD5A42_3C4F_D9EB_41C8_C3814752D952": "hall"},
+    "floor": 1
+  },
+  "panorama_22AD5A42_3C4F_D9EB_41C8_C3814752D952": {
+    "ways": {"panorama_22ACE8BF_3C4F_BA99_41B6_B4FA5A8315BA": "hall", "panorama_22AE3B97_3C4F_FF69_41BB_D290BACBDBB5": "hall"},
+    "floor": 1
+  },
+  "panorama_22AE3B97_3C4F_FF69_41BB_D290BACBDBB5": {
+    "ways": {"panorama_22AE1ED4_3C40_56EF_41CD_4DA7D1446ABD": "hall", "panorama_22AD5A42_3C4F_D9EB_41C8_C3814752D952": "hall"},
+    "floor": 1
+  },
+  "panorama_22AFC1FC_3C40_AA9F_41B6_3A4748ED6744": {
+    "ways": {"panorama_22AF3EE3_3C40_D6A9_41C7_FAFEE30202EE": "hall", "panorama_22AF00FE_3C40_AA9B_41B5_865FD29494E9": "out_of_room"},
+    "floor": 0
+  },
+  "panorama_181EEB7F_39DC_5D88_41A4_5B4EADD1BDA4": {
+    "ways": {"panorama_22AF2FCF_3C40_76F9_41B9_919E9CDA5E3C": "out_of_room", "panorama_181C7877_39DC_3B98_4185_59C75362E03C": "hall", "panorama_181CD57A_39DC_D588_41C6_451A71688116": "hall"},
+    "floor": 0
+  },
+  "panorama_181C7877_39DC_3B98_4185_59C75362E03C": {
+    "ways": {"panorama_181EEB7F_39DC_5D88_41A4_5B4EADD1BDA4": "hall"},
+    "floor": 0
+  },
+  "panorama_181CD57A_39DC_D588_41C6_451A71688116": {
+    "ways": {"panorama_181CF2C3_39DC_CCF8_41AE_7B0F871B8B56": "hall", "panorama_181EEB7F_39DC_5D88_41A4_5B4EADD1BDA4": "hall"},
+    "floor": 0
+  },
+  "panorama_181CF2C3_39DC_CCF8_41AE_7B0F871B8B56": {
+    "ways": {"panorama_181CD57A_39DC_D588_41C6_451A71688116": "hall"},
+    "floor": 0
+  }
+}

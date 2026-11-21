@@ -1,0 +1,147 @@
+import unittest
+
+from campuspath.routing import (EXAMPLE_END, EXAMPLE_START, HOP_METRES, RouteQuestion, Tour, direction,
+                                marker_distance)
+
+
+class RoutingTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.tour = Tour()
+        cls.entrance = cls.tour.by_id[EXAMPLE_START]
+        cls.lab = cls.tour.by_id[EXAMPLE_END]
+
+    def test_b419_requests_use_the_published_room(self):
+        for prompt in ("I want to go to sala B419", "Am un curs în sala B-419, cum ajung?",
+                       "Can you help me find B 419?"):
+            with self.subTest(prompt=prompt):
+                route = self.tour.plan(prompt, self.entrance)
+                self.assertEqual(route["steps"][-1]["index"], self.lab)
+                self.assertEqual(route["steps"][-1]["floor"], 4)
+
+    def test_each_step_is_a_directed_tour_hotspot(self):
+        steps = self.tour.example()["steps"]
+        for current, following in zip(steps, steps[1:]):
+            edge = next(e for e in self.tour.scenes[current["index"]]["links"] if e["to"] == following["index"])
+            self.assertEqual((current["yaw"], current["pitch"]), (edge["yaw"], edge["pitch"]))
+            self.assertIn("#media=" + str(current["index"]) + "&", current["url"])
+        self.assertEqual(steps[0]["index"], self.entrance)
+
+    def test_origin_in_either_order_and_in_shared_tour_link(self):
+        for prompt in ("From the AC entrance to B419", "La B419 de la intrarea AC",
+                       f"From https://visit360.upt.ro/#media={self.entrance} to B419",
+                       "AC entrance to sala B419"):
+            with self.subTest(prompt=prompt):
+                route = self.tour.plan(prompt)
+                self.assertEqual((route["steps"][0]["index"], route["steps"][-1]["index"]),
+                                 (self.entrance, self.lab))
+
+    def test_a_link_can_name_the_start_apart_from_the_request(self):
+        for origin in ("AC entrance", "intrarea AC", f"#{self.entrance}", str(self.entrance)):
+            with self.subTest(origin=origin):
+                route = self.tour.plan("B419", origin=origin)
+                self.assertEqual((route["steps"][0]["index"], route["steps"][-1]["index"]), (self.entrance, self.lab))
+        # It outranks a start written into the request, and is held to the same limits.
+        self.assertEqual(self.tour.plan("From Hol Principal to B419", origin="#392")["steps"][0]["index"], self.lab)
+        for origin in ("x" * 201, 355, ["AC entrance"]):
+            with self.assertRaises(RouteQuestion):
+                self.tour.plan("B419", origin=origin)
+
+    def test_missing_start_and_ambiguous_lobby_require_a_choice(self):
+        with self.assertRaises(RouteQuestion) as absent:
+            self.tour.plan("Go to B419")
+        self.assertEqual(absent.exception.field, "start")
+        with self.assertRaises(RouteQuestion) as ambiguous:
+            self.tour.plan("From Hol Principal to B419")
+        choices = ambiguous.exception.options
+        self.assertGreater(len({r["area"] for r in choices}), 1)
+        ac = next(r["index"] for r in choices if r["area"] == "Automatică și Calculatoare")
+        self.assertEqual(self.tour.plan("From Hol Principal to B419", ac)["steps"][0]["index"], ac)
+
+    def test_similar_room_code_and_aerial_start_never_substitute(self):
+        for unknown in ("B4199", "B419A", "B9999"):
+            with self.subTest(unknown=unknown), self.assertRaises(RouteQuestion):
+                self.tour.plan(f"Go to sala {unknown}", self.entrance)
+        with self.assertRaises(RouteQuestion):
+            self.tour.plan("From https://visit360.upt.ro/#media=1 to B419")
+
+    def test_disconnected_component_and_same_location(self):
+        isolated = next(i for i, s in self.tour.scenes.items() if not s["links"])
+        with self.assertRaisesRegex(RouteQuestion, "no connected ground route"):
+            self.tour.route(isolated, self.lab)
+        steps = self.tour.route(self.lab, self.lab)["steps"]
+        self.assertEqual(len(steps), 1)
+        self.assertEqual(steps[0]["kind"], "arrival")
+
+    def test_source_arrow_is_not_implicitly_reversible(self):
+        # Pick a one-way link from the published index. Its return journey
+        # must use a different chain of hotspots or report a gap.
+        for source, scene in self.tour.scenes.items():
+            for edge in scene["links"]:
+                target = edge["to"]
+                if source != target and all(back["to"] != source for back in self.tour.scenes[target]["links"]):
+                    try:
+                        reverse = self.tour.route(target, source)
+                    except RouteQuestion:
+                        return
+                    self.assertGreater(len(reverse["steps"]), 2)
+                    return
+        self.fail("Expected the tour to contain a one-way hotspot")
+
+    def test_walk_through_the_building_beats_fewer_checkpoints_around_it(self):
+        # Outdoor panoramas stand several times farther apart than indoor ones. The way to Corp D
+        # through the main hall has one checkpoint more than the walk around the building.
+        steps = self.tour.plan("From the AC entrance to D1")["steps"]
+        outdoors = [s["name"] for s in steps if s["index"] in self.tour.outdoors]
+        self.assertEqual(outdoors, ["AC entrance", "Corp D entrance"])
+        # The library and the conference centre stand outdoors although their previews show interiors.
+        self.assertTrue({110, 111} <= self.tour.outdoors)
+        self.assertEqual(steps[1]["label"], "Hol Principal")
+        self.assertEqual(steps[-1]["label"], "AMF Alexandru Rogojan")
+
+    def test_no_other_route_is_a_shorter_estimated_walk(self):
+        def metres(route):
+            indices = [s["index"] for s in route["steps"]]
+            return sum(HOP_METRES[(a in self.tour.outdoors) + (b in self.tour.outdoors)]
+                       for a, b in zip(indices, indices[1:]))
+
+        # Bellman-Ford over every link reaches the same length as each planned route.
+        best = {self.entrance: 0}
+        for _ in self.tour.scenes:
+            changed = False
+            for source in list(best):
+                for edge in self.tour.scenes[source]["links"]:
+                    hop = HOP_METRES[(source in self.tour.outdoors) + (edge["to"] in self.tour.outdoors)]
+                    if best[source] + hop < best.get(edge["to"], float("inf")):
+                        best[edge["to"]] = best[source] + hop
+                        changed = True
+            if not changed:
+                break
+        self.assertGreater(len(best), 100)
+        for end in list(best)[::7]:
+            self.assertEqual(metres(self.tour.route(self.entrance, end)), best[end])
+
+    def test_checked_notes_override_the_importers_open_air_flag(self):
+        flags = {s["id"]: s["open"] for s in self.tour.scenes.values()}
+        self.assertTrue(all(type(flag) is bool for flag in flags.values()))
+        for scene, note in self.tour.annotations.items():
+            if "open" in note:
+                self.assertNotEqual(flags[scene], note["open"], "the note repeats the importer")
+                self.assertEqual(self.tour.by_id[scene] in self.tour.outdoors, note["open"])
+        self.assertIn(self.entrance, self.tour.outdoors)
+        self.assertNotIn(self.lab, self.tour.outdoors)
+
+    def test_marker_distance_ignores_markers_near_the_horizon(self):
+        self.assertAlmostEqual(marker_distance(-45), 1.7)
+        self.assertEqual(marker_distance(-1), HOP_METRES[0])
+        self.assertEqual(marker_distance(12), HOP_METRES[0])
+
+    def test_turn_heading_wraps_across_the_panorama_seam(self):
+        edge = {"kind": "walk", "yaw": -175}
+        self.assertEqual(direction(175, edge, "B419"), "Continue ahead toward B419.")
+        self.assertEqual(direction(175, edge, None), "Continue ahead.")
+        self.assertEqual(direction(0, edge, "the stairs"), "Turn around toward the stairs.")
+
+
+if __name__ == "__main__":
+    unittest.main()

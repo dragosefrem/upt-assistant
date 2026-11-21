@@ -1,0 +1,91 @@
+{
+  "key": "2096d2c5366c9e70453ee895",
+  "source": "1758799848089",
+  "duration": 36,
+  "checkpoints": [
+    {
+      "index": 355,
+      "name": "Intrarea AC",
+      "time": 0,
+      "instruction": "Treci pe sub copertină și intră pe ușile de sticlă.",
+      "url": "https://visit360.upt.ro/#media=355&yaw=-6.37&pitch=0.45&fov=84"
+    },
+    {
+      "index": 408,
+      "name": "Holul principal",
+      "time": 3,
+      "instruction": "Urcă treptele scurte de lângă aviziere.",
+      "url": "https://visit360.upt.ro/#media=408&yaw=-157.34&pitch=-10.73&fov=84"
+    },
+    {
+      "index": 618,
+      "name": "Coridorul Inginerie Electrică",
+      "time": 6,
+      "instruction": "Urmează coridorul lung spre lumina din capăt.",
+      "url": "https://visit360.upt.ro/#media=618&yaw=89.73&pitch=-10.14&fov=84"
+    },
+    {
+      "index": 412,
+      "name": "Coridorul decanatului AC",
+      "time": 9,
+      "instruction": "Continuă pe coridor, pe lângă deschiderea din dreapta.",
+      "url": "https://visit360.upt.ro/#media=412&yaw=96.94&pitch=-8.8&fov=84"
+    },
+    {
+      "index": 413,
+      "name": "Coridorul Electronică",
+      "time": 12,
+      "instruction": "Treci prin ușile de sticlă de la capătul coridorului.",
+      "url": "https://visit360.upt.ro/#media=413&yaw=82.96&pitch=-11.3&fov=84"
+    },
+    {
+      "index": 414,
+      "name": "Colțul cu avizier",
+      "time": 15,
+      "instruction": "Urmează coridorul pe după avizier.",
+      "url": "https://visit360.upt.ro/#media=414&yaw=163.39&pitch=-17.77&fov=84"
+    },
+    {
+      "index": 415,
+      "name": "Intrarea în casa scării",
+      "time": 18,
+      "instruction": "Urcă pe scări, prin ușile duble deschise.",
+      "url": "https://visit360.upt.ro/#media=415&yaw=-131.1&pitch=-6.02&fov=84"
+    },
+    {
+      "index": 387,
+      "name": "Palierul scării",
+      "time": 21,
+      "instruction": "Continuă pe scări până la etajul 4.",
+      "url": "https://visit360.upt.ro/#media=387&yaw=-20.45&pitch=-3.66&fov=84"
+    },
+    {
+      "index": 388,
+      "name": "Palierul de lângă holul cu vitrine",
+      "time": 24,
+      "instruction": "Ieși din casa scării prin ușile de sticlă, în holul cu vitrine.",
+      "url": "https://visit360.upt.ro/#media=388&yaw=-79.43&pitch=-12.86&fov=84"
+    },
+    {
+      "index": 389,
+      "name": "Holul cu vitrine",
+      "time": 27,
+      "instruction": "Intră prin deschiderea de lângă peretele cu vitrine.",
+      "url": "https://visit360.upt.ro/#media=389&yaw=71.45&pitch=-14.7&fov=84"
+    },
+    {
+      "index": 394,
+      "name": "Ușa B419",
+      "time": 30,
+      "instruction": "Intră pe ușa marcată în laboratorul B419.",
+      "url": "https://visit360.upt.ro/#media=394&yaw=-6.86&pitch=-12.51&fov=84"
+    },
+    {
+      "index": 392,
+      "name": "Laboratorul B419",
+      "time": 33,
+      "instruction": "Ai ajuns la destinație.",
+      "url": "https://visit360.upt.ro/#media=392&yaw=-177.17&pitch=-7.14&fov=84"
+    }
+  ]
+}

@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#f6f7f1" />
+    <title>Campuspath · UPT route planner</title>
+    <link rel="icon" href="/static/mark.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/app.css" />
+    <script type="module" src="/static/app.js"></script>
+  </head>
+  <body>
+    <header class="site-head">
+      <div class="wrap head-inner">
+        <a class="brand" href="/" aria-label="Campuspath home" data-i18n-label="home"
+          ><img src="/static/mark.svg" alt="" width="38" height="38" />Campuspath</a
+        >
+        <span class="campus">Universitatea Politehnica Timișoara</span>
+        <div class="language" role="group" aria-label="Language" data-i18n-label="language">
+          <button type="button" data-lang="ro" lang="ro" title="Română" aria-pressed="false">RO</button
+          ><button type="button" data-lang="en" lang="en" title="English" aria-pressed="true">EN</button>
+        </div>
+        <a
+          class="tour-link"
+          href="https://visit360.upt.ro/"
+          target="_blank"
+          rel="noopener"
+          aria-label="Open UPT 360°"
+          data-i18n-label="openTour"
+          ><span data-i18n="openTour">Open UPT 360°</span><svg><use href="/static/icons.svg#external" /></svg
+        ></a>
+      </div>
+    </header>
+
+    <main class="wrap">
+      <div class="intro">
+        <h1><span data-i18n="headline">Find your room</span><span class="dot">.</span></h1>
+        <p data-i18n="lead">Turn a campus route into a video you can follow, checkpoint by checkpoint.</p>
+      </div>
+      <div class="workspace">
+        <section class="planner panel" aria-labelledby="plan-title">
+          <div class="panel-title">
+            <span class="icon-tile"
+              ><svg><use href="/static/icons.svg#route" /></svg
+            ></span>
+            <h2 id="plan-title" data-i18n="plan">Plan your route</h2>
+          </div>
+          <form id="route-form">
+            <div class="field-label">
+              <label for="choose-start" data-i18n="start">Starting checkpoint</label
+              ><button type="button" class="text-button locate" id="locate">
+                <svg><use href="/static/icons.svg#locate" /></svg><span data-i18n="locate">Locate me</span>
+              </button>
+            </div>
+            <button type="button" id="choose-start" class="select-start" aria-haspopup="dialog">
+              <svg><use href="/static/icons.svg#pin" /></svg><span id="start-name">Choose a checkpoint</span
+              ><svg class="tail"><use href="/static/icons.svg#down" /></svg>
+            </button>
+            <div class="destination-label">
+              <label for="prompt" data-i18n="where">Where do you want to go?</label>
+              <a class="text-button" id="browse-rooms" href="#classrooms" data-i18n="browse">Browse classrooms</a>
+            </div>
+            <textarea
+              id="prompt"
+              rows="2"
+              maxlength="1000"
+              placeholder="I want to go to sala B419"
+              data-i18n-hint="prompt"
+              required
+            >
+I want to go to sala B419</textarea>
+            <button type="button" id="example-prompt" class="example-prompt">
+              <span id="example-text">Try “From the AC entrance to B419”</span> <span aria-hidden="true">↗</span>
+            </button>
+            <p id="form-message" class="form-message" role="status" hidden></p>
+            <button id="generate" class="primary" type="submit">
+              <svg><use href="/static/icons.svg#video" /></svg><span data-i18n="generate">Generate walkthrough</span
+              ><svg class="tail"><use href="/static/icons.svg#right" /></svg>
+            </button>
+          </form>
+        </section>
+
+        <section class="preview panel" aria-label="Route video" data-i18n-label="routeVideo">
+          <div class="screen" id="screen">
+            <video
+              id="video"
+              playsinline
+              preload="metadata"
+              aria-label="Checkpoint walkthrough"
+              data-i18n-label="videoLabel"
+            ></video>
+            <div class="screen-overlay" id="screen-overlay">
+              <span class="preview-tag"><span></span><span id="video-kind">Example walkthrough</span></span>
+              <div class="screen-body">
+                <div class="screen-titles">
+                  <p id="preview-area"></p>
+                  <h2 id="route-title">Loading walkthrough…</h2>
+                </div>
+                <button class="play" id="play" type="button" aria-label="Play walkthrough" data-i18n-label="play" disabled>
+                  <svg><use href="/static/icons.svg#play" /></svg>
+                </button>
+              </div>
+            </div>
+            <div class="render-state" id="render-state" role="status" hidden>
+              <span id="render-label"></span><progress id="render-progress" max="1" value="0"></progress
+              ><button class="retry" id="retry" data-i18n="retry" hidden>Try again</button>
+            </div>
+          </div>
+          <div class="video-meta">
+            <div class="facts">
+              <span
+                ><svg><use href="/static/icons.svg#clock" /></svg><span id="duration">—</span></span
+              >
+              <span
+                ><svg><use href="/static/icons.svg#route" /></svg><span id="count">— checkpoints</span></span
+              >
+              <span id="floor-fact" hidden
+                ><svg><use href="/static/icons.svg#layers" /></svg><span id="floor"></span
+              ></span>
+            </div>
+            <a id="download" class="download" hidden download
+              ><svg><use href="/static/icons.svg#download" /></svg><span>MP4</span></a
+            >
+          </div>
+          <div class="stepper" id="stepper" hidden>
+            <p class="now" aria-live="polite">
+              <span id="now-count" data-i18n="stepHint">Go one checkpoint at a time</span>
+              <strong id="now-name"></strong>
+              <span id="now-note"></span>
+            </p>
+            <div class="stepper-keys">
+              <button type="button" id="step-back" class="step-key" disabled>
+                <svg class="back"><use href="/static/icons.svg#right" /></svg><span data-i18n="previousStep">Previous step</span>
+              </button>
+              <button type="button" id="step-next" class="step-key forward">
+                <span data-i18n="nextStep">Next step</span><svg><use href="/static/icons.svg#right" /></svg>
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <aside id="room-details" class="room-details panel" aria-live="polite" hidden></aside>
+      <section class="guide" aria-labelledby="guide-title">
+        <div class="guide-head">
+          <h2 id="guide-title" data-i18n="guide">Checkpoint guide</h2>
+          <span id="guide-range"></span>
+          <div class="share-keys">
+            <button type="button" id="copy-link" class="text-button" data-i18n="copyLink">Copy link</button>
+            <button type="button" id="show-qr" class="text-button" aria-haspopup="dialog" data-i18n="qrCode">QR code</button>
+          </div>
+        </div>
+        <ol class="steps panel" id="steps"></ol>
+      </section>
+      <footer>
+        <span data-i18n="credit">Panoramas and navigation links from the UPT virtual tour.</span
+        ><a href="https://visit360.upt.ro/" target="_blank" rel="noopener"
+          >Visit360 UPT <svg><use href="/static/icons.svg#external" /></svg
+        ></a>
+      </footer>
+    </main>
+
+    <dialog id="picker" aria-labelledby="picker-title">
+      <div class="picker-head">
+        <h2 id="picker-title">Choose a starting checkpoint</h2>
+        <button type="button" id="close-picker" class="icon-button" aria-label="Close" data-i18n-label="close">
+          <svg><use href="/static/icons.svg#close" /></svg>
+        </button>
+      </div>
+      <div class="search-box">
+        <svg><use href="/static/icons.svg#search" /></svg
+        ><input
+          id="search"
+          type="search"
+          autocomplete="off"
+          aria-label="Search checkpoints"
+          placeholder="Place, room code or UPT tour link"
+        />
+      </div>
+      <button type="button" id="picker-locate" class="text-button" style="margin-top: 10px">
+        <svg><use href="/static/icons.svg#locate" /></svg><span data-i18n="nearbyButton">Find a nearby building</span>
+      </button>
+      <p id="picker-note" role="status"></p>
+      <div id="choices" class="choices"></div>
+      <div class="picker-pages" id="picker-pages" hidden>
+        <button class="text-button" type="button" id="previous-rooms" data-i18n="previous">Previous</button>
+        <span id="room-page"></span>
+        <button class="text-button" type="button" id="next-rooms" data-i18n="next">Next</button>
+      </div>
+    </dialog>
+
+    <dialog id="share" aria-labelledby="share-title">
+      <div class="picker-head">
+        <h2 id="share-title" data-i18n="shareTitle">Share this route</h2>
+        <button type="button" id="close-share" class="icon-button" aria-label="Close" data-i18n-label="close">
+          <svg><use href="/static/icons.svg#close" /></svg>
+        </button>
+      </div>
+      <p id="share-route" class="share-route"></p>
+      <img id="qr-image" class="qr" width="232" height="232" alt="QR code that opens this route" data-i18n-alt="qrAlt" />
+      <p id="qr-note" class="share-note" role="status" data-i18n="qrHint">
+        Scan the code with a phone camera to open this route.
+      </p>
+      <p id="qr-local" class="share-note warn" hidden data-i18n="qrLocal">
+        This address only opens on this computer, so the code will not work on a phone.
+      </p>
+      <p id="share-link" class="share-link"></p>
+      <div class="share-actions">
+        <button type="button" id="copy-shared" class="text-button" data-i18n="copyLink">Copy link</button>
+        <a id="save-qr" class="text-button" download
+          ><svg><use href="/static/icons.svg#download" /></svg><span data-i18n="saveImage">Save image</span></a
+        >
+      </div>
+    </dialog>
+  </body>
+</html>
