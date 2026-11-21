@@ -1,8 +1,8 @@
 # UPT Orar
 
 A web app for students of Universitatea Politehnica Timișoara: a personal calendar of
-classes and exams built from the timetables the faculties publish, with Google Calendar
-export, directions to the next room, and a chat/voice assistant.
+classes and exams built from the timetables the faculties publish, with calendar
+export by e-mail, directions to the next room, and a chat/voice assistant.
 
 ## What it does
 
@@ -26,7 +26,9 @@ export, directions to the next room, and a chat/voice assistant.
   An optional guest link lets people join without an account and save a private
   link to change their own RSVP.
 - **Changing your timetable.** Hide a class, move it to another slot, add personal
-  events: click or drag on the calendar, or ask the assistant. Changes affect only you.
+  events: click or drag on the calendar, or ask the assistant. Changes affect only you. A
+  class can be moved for every week, or for one week only ("move next Wednesday's lab
+  to Friday"); a one-week move shows as "this week only" and is exported that way.
 - **Directions.** With location sharing on, the app estimates how to reach the next
   room (walk / bike / transit / car), when to leave, and links to Google Maps.
 - **Exam reminders.** The exams page shows each upcoming exam with a countdown, the
@@ -37,11 +39,25 @@ export, directions to the next room, and a chat/voice assistant.
 - **Poli.** The assistant's mascot. Pressing any Poli opens the chat; it also greets the
   student with one-tap questions on the calendar page. Placeholder images live in
   `public/images`; `docs/IMAGINI.md` has prompts for the final artwork.
-- **Assistant.** Text chat and voice (speech recognition and read-aloud in the
-  browser), in Romanian or English: "Unde am examenul la AC?", "When is group TI 3.2
-  free on Monday?", "Hide the PM lecture".
-- **Export.** One-click sync to a dedicated Google calendar, or an `.ics` file /
-  subscription link.
+- **Assistant.** Text chat and voice, in Romanian or English: "Unde am examenul la
+  AC?", "When is group TI 3.2 free on Monday?", "Hide the PM lecture". With Gemini, the
+  microphone records the question, stops by itself after a pause and Gemini transcribes
+  it, so voice works in every browser (Brave and some networks block the browser's own
+  speech service). Without Gemini, the browser's speech recognition is used. Answers are
+  read aloud with the device's voices.
+- **Planning with the assistant** (needs a Gemini or Claude key). "When's the earliest
+  I can play tennis?" or "When can I meet Mindy?" gets tappable time slots from the
+  student's free time; "Other times" or "not before 6" gets new ones. For a friend, the
+  assistant asks their group once and plans around that group's published timetable.
+- **Previews before changes.** Picking a slot, or "Move the appointment from 2 to 3",
+  shows that day's timeline with the new or moved event highlighted, its old place
+  dashed and any clash in red. Nothing is saved until the student taps **Accept**,
+  which saves exactly what the preview shows (or says yes by voice). Asked by voice,
+  options are read aloud and the microphone reopens for the answer.
+- **Export.** Under Settings, students enter an e-mail address and get their calendar
+  as an `.ics` attachment with instructions for Google Calendar, Apple Calendar and
+  Outlook. The assistant does the same when asked ("email me my calendar"). The `.ics`
+  file and a subscription link are also available directly.
 - **Admin.** A scraping engine reads the university structure from upt.ro and each
   faculty's timetable and exam documents, and replaces what is in the database.
 
@@ -80,23 +96,44 @@ All optional; see `.env.example`.
 
 | Variable | Effect |
 | --- | --- |
-| `ANTHROPIC_API_KEY` | Connects the assistant to Claude. Without it a built-in keyword assistant answers the common questions. |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `APP_URL` | Enables direct Google Calendar export. Without them students still have the `.ics` file and subscription link. |
+| `GEMINI_API_KEY`, `GEMINI_MODEL` | Connects the assistant to Gemini (default model `gemini-4-hydrogen`). Takes precedence over Claude. |
+| `ANTHROPIC_API_KEY` | Connects the assistant to Claude instead. Without either key a built-in keyword assistant answers the common questions. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Lets students e-mail themselves their calendar. Without them the form is disabled and the `.ics` download still works. |
+| `APP_URL` | The app's public address. Calendar e-mails include a subscription link only when it is reachable from the internet (not localhost). |
 | `ADMIN_EMAILS` | Comma-separated addresses that become administrators when they register. |
 | `DATABASE_PATH` | Where the SQLite file lives (default `data/upt.db`). |
 | `TIMETABLE_PYTHON` | Python executable with pdfplumber installed. Defaults to the project's virtual environment, then to `python3`. |
 
-**Google Calendar.** Create an OAuth client (type "Web application") in Google Cloud,
-enable the Google Calendar API, and add `<APP_URL>/api/google/callback` as an
-authorised redirect URI. The app requests only the `calendar.app.created` scope: it
-creates its own "UPT Orar" calendar and cannot see anything else in the account.
+**E-mail.** Any mailbox that allows SMTP works. With Gmail: turn on 2-Step
+Verification, create an app password at <https://myaccount.google.com/apppasswords>,
+then set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER` to the address and
+`SMTP_PASS` to the app password. Each account can send its calendar once a minute.
 
-**Claude.** The assistant runs on Claude Managed Agents: Anthropic hosts the agent
-loop, and this app answers its tool calls from the local database. The agent and its
-environment are created on first use and their ids are stored in the `settings` table;
-each student gets their own session. The integration lives in
-`src/lib/assistant/claude.ts`; the tools both assistants share are in
-`src/lib/assistant/tools.ts`.
+**Google Calendar sync (optional, off by default).** The older direct export still works
+if you set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`: create an OAuth client (type
+"Web application") in Google Cloud, enable the Google Calendar API, and add
+`<APP_URL>/api/google/callback` as an authorised redirect URI. Without them its section
+is hidden.
+
+**Gemini.** `src/lib/assistant/gemini.ts` runs the tool loop in this app: each message
+is sent with the last 20 chat messages, Gemini calls the tools in
+`src/lib/assistant/tools.ts`, and the handlers answer from the local database. The
+default model was chosen by running the assistant's own planning and rescheduling
+questions on every model the key could use; `gemini-4-hydrogen` called the right tools
+and answered fastest (about 8 seconds a question).
+
+**Claude.** Used when only `ANTHROPIC_API_KEY` is set. It runs on Claude Managed
+Agents: Anthropic hosts the agent loop and this app answers its tool calls. The agent is
+created on first use and its id is stored in the `settings` table; each student gets
+their own session (`src/lib/assistant/claude.ts`). Both engines share the prompt in
+`src/lib/assistant/prompt.ts`.
+
+The planning tools are `find_meeting_slots`, `check_conflicts`, `save_contact`,
+`move_personal_event` and `show_choices`. `show_choices` turns the assistant's offers
+into buttons. `add_personal_event` and `move_personal_event` save nothing on their own:
+they produce a day preview, and the Accept button (`/api/assistant/accept`) applies the
+stored change directly, so what is saved is exactly what was shown. Saved contacts hold
+only a name and a group, never another account's calendar.
 
 ## What the scraper covers
 

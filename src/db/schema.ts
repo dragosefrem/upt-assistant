@@ -279,6 +279,10 @@ export const users = sqliteTable("users", {
   googleRefreshToken: text("google_refresh_token"),
   googleCalendarId: text("google_calendar_id"),
   googleSyncedAt: text("google_synced_at"),
+  /** Where "Email my calendar" sends the calendar file; the sign-in address when empty. */
+  exportEmail: text("export_email"),
+  /** When the calendar was last e-mailed, to limit how often it can be sent. */
+  calendarEmailedAt: text("calendar_emailed_at"),
   /** Secret token that authorises the read-only .ics subscription feed. */
   feedToken: text("feed_token").notNull(),
   createdAt: createdAt(),
@@ -334,6 +338,31 @@ export const userOverrides = sqliteTable(
     updatedAt: createdAt(),
   },
   (t) => [uniqueIndex("override_unique").on(t.userId, t.entryId)],
+);
+
+/**
+ * A student's change to a single occurrence of a class ("only next Wednesday's lab,
+ * on Friday instead"). Every other week keeps the weekly time.
+ */
+export const occurrenceOverrides = sqliteTable(
+  "occurrence_overrides",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entryId: integer("entry_id")
+      .notNull()
+      .references(() => entries.id, { onDelete: "cascade" }),
+    /** The date the class would normally take place on. */
+    date: text("date").notNull(),
+    newDate: text("new_date").notNull(),
+    startMin: integer("start_min").notNull(),
+    endMin: integer("end_min").notNull(),
+    room: text("room"),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("occurrence_unique").on(t.userId, t.entryId, t.date)],
 );
 
 export const personalEvents = sqliteTable(
@@ -449,9 +478,35 @@ export const chatMessages = sqliteTable(
       .references(() => users.id, { onDelete: "cascade" }),
     role: text("role").$type<"user" | "assistant">().notNull(),
     content: text("content").notNull(),
+    /** JSON list of the tappable choices the assistant offered with this reply. */
+    choices: text("choices"),
+    /** JSON preview of a proposed calendar change that the student can accept. */
+    preview: text("preview"),
     createdAt: createdAt(),
   },
   (t) => [index("chat_user").on(t.userId, t.id)],
+);
+
+/**
+ * People a student plans to meet who are not linked accounts, as the student described
+ * them ("Mindy is in TI 3.2"). Only the name and group are stored, so meeting times are
+ * worked out from that group's published timetable. Accepted account contacts live in
+ * `contacts` and share their real calendar as busy time.
+ */
+export const savedContacts = sqliteTable(
+  "saved_contacts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Lower-cased, accent-free name used for matching. */
+    nameKey: text("name_key").notNull(),
+    groupId: integer("group_id").references(() => groups.id, { onDelete: "set null" }),
+    createdAt: createdAt(),
+  },
+  (t) => [uniqueIndex("saved_contact_unique").on(t.userId, t.nameKey)],
 );
 
 export const settings = sqliteTable("settings", {

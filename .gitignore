@@ -38,6 +38,10 @@ yarn-error.log*
 /data/
 /.venv/
 
+# 360-tour route videos (generated)
+/output/
+*.webm
+
 # vercel
 .vercel
 

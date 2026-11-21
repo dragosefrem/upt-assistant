@@ -69,7 +69,9 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
           <button className="btn-secondary" disabled={busy} onClick={() => setMoving(true)}>Move…</button>
           <button className="btn-secondary" disabled={busy} onClick={() => send({ action: "hide", entryId: event.entryId })}>Hide from my timetable</button>
           {event.moved && (
-            <button className="btn-ghost" disabled={busy} onClick={() => send({ action: "reset", entryId: event.entryId })}>Undo my change</button>
+            <button className="btn-ghost" disabled={busy} onClick={() => send({ action: "reset", entryId: event.entryId, date: event.originalDate })}>
+              {event.originalDate ? "Undo this week's move" : "Undo my change"}
+            </button>
           )}
         </div>
       )}

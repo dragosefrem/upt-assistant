@@ -2,9 +2,8 @@ import "server-only";
 import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import type { User } from "../auth";
-import { currentSemester, describeGroup, teachingWeek } from "../schedule";
 import { getSetting, setSetting } from "../settings";
-import { DAY_NAMES, formatMinutes, nowLocal, weekday } from "../time";
+import { SYSTEM_PROMPT as SYSTEM, contextLine, type AssistantChunk } from "./prompt";
 import { TOOLS, runTool, type ToolContext } from "./tools";
 
 /**
@@ -16,20 +15,6 @@ import { TOOLS, runTool, type ToolContext } from "./tools";
  */
 
 const MODEL = "claude-opus-5-5";
-
-const SYSTEM = `You are the timetable assistant inside a web app for students of Universitatea Politehnica Timișoara (UPT).
-
-Students ask about their classes, exams, free time, how to reach a room, and ask you to adjust their personal timetable. Everything you know about a student's timetable comes from the tools — the data is scraped from the faculty's published schedules, so always look it up rather than guessing, and say so plainly when the tools return nothing (for example, exam sessions that the faculty has not published yet).
-
-Each user message starts with a bracketed context line giving the current date and time in Timișoara, the teaching week, the student's faculty, specialization, year and group, and whether they have shared their location. Resolve relative dates ("tomorrow", "next Monday", "mâine") from it.
-
-How to answer:
-- Reply in the language the student writes in (mostly Romanian or English).
-- Answers are often read aloud by text-to-speech, so keep them short and conversational: lead with the answer, give times as 24-hour clock, and avoid tables, markdown headings and long lists. For several classes, a brief sentence per item is enough.
-- When you mention where something is, include the room and the building when the tool provides one.
-- Before changing the timetable (hiding or moving a class), make sure you know exactly which activity is meant; if several match, ask. After a change, confirm what you did in one sentence. These changes only affect this student's own view and can be undone with restore_class.
-- For directions, use get_directions. If the student has not shared a location, tell them to tap the location button and give the address meanwhile. Building positions marked approximate should be described as approximate.
-- If a request is outside timetables, exams, campus directions and study planning, say briefly that you can't help with that here.`;
 
 export function claudeConfigured(): boolean {
   return Boolean(
@@ -95,25 +80,6 @@ export function ensureAgent(client: Anthropic): Promise<AgentRef> {
   return provisioning;
 }
 
-/** Facts the assistant needs with every message; no name or e-mail is sent. */
-export function contextLine(user: User, ctx: ToolContext): string {
-  const now = nowLocal();
-  const semester = currentSemester();
-  const group = describeGroup(user.groupId);
-  const week = semester ? teachingWeek(semester, now.date) : null;
-  const parts = [
-    `now: ${DAY_NAMES[weekday(now.date)]} ${now.date} ${formatMinutes(now.minutes)} (Europe/Bucharest)`,
-    semester ? `semester ${semester.number} of ${semester.academicYear}, ${week ? `teaching week ${week}` : "no teaching this week"}` : "no semester configured",
-    group
-      ? `student: ${group.faculty.shortName ?? group.faculty.name}, ${group.spec.name}, year ${group.group.year}, group ${group.label}`
-      : "student has not chosen a group",
-    `location shared: ${ctx.location ? "yes" : "no"}`,
-  ];
-  return `[${parts.join("; ")}]`;
-}
-
-export type AssistantChunk = { type: "text"; text: string } | { type: "tool"; name: string };
-
 async function openSession(client: Anthropic, user: User, ref: AgentRef): Promise<string> {
   const key = `assistant.session.${user.id}`;
   const stored = getSetting(key);
@@ -136,7 +102,7 @@ export function forgetSession(user: User) {
 }
 
 /** Sends one student message and yields the agent's reply as it is produced. */
-export async function* askClaude(user: User, message: string, ctx: ToolContext): AsyncGenerator<AssistantChunk> {
+export async function* askClaude(user: User, message: string, ctx: ToolContext, spoken = false): AsyncGenerator<AssistantChunk> {
   const client = new Anthropic();
   const ref = await ensureAgent(client);
   const sessionId = await openSession(client, user, ref);
@@ -144,7 +110,7 @@ export async function* askClaude(user: User, message: string, ctx: ToolContext):
   // Open the stream before sending so no early event is missed.
   const stream = await client.beta.sessions.events.stream(sessionId);
   await client.beta.sessions.events.send(sessionId, {
-    events: [{ type: "user.message", content: [{ type: "text", text: `${contextLine(user, ctx)}\n${message}` }] }],
+    events: [{ type: "user.message", content: [{ type: "text", text: `${contextLine(user, ctx, spoken)}\n${message}` }] }],
   });
 
   for await (const event of stream) {
@@ -154,7 +120,7 @@ export async function* askClaude(user: User, message: string, ctx: ToolContext):
       }
     } else if (event.type === "agent.custom_tool_use") {
       yield { type: "tool", name: event.name };
-      const result = runTool(event.name, event.input, ctx);
+      const result = await runTool(event.name, event.input, ctx);
       await client.beta.sessions.events.send(sessionId, {
         events: [
           {

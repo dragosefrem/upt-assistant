@@ -8,6 +8,7 @@ import { sources, timetablePdfs } from "@/db/schema";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf, pickerData } from "@/lib/catalog";
 import { googleConfigured } from "@/lib/google";
+import { mailConfigured } from "@/lib/mail";
 import { courseChoices, currentSemester } from "@/lib/schedule";
 
 export const metadata = { title: "Settings" };
@@ -49,6 +50,8 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       <section id="export" className="card scroll-mt-20 p-6">
         <h2 className="mb-4 text-base font-semibold">Export your calendar</h2>
         <ExportPanel
+          mailConfigured={mailConfigured()}
+          defaultEmail={user.exportEmail ?? user.email}
           googleConfigured={googleConfigured()}
           connected={!!user.googleRefreshToken}
           syncedAt={user.googleSyncedAt}

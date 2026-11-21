@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { entries, entryGroups, personalEvents, userOverrides } from "@/db/schema";
+import { entries, entryGroups, occurrenceOverrides, personalEvents, userOverrides } from "@/db/schema";
 import { getUser } from "@/lib/auth";
 
 /** A student's personal changes to their own timetable. */
@@ -15,7 +15,12 @@ const Body = z.discriminatedUnion("action", [
     endMin: z.number().int().min(1).max(1440),
     room: z.string().trim().max(60).optional(),
   }),
-  z.object({ action: z.literal("reset"), entryId: z.number().int().optional() }),
+  z.object({
+    action: z.literal("reset"),
+    entryId: z.number().int().optional(),
+    // Undo a one-week move only: the date the class normally takes place on.
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  }),
   z.object({
     action: z.literal("addPersonal"),
     title: z.string().trim().min(1).max(120),
@@ -62,9 +67,21 @@ export async function POST(request: Request) {
       break;
     }
     case "reset":
-      db.delete(userOverrides)
-        .where(and(eq(userOverrides.userId, user.id), body.entryId ? eq(userOverrides.entryId, body.entryId) : undefined))
+      db.delete(occurrenceOverrides)
+        .where(
+          and(
+            eq(occurrenceOverrides.userId, user.id),
+            body.entryId ? eq(occurrenceOverrides.entryId, body.entryId) : undefined,
+            body.date ? eq(occurrenceOverrides.date, body.date) : undefined,
+          ),
+        )
         .run();
+      // Undoing a one-week move leaves the weekly arrangement alone.
+      if (!body.date) {
+        db.delete(userOverrides)
+          .where(and(eq(userOverrides.userId, user.id), body.entryId ? eq(userOverrides.entryId, body.entryId) : undefined))
+          .run();
+      }
       break;
     case "addPersonal":
       if (body.endMin <= body.startMin) return Response.json({ error: "End must be after start" }, { status: 400 });

@@ -122,7 +122,7 @@ export function askLocal(message: string, ctx: ToolContext): string {
   }
 
   return t(
-    `I can answer: "What do I have tomorrow?", "What's next?", "Where is my exam?", "When am I free on ${DAY_NAMES[weekday(addDays(now.date, 1))]}?", "When is group TI 3.2 free?", "How do I get to room A204?" and "Hide <course>". For free-form questions and schedule changes, an administrator can connect Claude.`,
-    `Pot răspunde la: „Ce am mâine?", „Ce urmează?", „Unde am examenul?", „Când sunt liber?", „Când e liberă grupa TI 3.2?", „Cum ajung la sala A204?" și „Ascunde <materia>". Pentru întrebări libere și modificări ale orarului, un administrator poate conecta Claude.`,
+    `I can answer: "What do I have tomorrow?", "What's next?", "Where is my exam?", "When am I free on ${DAY_NAMES[weekday(addDays(now.date, 1))]}?", "When is group TI 3.2 free?", "How do I get to room A204?" and "Hide <course>". For free-form questions, planning and schedule changes, an administrator can add a Gemini or Claude API key.`,
+    `Pot răspunde la: „Ce am mâine?", „Ce urmează?", „Unde am examenul?", „Când sunt liber?", „Când e liberă grupa TI 3.2?", „Cum ajung la sala A204?" și „Ascunde <materia>". Pentru întrebări libere, planificare și modificări ale orarului, un administrator poate adăuga o cheie API Gemini sau Claude.`,
   );
 }
