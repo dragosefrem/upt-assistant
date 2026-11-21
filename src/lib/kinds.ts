@@ -1,3 +1,6 @@
+import type { Locale } from "@/i18n/config";
+import { common } from "@/i18n/messages/common";
+
 /** Colours and labels for each kind of calendar event, shared by server and client UI. */
 const KIND_STYLE: Record<string, { block: string; dot: string; label: string }> = {
   course: { block: "border-brand-500 bg-brand-50 text-brand-900", dot: "bg-brand-500", label: "Lecture" },
@@ -12,4 +15,10 @@ const KIND_STYLE: Record<string, { block: string; dot: string; label: string }> 
 
 export function kindStyle(kind: string) {
   return KIND_STYLE[kind] ?? KIND_STYLE.other;
+}
+
+/** The kind's name in the interface language ("Lab" / "Laborator"). */
+export function kindLabel(kind: string, locale: Locale): string {
+  const labels = common[locale].kinds as Record<string, string>;
+  return labels[kind] ?? labels.other;
 }

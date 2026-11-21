@@ -1,9 +1,18 @@
+import { DATE_LOCALE, isLocale, type Locale } from "@/i18n/config";
+import { common } from "@/i18n/messages/common";
+
 /**
  * All timetable times are wall-clock times in Timișoara. Dates are handled as ISO
  * "YYYY-MM-DD" strings and minutes-since-midnight, so nothing depends on the server's
  * own time zone.
  */
 export const TIME_ZONE = "Europe/Bucharest";
+
+
+/** An interface language ("ro", "en") or a full BCP 47 tag, as Intl wants it. */
+function intlLocale(locale: string): string {
+  return isLocale(locale) ? DATE_LOCALE[locale] : locale;
+}
 
 const partsFormat = new Intl.DateTimeFormat("en-CA", {
   timeZone: TIME_ZONE,
@@ -82,20 +91,42 @@ export function localInstant(value: string): number | null {
   return candidates.sort((a, b) => a - b).find((at) => localDateTime(at) === value) ?? null;
 }
 
-export function formatDate(date: string, opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" }, locale = "en-GB"): string {
-  return new Intl.DateTimeFormat(locale, { ...opts, timeZone: "UTC" }).format(utc(date));
+/** `locale` is an interface language ("ro", "en") or a BCP 47 tag. */
+export function formatDate(
+  date: string,
+  opts: Intl.DateTimeFormatOptions = { weekday: "long", day: "numeric", month: "long" },
+  locale: Locale | string = "en",
+): string {
+  return new Intl.DateTimeFormat(intlLocale(locale), { ...opts, timeZone: "UTC" }).format(utc(date));
 }
 
-export function formatDateRange(from: string, to: string): string {
-  const end = formatDate(to, { day: "numeric", month: "long", year: "numeric" });
+export function formatDateRange(from: string, to: string, locale: Locale | string = "en"): string {
+  const end = formatDate(to, { day: "numeric", month: "long", year: "numeric" }, locale);
   if (from === to) return end;
   if (from.slice(0, 7) === to.slice(0, 7)) return `${Number(from.slice(8))}–${end}`;
-  const start = formatDate(from, { day: "numeric", month: "long", year: from.slice(0, 4) === to.slice(0, 4) ? undefined : "numeric" });
+  const start = formatDate(from, { day: "numeric", month: "long", year: from.slice(0, 4) === to.slice(0, 4) ? undefined : "numeric" }, locale);
   return `${start} – ${end}`;
 }
 
+/** English weekday names, for data sent to the assistant model and for logs. Interface text uses `dayName`. */
 export const DAY_NAMES = ["", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 export const DAY_SHORT = ["", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/** First letter in upper case, for a word that starts a label ("luni" → "Luni"). */
+export function capitalize(text: string): string {
+  return text ? text.charAt(0).toLocaleUpperCase() + text.slice(1) : text;
+}
+
+/**
+ * Weekday name in the interface language, 1 = Monday … 7 = Sunday. Capitalised, because
+ * it nearly always starts a label; Romanian short names lose their trailing dot.
+ */
+export function dayName(day: number, locale: Locale | string = "en", style: "long" | "short" = "long"): string {
+  if (!(day >= 1 && day <= 7)) return "";
+  // 2024-01-01 was a Monday.
+  const name = new Intl.DateTimeFormat(intlLocale(locale), { weekday: style, timeZone: "UTC" }).format(new Date(Date.UTC(2024, 0, day)));
+  return capitalize(name.replace(/\.$/, ""));
+}
 
 /** Commas list teaching weeks or ranges. An ampersand combines restrictions. */
 export function weekMatches(rule: string, week: number): boolean {
@@ -109,12 +140,13 @@ export function weekMatches(rule: string, week: number): boolean {
   return m ? week >= +m[1] && week <= +m[2] : /^\d+$/.test(rule) && week === +rule;
 }
 
-export function describeWeeks(rule: string): string | null {
-  if (isDatedMeeting(rule)) return formatDate(rule, { day: "numeric", month: "long", year: "numeric" });
-  if (rule.includes("&")) return rule.split("&").map(describeWeeks).join(", ");
+export function describeWeeks(rule: string, locale: Locale = "en"): string | null {
+  const t = common[locale].time;
+  if (isDatedMeeting(rule)) return formatDate(rule, { day: "numeric", month: "long", year: "numeric" }, locale);
+  if (rule.includes("&")) return rule.split("&").map((part) => describeWeeks(part, locale)).join(", ");
   if (rule === "all") return null;
-  if (rule === "odd") return "odd weeks";
-  if (rule === "even") return "even weeks";
-  if (rule.startsWith("!")) return `except ${describeWeeks(rule.slice(1))}`;
-  return /^\d+$/.test(rule) ? `week ${rule}` : `weeks ${rule.replaceAll(",", ", ")}`;
+  if (rule === "odd") return t.oddWeeks;
+  if (rule === "even") return t.evenWeeks;
+  if (rule.startsWith("!")) return t.except(describeWeeks(rule.slice(1), locale) ?? "");
+  return /^\d+$/.test(rule) ? t.weekN(rule) : t.weeksList(rule.replaceAll(",", ", "));
 }

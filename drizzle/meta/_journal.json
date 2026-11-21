@@ -29,6 +29,13 @@
       "when": 1795262519332,
       "tag": "0003_unified_features",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1795262845403,
+      "tag": "0004_locale_password_reset_study_plan",
+      "breakpoints": true
     }
   ]
 }

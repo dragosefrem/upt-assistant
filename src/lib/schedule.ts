@@ -20,9 +20,11 @@ import {
   type AttendanceStatus,
   type EntryKind,
 } from "@/db/schema";
+import type { Locale } from "@/i18n/config";
+import { common } from "@/i18n/messages/common";
 import type { User } from "./auth";
 import { sharedEventsFor } from "./group-events";
-import { DAY_SHORT, addDays, daysBetween, describeWeeks, formatMinutes, mondayOf, occursInWeek, weekday } from "./time";
+import { addDays, dayName, daysBetween, describeWeeks, formatMinutes, mondayOf, occursInWeek, weekday } from "./time";
 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
 export interface CalEvent {
@@ -308,8 +310,18 @@ export function examsForUser(user: Pick<User, "specializationId" | "year">, from
 
 /* ───────────────────────────── Calendar events ───────────────────────────── */
 
-/** Expands the student's effective schedule into dated events. */
-export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">, from: string, to: string): CalEvent[] {
+/**
+ * Expands the student's effective schedule into dated events. `locale` is the language
+ * of the short notes on each event ("odd weeks", "moved by you"); data for the assistant
+ * model stays in English.
+ */
+export function eventsBetween(
+  user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">,
+  from: string,
+  to: string,
+  locale: Locale = "en",
+): CalEvent[] {
+  const t = common[locale].time;
   const place = placeResolver(user.facultyId);
   const events: CalEvent[] = [];
 
@@ -341,8 +353,8 @@ export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializat
           endMin: e.endMin,
           room: e.room,
           teacher: e.teacher,
-          note: [describeWeeks(e.weeks), e.endMin === e.startMin ? "End time unpublished" : null,
-            e.moved ? "moved by you" : null, e.note].filter(Boolean).join(" · ") || null,
+          note: [describeWeeks(e.weeks, locale), e.endMin === e.startMin ? t.endTimeUnpublished : null,
+            e.moved ? t.movedByYou : null, e.note].filter(Boolean).join(" · ") || null,
           place: place(e.room),
           entryId: e.entryId,
           courseId: e.courseId,
@@ -369,7 +381,7 @@ export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializat
         endMin: o.endMin,
         room,
         teacher: e.teacher,
-        note: `moved by you this week only (normally ${DAY_SHORT[weekday(o.date)]} ${o.date} ${formatMinutes(e.startMin)})`,
+        note: t.movedOnce(`${dayName(weekday(o.date), locale, "short")} ${o.date} ${formatMinutes(e.startMin)}`),
         place: place(room),
         entryId: e.entryId,
         courseId: e.courseId,
@@ -394,7 +406,7 @@ export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializat
       endMin: x.endMin,
       room: x.room,
       teacher: x.teacher,
-      note: [x.audience, x.endMin === x.startMin ? "End time unpublished" : null].filter(Boolean).join(" · ") || null,
+      note: [x.audience, x.endMin === x.startMin ? t.endTimeUnpublished : null].filter(Boolean).join(" · ") || null,
       place: place(x.room),
       examId: x.id,
       seriesKey: `x:${x.key}`,
@@ -425,7 +437,7 @@ export function eventsBetween(user: Pick<User, "id" | "facultyId" | "specializat
         endMin: p.endMin,
         room: p.location,
         teacher: null,
-        note: p.date ? null : "every week",
+        note: p.date ? null : t.everyWeek,
         place: null,
         personalId: p.id,
         seriesKey: `p:${p.id}`,
@@ -572,7 +584,7 @@ export function groupBusy(groupId: number, from: string, to: string) {
 
 /* ───────────────────────────── Lookups for pickers ───────────────────────────── */
 
-export function describeGroup(groupId: number | null) {
+export function describeGroup(groupId: number | null, locale: Locale = "en") {
   if (!groupId) return null;
   const row = getDb()
     .select({ group: groups, spec: specializations, faculty: faculties })
@@ -582,7 +594,7 @@ export function describeGroup(groupId: number | null) {
     .where(eq(groups.id, groupId))
     .get();
   if (!row) return null;
-  const label = [row.group.series, row.group.name].filter(Boolean).join(" · ") || "whole year";
+  const label = [row.group.series, row.group.name].filter(Boolean).join(" · ") || common[locale].time.wholeYear;
   return { ...row, label };
 }
 

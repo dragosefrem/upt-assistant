@@ -285,8 +285,28 @@ export const users = sqliteTable("users", {
   calendarEmailedAt: text("calendar_emailed_at"),
   /** Secret token that authorises the read-only .ics subscription feed. */
   feedToken: text("feed_token").notNull(),
+  /** Interface language the student chose ("ro" | "en"); also used for e-mails. Null until chosen. */
+  locale: text("locale").$type<"ro" | "en">(),
+  /** When the student finished (or skipped) the welcome tour shown after onboarding. */
+  welcomeSeenAt: text("welcome_seen_at"),
   createdAt: createdAt(),
 });
+
+/** One-time links e-mailed by "Forgot password?". Only the hash of the token is stored. */
+export const passwordResets = sqliteTable(
+  "password_resets",
+  {
+    /** SHA-256 of the token in the link. */
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    expiresAt: text("expires_at").notNull(),
+    usedAt: text("used_at"),
+    createdAt: createdAt(),
+  },
+  (t) => [index("password_reset_user").on(t.userId)],
+);
 
 export const sessions = sqliteTable(
   "sessions",
@@ -379,6 +399,11 @@ export const personalEvents = sqliteTable(
     startMin: integer("start_min").notNull(),
     endMin: integer("end_min").notNull(),
     location: text("location"),
+    /**
+     * Set on events a planner generated, so they can be listed and replaced as a set:
+     * "study:<exams.key>" for an exam study plan. Null for events the student added.
+     */
+    plan: text("plan"),
     createdAt: createdAt(),
   },
   (t) => [index("personal_user").on(t.userId)],
