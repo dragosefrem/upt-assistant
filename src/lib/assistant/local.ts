@@ -1,7 +1,13 @@
 import "server-only";
+import { and, desc, eq } from "drizzle-orm";
+import { getDb } from "@/db";
+import { chatMessages } from "@/db/schema";
+import { assistant } from "@/i18n/messages/assistant";
+import type { PublicHoliday } from "../holidays";
 import { currentSemester, studentWeek } from "../schedule";
 import { DAY_NAMES, addDays, formatDate, nowLocal, weekday } from "../time";
 import { runTool, type ToolContext } from "./tools";
+import { isDate } from "./toolkit";
 
 /**
  * Built-in assistant used when no Claude credentials are configured. It recognises a
@@ -28,7 +34,7 @@ type Any = Record<string, any>; // eslint-disable-line @typescript-eslint/no-exp
 
 function isRomanian(text: string): boolean {
   // Only words that cannot be English ("am" and "sala" would misfire on "When am I…").
-  return /[ăâîșşțţ]/i.test(text) || /\b(unde|cand|azi|astazi|maine|examen|examenul|orar|orarul|liber|libera|grupa|cum|ajung|urmator|urmeaza|saptamana|luni|marti|miercuri|joi|vineri|ascunde|restaureaza)\b/.test(fold(text));
+  return /[ăâîșşțţ]/i.test(text) || /\b(ce|unde|cand|azi|astazi|maine|examen|examenul|orar|orarul|liber|libera|grupa|cum|ajung|urmator|urmeaza|saptamana|luni|marti|miercuri|joi|vineri|ascunde|restaureaza)\b/.test(fold(text));
 }
 
 function line(e: Any): string {
@@ -39,13 +45,21 @@ function line(e: Any): string {
 export function askLocal(message: string, ctx: ToolContext): string {
   const q = fold(message);
   const ro = isRomanian(message);
+  const locale = ro ? "ro" : "en";
+  const basic = assistant[locale].basic;
+  const holidayLine = (h: PublicHoliday) => basic.holiday(formatDate(h.date, { day: "numeric", month: "long" }, locale), h.name);
   const t = (en: string, roText: string) => (ro ? roText : en);
   const now = nowLocal();
 
   // Which day is the question about?
   let date = now.date;
   let dayNamed = false;
-  if (/\b(tomorrow|maine)\b/.test(q)) {
+  const explicitDate = /\b\d{4}-\d{2}-\d{2}\b/.exec(q)?.[0];
+  if (explicitDate) {
+    if (!isDate(explicitDate)) return basic.invalidDate;
+    date = explicitDate;
+    dayNamed = true;
+  } else if (/\b(tomorrow|maine)\b/.test(q)) {
     date = addDays(now.date, 1);
     dayNamed = true;
   } else if (/\b(today|azi|astazi)\b/.test(q)) dayNamed = true;
@@ -81,7 +95,7 @@ export function askLocal(message: string, ctx: ToolContext): string {
   if (/\b(lab|labs|laborator|laboratoare|laboratorul|seminar|seminare|odd|even|para|impara|paritate)\b/.test(q) && !/\b(exam|examen|examene)\b/.test(q)) {
     const nextWeek = /\b(next week|saptamana viitoare)\b/.test(q);
     const labsOnly = /\b(lab|labs|laborator|laboratoare|laboratorul)\b/.test(q);
-    const r = runTool("labs_this_week", { date: nextWeek ? addDays(now.date, 7) : dayNamed ? date : now.date, course: course?.title, kinds: labsOnly ? ["lab"] : undefined }, ctx) as Any;
+    const r = runTool("labs_this_week", { date: nextWeek ? addDays(now.date, 7) : date, course: course?.title, kinds: labsOnly ? ["lab"] : undefined }, { ...ctx, locale }) as Any;
     if (!r.error) {
       const when = (e: Any) => `${formatDate(e.date, { weekday: "long", day: "numeric", month: "long" }, ro ? "ro" : "en")} ${e.start}–${e.end}${e.room ? `, ${e.room}` : ""}`;
       const head = r.teaching_week
@@ -91,6 +105,7 @@ export function askLocal(message: string, ctx: ToolContext): string {
       const skipped = (r.not_this_week as Any[]).map((e) => `• ${e.course} (${e.kind}) — ${t(`not this week; ${e.runs}; next on ${e.next_on}`, `nu săptămâna aceasta; următorul: ${e.next_on.replace(/^\w+ /, "")}`)}`);
       return [
         head,
+        ...(r.holidays as PublicHoliday[]).map(holidayLine),
         running.length ? t("Taking place:", "Se țin:") : t("Nothing takes place.", "Nu se ține nimic."),
         ...running,
         ...(skipped.length ? [t("Not this week:", "Nu se țin săptămâna aceasta:"), ...skipped] : []),
@@ -137,9 +152,20 @@ export function askLocal(message: string, ctx: ToolContext): string {
     const r = runTool("hide_class", { course: course.title }, ctx) as Any;
     return r.error ?? t(`Hidden from your timetable: ${r.hidden.join("; ")}. Say "restore ${course.abbr ?? course.title}" to undo.`, `Am ascuns din orarul tău: ${r.hidden.join("; ")}. Spune „restaurează ${course.abbr ?? course.title}" pentru a reveni.`);
   }
-  if (/\b(restore|undo|reset|restaureaza|reseteaza|anuleaza)\b/.test(q)) {
-    const r = runTool("restore_class", {}, ctx) as Any;
-    return t(`Restored ${r.restored} change(s) to your timetable.`, `Am anulat ${r.restored} modificare/modificări din orar.`);
+  if (/^(yes|da)[.!\s]*$/.test(q.trim())) {
+    const previous = getDb().select({ content: chatMessages.content }).from(chatMessages)
+      .where(and(eq(chatMessages.userId, ctx.user.id), eq(chatMessages.role, "assistant"))).orderBy(desc(chatMessages.id)).limit(1).get();
+    if (previous?.content === assistant.en.basic.restoreAll || previous?.content === assistant.ro.basic.restoreAll) {
+      const r = runTool("restore_class", { confirmed: true }, ctx) as Any;
+      return assistant[q.trim().startsWith("da") ? "ro" : "en"].basic.restored(r.restored);
+    }
+  }
+  const restore = /\b(?:restore|undo|reset|restaureaza|reseteaza|anuleaza)\b(.*)/.exec(q);
+  if (restore) {
+    const which = restore[1].trim();
+    const all = /^(?:all\b|everything\b|tot\b|toate\b)/.test(which);
+    const r = runTool("restore_class", { course: all ? undefined : course?.title ?? which }, ctx) as Any;
+    return r.needs_confirmation ? basic.restoreAll : basic.restored(r.restored);
   }
 
   if (/\b(next|now|urmator|urmatoarea|urmeaza|acum)\b/.test(q) && !dayNamed) {
@@ -151,8 +177,9 @@ export function askLocal(message: string, ctx: ToolContext): string {
   }
 
   if (dayNamed || /\b(schedule|timetable|classes|orar|orarul|cursuri|ore)\b/.test(q)) {
-    const r = runTool("get_schedule", { from: date }, ctx) as Any;
+    const r = runTool("get_schedule", { from: date }, { ...ctx, locale }) as Any;
     const label = formatDate(date, undefined, ro ? "ro-RO" : "en-GB");
+    if (r.holidays.length) return [...(r.holidays as PublicHoliday[]).map(holidayLine), ...(r.events as Any[]).map(line)].join("\n");
     if (!r.events.length) return t(`Nothing scheduled on ${label}.`, `Nu ai nimic programat ${label}.`);
     return `${label}:\n${(r.events as Any[]).map(line).join("\n")}`;
   }

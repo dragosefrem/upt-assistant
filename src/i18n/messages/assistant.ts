@@ -1,5 +1,11 @@
 /** Texts for Poli's chat panel, the change previews and the assistant's API routes. */
 const en = {
+  basic: {
+    holiday: (day: string, name: string) => `${day} is ${name}. There are no timetable classes.`,
+    invalidDate: "That date does not exist. Which day did you mean?",
+    restoreAll: "Restore every hidden or moved class, including one-off moves? Reply yes to confirm.",
+    restored: (n: number) => `I restored ${n} timetable ${n === 1 ? "change" : "changes"}.`,
+  },
   engine: {
     gemini: "Powered by Gemini",
     claude: "Powered by Claude",
@@ -171,6 +177,12 @@ const en = {
 };
 
 const ro: typeof en = {
+  basic: {
+    holiday: (day: string, name: string) => `${day} este ${name}. Nu se țin ore.`,
+    invalidDate: "Data aceasta nu există. La ce zi te refereai?",
+    restoreAll: "Restabilesc toate orele ascunse sau mutate, inclusiv pe cele mutate o singură dată? Răspunde cu „da” ca să confirmi.",
+    restored: (n: number) => `Am anulat ${n} ${n === 1 ? "modificare" : n < 20 ? "modificări" : "de modificări"} din orar.`,
+  },
   engine: {
     gemini: "Cu Gemini",
     claude: "Cu Claude",

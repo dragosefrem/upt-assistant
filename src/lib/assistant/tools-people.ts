@@ -1,5 +1,6 @@
 import "server-only";
 import { InvitationError, answerContact, cancelContactRequest, contactList, inviteContact, removeContact } from "../contacts";
+import { isEmail } from "../export-email";
 import { myGroupEvents, respondToEvent } from "../group-events";
 import { createGroupEvent } from "../group-planning";
 import { availabilityAt, listPeople, matchPeople, ownBusyAt, personBusy, personGroup, type Person } from "../people";
@@ -80,7 +81,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
     input_schema: {
       type: "object",
       properties: {
-        date: { type: "string", description: "YYYY-MM-DD." },
+        date: { type: "string", format: "date", description: "YYYY-MM-DD." },
         start: { type: "string", description: "HH:MM." },
         end: { type: "string", description: "HH:MM. Default one hour after `start`." },
         people: { type: "array", items: { type: "string" }, description: "Names of contacts, or groups such as \"TI 3.2\". Leave out to check every contact." },
@@ -109,7 +110,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
         free: free.map((a) => describePerson(a.person)),
         busy: busy.map((a) => ({
           ...describePerson(a.person),
-          busy_with: a.busy.map((b) => `${b.what ?? "something in their calendar"} ${span(b.startMin, b.endMin)}`),
+          busy_with: a.busy.map((b) => `${b.what ?? "busy"} ${span(b.startMin, b.endMin)}`),
         })),
         cannot_tell: checked.filter((a) => !a.known).map((a) => `${a.person.name} (their group is no longer in the timetable)`),
         not_a_contact: resolved.unknown.length ? resolved.unknown : undefined,
@@ -129,8 +130,8 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
       type: "object",
       properties: {
         person: { type: "string", description: "The contact's name, or a group such as \"TI 3.2\"." },
-        from: { type: "string", description: "First day, YYYY-MM-DD." },
-        to: { type: "string", description: "Last day, YYYY-MM-DD. Defaults to `from`; at most 7 days after it." },
+        from: { type: "string", format: "date", description: "First day, YYYY-MM-DD." },
+        to: { type: "string", format: "date", description: "Last day, YYYY-MM-DD. Defaults to `from`; at most 7 days after it." },
       },
       required: ["person", "from"],
     },
@@ -148,7 +149,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
         ...describePerson(person),
         from: input.from,
         to,
-        busy: busy.map((b) => ({ date: b.date, weekday: DAY_NAMES[weekday(b.date)], time: span(b.startMin, b.endMin), what: b.what ?? "busy (private)" })),
+        busy: busy.map((b) => ({ date: b.date, weekday: DAY_NAMES[weekday(b.date)], time: span(b.startMin, b.endMin), what: b.what ?? "busy" })),
         note: busy.length ? undefined : "Nothing in that period.",
       };
     },
@@ -156,11 +157,15 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
   {
     name: "invite_contact",
     description:
-      "Sends a contact request to another student's account by e-mail address. Once they accept, both can see each other's timetable as busy time and plan group events. Only with an address the student gave; ask for it if missing.",
-    input_schema: { type: "object", properties: { email: { type: "string" } }, required: ["email"] },
+      "Prepare a contact request to an address the student gave. Ask them to confirm that address and calendar sharing, then call again with confirmed: true to send it.",
+    input_schema: { type: "object", properties: { email: { type: "string" }, confirmed: { type: "boolean" } }, required: ["email"] },
     run(input, ctx) {
       const email = str(input.email);
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "A valid e-mail address is needed." };
+      if (!email || !isEmail(email)) return { error: "A valid e-mail address is needed." };
+      if (input.confirmed !== true) return {
+        needs_confirmation: "Ask whether to send this contact request. If they accept, both students can see each other's classes, exams and busy times. Call again with confirmed: true only after a yes.",
+        recipient: email,
+      };
       try {
         inviteContact(ctx.user.id, email);
       } catch (error) {
@@ -172,10 +177,10 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
   },
   {
     name: "answer_contact_request",
-    description: "Accepts or declines a contact request someone sent to the student. Identify the sender by name or e-mail (see list_contacts).",
+    description: "Accept or decline an incoming contact request by name or e-mail. Accepting shares both timetables. Show the sender, ask first and pass confirmed: true only after a yes. Declining is one step.",
     input_schema: {
       type: "object",
-      properties: { person: { type: "string", description: "Name or e-mail of the sender." }, accept: { type: "boolean" } },
+      properties: { person: { type: "string", description: "Name or e-mail of the sender." }, accept: { type: "boolean" }, confirmed: { type: "boolean" } },
       required: ["person", "accept"],
     },
     run(input, ctx) {
@@ -185,6 +190,10 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
       const hits = incoming.filter((c) => fold(c.name).includes(q) || fold(c.email) === q);
       if (!hits.length) return { error: "No waiting request from that person.", waiting: incoming.map((c) => c.name) };
       if (hits.length > 1) return { error: "Several requests match; ask which one.", candidates: hits.map((c) => `${c.name} (${c.email})`) };
+      if (input.accept && input.confirmed !== true) return {
+        needs_confirmation: "Ask whether to accept and share classes, exams and busy times with this person. Call again with confirmed: true only after a yes.",
+        sender: { name: hits[0].name, email: hits[0].email },
+      };
       answerContact(ctx.user.id, hits[0].id, input.accept);
       ctx.changed = true;
       return { [input.accept ? "accepted" : "declined"]: hits[0].name };
@@ -283,7 +292,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
       type: "object",
       properties: {
         title: { type: "string" },
-        date: { type: "string", description: "YYYY-MM-DD." },
+        date: { type: "string", format: "date", description: "YYYY-MM-DD." },
         start: { type: "string", description: "HH:MM." },
         duration_minutes: { type: "number", description: "Default 60." },
         people: { type: "array", items: { type: "string" }, description: "Names of linked-account contacts to invite." },

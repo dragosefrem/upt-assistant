@@ -1,4 +1,5 @@
 import "server-only";
+import { z } from "zod";
 import type { Locale } from "@/i18n/config";
 import type { User } from "../auth";
 import type { LatLng } from "../directions";
@@ -38,7 +39,8 @@ export interface AssistantTool {
 
 export const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : undefined);
 export const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
-export const isDate = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+const calendarDate = z.iso.date();
+export const isDate = (v: unknown): v is string => calendarDate.safeParse(v).success;
 
 /** A list of non-empty strings; a single string counts as a list of one. */
 export function strList(v: unknown): string[] {
@@ -49,6 +51,7 @@ export function strList(v: unknown): string[] {
 export function parseClock(v: unknown): number | undefined {
   const m = typeof v === "string" ? /^(\d{1,2})(?::(\d{2}))?$/.exec(v.trim()) : null;
   if (!m) return undefined;
+  if (Number(m[2] ?? 0) > 59) return undefined;
   const minutes = +m[1] * 60 + +(m[2] ?? 0);
   return minutes >= 0 && minutes <= 24 * 60 ? minutes : undefined;
 }
@@ -58,6 +61,27 @@ export const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀
 /** A date as the model should read it back: "Wednesday 2026-11-25". */
 export const dated = (date: string) => `${DAY_NAMES[weekday(date)]} ${date}`;
 export const span = (startMin: number, endMin: number) => `${formatMinutes(startMin)}–${formatMinutes(endMin)}`;
+
+/** Keep stored labels on one line when quoting them in model context. */
+export function modelText(value: string, limit = 254): string {
+  return Array.from(value.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu, " ").replace(/\s+/gu, " ").trim()).slice(0, limit).join("");
+}
+
+const textLimits: Record<string, number> = {
+  name: 80, title: 120, location: 120, room: 120,
+  note: 1024, hint: 1024, details: 1024, why: 1024,
+  link: 8192, maps_url: 8192, subscription_link: 8192,
+};
+
+/** Apply the same text boundary to nested results and errors from all tool providers. */
+export function modelResult(value: unknown, key = ""): unknown {
+  if (typeof value === "string") return modelText(value, textLimits[key]);
+  if (Array.isArray(value)) return value.map((item) => modelResult(item, key));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([field, item]) => [field, modelResult(item, field)]));
+  }
+  return value;
+}
 
 /** What the model is told about one calendar event. */
 export function brief(e: CalEvent) {

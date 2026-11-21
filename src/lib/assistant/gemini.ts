@@ -7,6 +7,7 @@ import { assistant } from "@/i18n/messages/assistant";
 import type { User } from "../auth";
 import { parseChoices, parsePreview } from "./choices";
 import { SYSTEM_PROMPT, contextLine, type AssistantChunk } from "./prompt";
+import { modelText } from "./toolkit";
 import { TOOLS, runTool, type ToolContext } from "./tools";
 
 /**
@@ -65,9 +66,10 @@ export function historyFor(userId: string, current: string, limit = HISTORY_MESS
     const choices = parseChoices(row.choices);
     const preview = parsePreview(row.preview);
     let text = row.content;
-    if (choices) text += `\n[Buttons shown: ${choices.map((c) => `"${c.label}" sends "${c.reply}"`).join("; ")}]`;
+    if (choices) text += `\n[Buttons shown: ${choices.map((c) => `${JSON.stringify(modelText(c.label, 80))} sends ${JSON.stringify(modelText(c.reply, 300))}`).join("; ")}]`;
     if (preview) {
-      const change = preview.action === "add" ? `add "${preview.title}"` : `move "${preview.title}" from ${preview.from?.date} ${preview.from?.start}–${preview.from?.end}`;
+      const title = JSON.stringify(modelText(preview.title, 120));
+      const change = preview.action === "add" ? `add ${title}` : `move ${title} from ${preview.from?.date} ${preview.from?.start}–${preview.from?.end}`;
       text += `\n[Preview shown: ${change} to ${preview.weekly ? "every week from " : ""}${preview.date} ${preview.start}–${preview.end}; ${preview.status === "accepted" ? "the student accepted it and it is saved" : "not accepted yet"}]`;
     }
     const role = row.role === "assistant" ? "model" : "user";

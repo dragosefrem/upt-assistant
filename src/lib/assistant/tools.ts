@@ -1,10 +1,12 @@
 import "server-only";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
+import { isLocale } from "@/i18n/config";
 import { buildings, exams, faculties, occurrenceOverrides, personalEvents, savedContacts, userOverrides } from "@/db/schema";
-import type { User } from "../auth";
+import { normalizeEmail, type User } from "../auth";
 import { planTrip } from "../directions";
-import { emailCalendar } from "../export-email";
+import { emailCalendar, isEmail } from "../export-email";
+import { holidaysBetween, isPublicHoliday } from "../holidays";
 import {
   currentSemester,
   describeGroup,
@@ -13,6 +15,7 @@ import {
   findGroups,
   freeSlots,
   groupBusy,
+  groupWeek,
   overlaps,
   ownCohort,
   placeResolver,
@@ -28,7 +31,7 @@ import type { AssistantChoice, StoredPreview } from "./choices";
 import { APP_TOOLS } from "./tools-app";
 import { PEOPLE_TOOLS, resolvePeople } from "./tools-people";
 import { STUDY_TOOLS } from "./tools-study";
-import { brief, fold, isDate, num, parseClock, str, strList, type AssistantTool, type ToolContext } from "./toolkit";
+import { brief, fold, isDate, modelResult, num, parseClock, str, strList, type AssistantTool, type ToolContext } from "./toolkit";
 
 export type { AssistantTool, ToolContext } from "./toolkit";
 
@@ -40,6 +43,7 @@ export type { AssistantTool, ToolContext } from "./toolkit";
 /** Weekly entries whose course matches a free-text name or acronym. */
 function matchEntries(week: WeekEntry[], course: string, kind?: string, day?: number): WeekEntry[] {
   const q = fold(course);
+  if (!q.trim()) return [];
   return week.filter((e) => {
     const names = [fold(e.title), fold(e.abbr ?? "")];
     const hit = names.some((n) => n && (n === q || n.includes(q) || (q.length > 3 && q.includes(n) && n.length > 2)));
@@ -183,12 +187,13 @@ const CORE_TOOLS: AssistantTool[] = [
     input_schema: {
       type: "object",
       properties: {
-        from: { type: "string", description: "First day, YYYY-MM-DD." },
-        to: { type: "string", description: "Last day, YYYY-MM-DD. Defaults to `from`. At most 31 days after `from`." },
+        from: { type: "string", format: "date", description: "First day, YYYY-MM-DD." },
+        to: { type: "string", format: "date", description: "Last day, YYYY-MM-DD. Defaults to `from`. At most 31 days after `from`." },
+        language: { type: "string", enum: ["ro", "en"], description: "Language of the student's question, for holiday names." },
       },
       required: ["from"],
     },
-    run(input, { user }) {
+    run(input, { user, locale }) {
       if (!isDate(input.from)) return { error: "from must be YYYY-MM-DD" };
       const to = isDate(input.to) && input.to >= input.from ? input.to : input.from;
       const capped = to > addDays(input.from, 31) ? addDays(input.from, 31) : to;
@@ -197,6 +202,7 @@ const CORE_TOOLS: AssistantTool[] = [
         from: input.from,
         to: capped,
         teaching_week: semester ? teachingWeek(semester, input.from) : null,
+        holidays: holidaysBetween(input.from, capped, isLocale(input.language) ? input.language : locale),
         events: eventsBetween(user, input.from, capped).map(brief),
       };
     },
@@ -261,8 +267,8 @@ const CORE_TOOLS: AssistantTool[] = [
     input_schema: {
       type: "object",
       properties: {
-        from: { type: "string", description: "First day, YYYY-MM-DD." },
-        to: { type: "string", description: "Last day, YYYY-MM-DD (at most 14 days after `from`)." },
+        from: { type: "string", format: "date", description: "First day, YYYY-MM-DD." },
+        to: { type: "string", format: "date", description: "Last day, YYYY-MM-DD (at most 14 days after `from`)." },
         min_minutes: { type: "number", description: "Shortest gap worth reporting. Default 60." },
         group: { type: "string", description: "Another group to check instead of the student." },
         day_start: { type: "string", description: "Earliest hour to consider, HH:MM. Default 08:00." },
@@ -313,8 +319,8 @@ const CORE_TOOLS: AssistantTool[] = [
       type: "object",
       properties: {
         duration_minutes: { type: "number", description: "Length of the activity in minutes. Default 60." },
-        from: { type: "string", description: "First day to search, YYYY-MM-DD. Default today." },
-        to: { type: "string", description: "Last day to search, YYYY-MM-DD. Default 13 days after `from`; at most 31." },
+        from: { type: "string", format: "date", description: "First day to search, YYYY-MM-DD. Default today." },
+        to: { type: "string", format: "date", description: "Last day to search, YYYY-MM-DD. Default 13 days after `from`; at most 31." },
         with: { type: "array", items: { type: "string" }, description: "People to meet: contacts by name, or groups such as \"TI 3.2\"." },
         earliest: { type: "string", description: "Earliest start on any day, HH:MM. Default 08:00." },
         latest: { type: "string", description: "Time by which it must end on any day, HH:MM. Default 20:00." },
@@ -370,7 +376,7 @@ const CORE_TOOLS: AssistantTool[] = [
   {
     name: "save_contact",
     description:
-      "Remember which group someone the student meets is in (\"Mindy is in TI 3.2\"), so find_meeting_slots can plan around that group's timetable. Saving the same name again updates it. Only the name and group are stored.",
+      "Remember which group someone the student meets is in (\"Andreea is in TI 3.2\"), so find_meeting_slots can plan around that group's timetable. Saving the same name again updates it. Only the name and group are stored.",
     input_schema: {
       type: "object",
       properties: {
@@ -400,7 +406,7 @@ const CORE_TOOLS: AssistantTool[] = [
     input_schema: {
       type: "object",
       properties: {
-        date: { type: "string", description: "YYYY-MM-DD, for a one-off time." },
+        date: { type: "string", format: "date", description: "YYYY-MM-DD, for a one-off time." },
         weekday: { type: "number", description: "1 = Monday … 7 = Sunday, for a weekly time (instead of `date`)." },
         start: { type: "string", description: "HH:MM" },
         end: { type: "string", description: "HH:MM" },
@@ -433,7 +439,7 @@ const CORE_TOOLS: AssistantTool[] = [
             properties: {
               label: { type: "string", description: "Short button text, e.g. \"Tue 25 Nov · 18:00–19:00\" or \"Other times\"." },
               reply: { type: "string", description: "The message sent for the student when tapped, in the conversation's language, e.g. \"Tuesday 25 November, 18:00–19:00 works for me\" or \"Yes, add it\"." },
-              date: { type: "string", description: "YYYY-MM-DD, for a time slot." },
+              date: { type: "string", format: "date", description: "YYYY-MM-DD, for a time slot." },
               start: { type: "string", description: "HH:MM, for a time slot." },
               end: { type: "string", description: "HH:MM, for a time slot." },
             },
@@ -600,8 +606,8 @@ const CORE_TOOLS: AssistantTool[] = [
       properties: {
         course: { type: "string", description: "Course name or acronym." },
         kind: { type: "string", enum: ["course", "seminar", "lab", "project", "other"], description: "Which activity, if the course has several that day." },
-        date: { type: "string", description: "The date of the occurrence to move, YYYY-MM-DD (as it is now in the calendar)." },
-        to_date: { type: "string", description: "New date, YYYY-MM-DD. Defaults to the same day." },
+        date: { type: "string", format: "date", description: "The date of the occurrence to move, YYYY-MM-DD (as it is now in the calendar)." },
+        to_date: { type: "string", format: "date", description: "New date, YYYY-MM-DD. Defaults to the same day." },
         start: { type: "string", description: "New start time, HH:MM. Defaults to the current one." },
         end: { type: "string", description: "New end time, HH:MM. Defaults to keeping the same duration." },
         room: { type: "string", description: "New room, if it changes." },
@@ -641,6 +647,7 @@ const CORE_TOOLS: AssistantTool[] = [
       // An occurrence moved before keeps its original date as its identity.
       const original = e.originalDate ?? e.date;
       const toDate = isDate(input.to_date) ? input.to_date : e.date;
+      if (isPublicHoliday(toDate)) return { error: "Timetable classes do not run on a public holiday. Ask for another date.", holidays: holidaysBetween(toDate, toDate, ctx.locale) };
       const startMin = parseClock(input.start) ?? e.startMin;
       const endMin = parseClock(input.end) ?? startMin + (e.endMin - e.startMin);
       if (endMin <= startMin || endMin > 24 * 60) return { error: "Invalid new time." };
@@ -682,8 +689,8 @@ const CORE_TOOLS: AssistantTool[] = [
   {
     name: "restore_class",
     description:
-      "Undo the student's personal changes to classes (hidden, moved every week, or moved for one week). With `course`, only for that course; without it, for everything.",
-    input_schema: { type: "object", properties: { course: { type: "string" } } },
+      "Undo the student's personal changes to a named course (hidden or moved classes). Without a course, this undoes every class change. Ask first and pass confirmed: true only after the student agrees to restore everything.",
+    input_schema: { type: "object", properties: { course: { type: "string" }, confirmed: { type: "boolean" } } },
     run(input, ctx) {
       const db = getDb();
       const course = str(input.course);
@@ -694,15 +701,21 @@ const CORE_TOOLS: AssistantTool[] = [
         const semester = currentSemester();
         if (!semester) return { error: "No semester configured." };
         // Hidden entries are absent from the effective week, so match on the raw group data.
-        const all = studentWeek({ id: "", groupId: ctx.user.groupId, year: ctx.user.year }, semester);
+        const all = ctx.user.groupId ? groupWeek(ctx.user.groupId, semester, { includeOptions: true }) : [];
         wanted = new Set(matchEntries(all, course).map((e) => e.entryId));
       }
       const pick = <T extends { entryId: number }>(rows: T[]) => (wanted ? rows.filter((o) => wanted.has(o.entryId)) : rows);
       const weeklyHits = pick(weekly);
       const onceHits = pick(once);
-      for (const o of weeklyHits) db.delete(userOverrides).where(and(eq(userOverrides.id, o.id), eq(userOverrides.userId, ctx.user.id))).run();
-      for (const o of onceHits) db.delete(occurrenceOverrides).where(and(eq(occurrenceOverrides.id, o.id), eq(occurrenceOverrides.userId, ctx.user.id))).run();
       const restored = weeklyHits.length + onceHits.length;
+      if (!course && restored && input.confirmed !== true) return {
+        needs_confirmation: "Ask whether to undo every hidden or moved class, including one-off moves. Call again with confirmed: true only after a yes.",
+        weekly_changes: weeklyHits.length, one_off_moves: onceHits.length,
+      };
+      db.transaction((tx) => {
+        if (weeklyHits.length) tx.delete(userOverrides).where(and(eq(userOverrides.userId, ctx.user.id), inArray(userOverrides.id, weeklyHits.map((o) => o.id)))).run();
+        if (onceHits.length) tx.delete(occurrenceOverrides).where(and(eq(occurrenceOverrides.userId, ctx.user.id), inArray(occurrenceOverrides.id, onceHits.map((o) => o.id)))).run();
+      });
       if (restored) ctx.changed = true;
       return { restored };
     },
@@ -715,7 +728,7 @@ const CORE_TOOLS: AssistantTool[] = [
       type: "object",
       properties: {
         title: { type: "string" },
-        date: { type: "string", description: "YYYY-MM-DD for a one-off event." },
+        date: { type: "string", format: "date", description: "YYYY-MM-DD for a one-off event." },
         weekday: { type: "number", description: "1 = Monday … 7 = Sunday for a weekly event (instead of `date`)." },
         start: { type: "string", description: "HH:MM" },
         end: { type: "string", description: "HH:MM" },
@@ -768,9 +781,9 @@ const CORE_TOOLS: AssistantTool[] = [
       properties: {
         id: { type: "number", description: "personal_event_id from get_schedule." },
         title: { type: "string", description: "Part of the event's title." },
-        date: { type: "string", description: "A date the event is on now, YYYY-MM-DD." },
+        date: { type: "string", format: "date", description: "A date the event is on now, YYYY-MM-DD." },
         start: { type: "string", description: "Its current start time, HH:MM." },
-        new_date: { type: "string", description: "New date for a one-off event, YYYY-MM-DD." },
+        new_date: { type: "string", format: "date", description: "New date for a one-off event, YYYY-MM-DD." },
         new_weekday: { type: "number", description: "New weekday for a weekly event (1 = Monday … 7 = Sunday)." },
         new_start: { type: "string", description: "New start time, HH:MM. Defaults to the current one." },
         new_end: { type: "string", description: "New end time, HH:MM. Defaults to keeping the same duration." },
@@ -863,13 +876,14 @@ const CORE_TOOLS: AssistantTool[] = [
   {
     name: "remove_personal_event",
     description:
-      "Delete one of the student's own events (ones they added), by `id` (personal_event_id from get_schedule) or by part of its title. If several match, it asks which one unless `all` is true.",
+      "Delete one personal event by id or part of its title. If several match, ask which one. For all matches pass all: true, show the count and ask for a yes before calling again with confirmed: true.",
     input_schema: {
       type: "object",
       properties: {
         id: { type: "number", description: "personal_event_id from get_schedule." },
         title: { type: "string", description: "Part of the event's title." },
         all: { type: "boolean", description: "Delete every matching event; only when the student asked for all of them." },
+        confirmed: { type: "boolean", description: "Only after the student confirmed deleting the matches." },
       },
     },
     run(input, ctx) {
@@ -884,7 +898,11 @@ const CORE_TOOLS: AssistantTool[] = [
         .all()
         .filter((p) => (id === undefined || p.id === id) && (!q || fold(p.title).includes(q)));
       if (hits.length > 1 && input.all !== true) return { error: "Several events match; ask which one.", candidates: hits.map(describePersonal) };
-      for (const p of hits) db.delete(personalEvents).where(and(eq(personalEvents.id, p.id), eq(personalEvents.userId, ctx.user.id))).run();
+      if (input.all === true && hits.length && input.confirmed !== true) return {
+        needs_confirmation: "Ask whether to delete all the matching events. Call again with confirmed: true only after the student says yes.",
+        count: hits.length, matches: hits.map(describePersonal),
+      };
+      if (hits.length) db.delete(personalEvents).where(and(eq(personalEvents.userId, ctx.user.id), inArray(personalEvents.id, hits.map((p) => p.id)))).run();
       if (hits.length) ctx.changed = true;
       return { removed: hits.map((p) => describePersonal(p)) };
     },
@@ -892,10 +910,17 @@ const CORE_TOOLS: AssistantTool[] = [
   {
     name: "email_calendar",
     description:
-      "E-mail the student their calendar as a file (upt-orar.ics) they can import into Google Calendar, Apple Calendar or Outlook. Without `to` it goes to the address saved under Settings > Export your calendar, or their sign-in address; pass `to` only when the student gives another address of their own. Use it when they ask to export their calendar or get it by e-mail.",
-    input_schema: { type: "object", properties: { to: { type: "string", description: "Another e-mail address the student asked for." } } },
+      "E-mail the student's .ics calendar. The saved export and sign-in addresses need no confirmation. For any other address call without confirmed first, ask whether to share this calendar with that exact recipient, then pass confirmed: true only after a yes.",
+    input_schema: { type: "object", properties: { to: { type: "string", description: "The exact recipient requested. Defaults to the saved export or sign-in address." }, confirmed: { type: "boolean" } } },
     async run(input, { user, locale }) {
-      const result = await emailCalendar(user, str(input.to), undefined, user.locale ?? locale ?? "en");
+      const to = str(input.to);
+      if (input.to !== undefined && (!to || !isEmail(to))) return { error: "Ask for one valid e-mail address." };
+      const knownAddress = to && [user.email, user.exportEmail].find((address) => address && normalizeEmail(address) === normalizeEmail(to));
+      if (to && !knownAddress && input.confirmed !== true) return {
+        needs_confirmation: "Ask whether to share the calendar attachment with this recipient. Call again with this address and confirmed: true only after a yes.",
+        recipient: to,
+      };
+      const result = await emailCalendar(user, knownAddress || to, undefined, user.locale ?? locale ?? "en", { rememberAddress: false });
       if (!result.ok) return { error: result.error };
       return {
         sent_to: result.sentTo,
@@ -913,9 +938,15 @@ export function runTool(name: string, input: unknown, ctx: ToolContext): unknown
   const tool = TOOLS.find((t) => t.name === name);
   if (!tool) return { error: `Unknown tool: ${name}` };
   try {
-    const result = tool.run((input && typeof input === "object" ? input : {}) as Record<string, unknown>, ctx);
-    return result instanceof Promise ? result.catch((err: unknown) => ({ error: (err as Error).message })) : result;
+    const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
+    for (const [key, schema] of Object.entries(tool.input_schema.properties)) {
+      if (schema && typeof schema === "object" && "format" in schema && schema.format === "date" && args[key] !== undefined && !isDate(args[key])) {
+        return { error: `${key} must be a real calendar date (YYYY-MM-DD). Ask the student to correct it.` };
+      }
+    }
+    const result = tool.run(args, ctx);
+    return result instanceof Promise ? result.then((value) => modelResult(value)).catch((err: Error) => modelResult({ error: err.message })) : modelResult(result);
   } catch (err) {
-    return { error: (err as Error).message };
+    return modelResult({ error: (err as Error).message });
   }
 }
