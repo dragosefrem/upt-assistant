@@ -4,6 +4,9 @@ import { everydayTip } from "../examTips";
 import { guide } from "@/i18n/messages/guide";
 import { isLocale } from "@/i18n/config";
 import { attendanceRecords, markAttendance, summarizeAttendance } from "../attendance";
+import { attendanceGoalOverview, setAttendanceGoal } from "../attendance-goals";
+import { attendance as attendanceText } from "@/i18n/messages/attendance";
+import { attendanceActivityId } from "../kinds";
 import { searchGlossary } from "../glossary";
 import { makeupSessions, practicalsInWeek } from "../labs";
 import { currentSemester, eventsBetween } from "../schedule";
@@ -277,16 +280,23 @@ export const STUDY_TOOLS: AssistantTool[] = [
   {
     name: "get_attendance",
     description:
-      "The student's attendance record: how many classes they marked as attended or missed, overall and per activity (course + lecture/lab/seminar), with the dates missed. Use it for \"how many labs have I missed?\" or \"what's my attendance at Physics?\". Only occurrences the student marked are counted.",
+      "The student's marked attendance and missed dates, plus this semester's classes, their attendance goals, and how many more sessions each needs. Includes classes without marks or goals. Use the activity_id to set a goal.",
     input_schema: { type: "object", properties: { course: { type: "string", description: "Only activities of this course (name or acronym)." } } },
-    run(input, { user }) {
+    run(input, { user, locale }) {
       const q = fold(str(input.course) ?? "");
-      const summary = summarizeAttendance(attendanceRecords(user.id).filter((r) => !q || [fold(r.title), fold(r.abbr ?? "")].some((n) => n && (n.includes(q) || q.includes(n)))));
+      const matches = (activity: { title: string; abbr: string | null }) =>
+        !q || [fold(activity.title), fold(activity.abbr ?? "")].some((n) => n && (n.includes(q) || q.includes(n)));
+      const summary = summarizeAttendance(attendanceRecords(user.id).filter(matches));
+      const { goals, available } = attendanceGoalOverview(user, currentSemester(), locale ?? user.locale ?? "ro");
       return {
         marked: summary.attended + summary.missed,
         attended: summary.attended,
         missed: summary.missed,
         attendance_rate_percent: summary.rate,
+        semester_activities: [...goals, ...available].filter(matches).map((a) => ({
+          activity_id: attendanceActivityId(a), course: a.title, kind: a.kind, attended: a.attended,
+          minimum: a.minimum, still_needed: a.minimum === null ? null : Math.max(0, a.minimum - a.attended),
+        })),
         by_activity: summary.series.map((s) => ({
           activity: `${s.title} (${s.kind})`,
           usually: `${DAY_NAMES[s.weekday]} ${span(s.startMin, s.endMin)}`,
@@ -297,6 +307,24 @@ export const STUDY_TOOLS: AssistantTool[] = [
         })),
         note: summary.attended + summary.missed === 0 ? "Nothing is marked yet. The student marks attendance from a class in the calendar, or by telling you." : undefined,
       };
+    },
+  },
+  {
+    name: "set_attendance_goal",
+    description: "Save the student's requested minimum number of attended sessions for one class. Use its exact activity_id from get_attendance. Use zero only when the student asks to remove the goal.",
+    input_schema: { type: "object", properties: {
+      activity_id: { type: "string" },
+      minimum: { type: "integer", minimum: 0 },
+    }, required: ["activity_id", "minimum"] },
+    run(input, ctx) {
+      const t = attendanceText[ctx.locale ?? ctx.user.locale ?? "ro"].goals;
+      if (typeof input.activity_id !== "string") return { error: t.unavailable };
+      if (typeof input.minimum !== "number") return { error: t.invalidMinimum };
+      const minimum = input.minimum === 0 ? null : input.minimum;
+      const error = setAttendanceGoal(ctx.user, input.activity_id, minimum);
+      if (error) return { error: t[error] };
+      ctx.changed = true;
+      return { activity_id: input.activity_id, minimum };
     },
   },
   {

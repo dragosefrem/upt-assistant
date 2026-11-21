@@ -1,11 +1,15 @@
+import { CalendarDays, History, Target } from "lucide-react";
 import Link from "next/link";
+import { AttendanceGoals } from "@/components/AttendanceGoals";
 import { attendanceRecords, seriesDetails, summarizeAttendance, type SeriesDetails, type SeriesTally, type Tally } from "@/lib/attendance";
+import { attendanceGoalOverview } from "@/lib/attendance-goals";
 import { DATE_LOCALE, type Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
 import { getLocale, getT } from "@/i18n/server";
-import { requireOnboardedUser } from "@/lib/auth";
+import { requireOnboardedUser, type User } from "@/lib/auth";
 import { kindLabel, kindStyle } from "@/lib/kinds";
-import { dayName, formatDate, formatMinutes } from "@/lib/time";
+import { currentSemester } from "@/lib/schedule";
+import { capitalize, dayName, formatDate, formatMinutes } from "@/lib/time";
 
 export async function generateMetadata() {
   const t = await getT();
@@ -99,10 +103,7 @@ function SeriesCard({ series, details, t, locale }: { series: SeriesTally; detai
   );
 }
 
-export default async function AttendancePage() {
-  const user = await requireOnboardedUser();
-  const t = (await getT()).attendance;
-  const locale = await getLocale();
+function AttendanceHistory({ user, t, locale }: { user: User; t: Messages["attendance"]; locale: Locale }) {
   const summary = summarizeAttendance(attendanceRecords(user.id));
   const details = seriesDetails(user, summary.series, locale);
   const count = new Intl.NumberFormat(DATE_LOCALE[locale]);
@@ -114,12 +115,7 @@ export default async function AttendancePage() {
   ];
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      <div className="page-heading">
-        <h1>{t.title}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.intro}</p>
-      </div>
-
+    <div className="space-y-4">
       {summary.series.length > 0 && <section className="grid grid-cols-3 gap-2 sm:gap-4" aria-label={t.overall}>
         {stats.map((s) => (
           <div key={s.label} className="card px-2.5 py-3 sm:px-4">
@@ -142,6 +138,44 @@ export default async function AttendancePage() {
           {t.emptyAfter}
         </p>
       )}
+    </div>
+  );
+}
+
+export default async function AttendancePage({ searchParams }: PageProps<"/attendance">) {
+  const user = await requireOnboardedUser();
+  const messages = await getT();
+  const t = messages.attendance;
+  const locale = await getLocale();
+  const history = (await searchParams).view === "history";
+  const semester = history ? null : currentSemester();
+
+  return (
+    <div className="mx-auto w-full max-w-5xl space-y-5">
+      <header className="page-heading">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1>{t.title}</h1>
+          <Link href="/" className="btn-secondary"><CalendarDays size={16} aria-hidden />{t.calendar}</Link>
+        </div>
+        <p className="mt-1.5 text-sm text-slate-600">{history ? t.historyIntro : t.intro}</p>
+      </header>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 pb-3">
+        <nav aria-label={t.title} className="inline-flex gap-1 rounded-xl bg-slate-100 p-1">
+          {[
+            { href: "/attendance", label: t.goals.tab, Icon: Target, current: !history },
+            { href: "/attendance?view=history", label: t.history, Icon: History, current: history },
+          ].map(({ href, label, Icon, current }) => (
+            <Link key={href} href={href} aria-current={current ? "page" : undefined}
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${current ? "bg-white text-brand-700 shadow-sm" : "text-slate-600 hover:text-ink"}`}>
+              <Icon size={16} aria-hidden />{label}
+            </Link>
+          ))}
+        </nav>
+        {semester && <span className="text-xs font-medium text-slate-600">{capitalize(messages.common.time.semester(semester.number, semester.academicYear))}</span>}
+      </div>
+      {history
+        ? <AttendanceHistory user={user} locale={locale} t={t} />
+        : <AttendanceGoals {...attendanceGoalOverview(user, semester, locale)} />}
     </div>
   );
 }

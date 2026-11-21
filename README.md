@@ -32,7 +32,9 @@ works in Romanian and English.
 - **Exams and study plan.** Exam dates, rooms, countdowns and reminders; a search across
   the faculty's exams; and a study planner that works backwards from each exam and puts
   study blocks into the student's free time.
-- **Attendance.** Mark each class as attended or missed and see the totals per course.
+- **Attendance.** Set a semester minimum separately for each course’s lectures, labs,
+  seminars and other classes. The Attendance tab shows how many more sessions you need.
+  Mark sessions from the calendar and review individual dates in History.
 - **Contacts and group events.** Link accounts with colleagues (requests are accepted
   by the other person; real calendars then count as busy time), or save a friend as a
   name plus a group. See shared free time over custom dates, book a group event, collect
@@ -77,8 +79,9 @@ npm run dev                  # http://localhost:3000
 
 The SQLite database is created at `data/upt.db` on first start; migrations and seed
 data (the 2026–2027 academic calendar and campus buildings) are applied automatically.
-A database created from one of the earlier feature branches has a different migration
-history and has to be recreated.
+Databases from main, the Google Calendar previews, and the attendance-goals branch
+upgrade in place. Databases from feature branches that predate the unified schema
+still require a fresh database.
 
 ### Commands
 

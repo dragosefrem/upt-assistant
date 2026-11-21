@@ -1,27 +1,21 @@
 import type Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
-import { migrate } from "drizzle-orm/better-sqlite3/migrator";
 import { readMigrationFiles } from "drizzle-orm/migrator";
 import * as schema from "./schema";
 
-/** Registration shipped on main before the first calendar migration on the feature branch.
- * Drizzle compares timestamps, so an existing calendar preview would skip registration. */
+/** The calendar and attendance branches shipped different subsets of the migrations.
+ * Their timestamps survived renumbering, so use each journal entry to identify applied SQL. */
 export function migrateDatabase(sqlite: Database.Database, migrationsFolder: string) {
-  const config = { migrationsFolder };
-  const missingRegistration = sqlite.prepare(`
-    SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'google_sync_state'
-      AND NOT EXISTS (SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'registration_links')
-  `);
-  if (missingRegistration.get()) {
-    sqlite.transaction(() => {
-      if (!missingRegistration.get()) return;
-      const registration = readMigrationFiles(config).find(m => m.folderMillis === 1795281491440);
-      if (!registration) throw new Error("The registration migration is missing.");
-      for (const sql of registration.sql) sqlite.exec(sql);
-      sqlite.prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)").run(registration.hash, registration.folderMillis);
-    }).immediate();
-  }
-  const db = drizzle(sqlite, { schema });
-  migrate(db, config);
-  return db;
+  const migrations = readMigrationFiles({ migrationsFolder });
+  sqlite.transaction(() => {
+    sqlite.exec("CREATE TABLE IF NOT EXISTS __drizzle_migrations (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at numeric)");
+    const applied = new Set(sqlite.prepare<[], number>("SELECT created_at FROM __drizzle_migrations").pluck().all());
+    const record = sqlite.prepare("INSERT INTO __drizzle_migrations (hash, created_at) VALUES (?, ?)");
+    for (const migration of migrations) {
+      if (applied.has(migration.folderMillis)) continue;
+      for (const statement of migration.sql) sqlite.exec(statement);
+      record.run(migration.hash, migration.folderMillis);
+    }
+  }).immediate();
+  return drizzle(sqlite, { schema });
 }
