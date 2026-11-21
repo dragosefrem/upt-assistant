@@ -50,6 +50,11 @@ export function newFeedToken() {
   return randomBytes(24).toString("base64url");
 }
 
+/** Invalidate every subscription URL previously issued for this account. */
+export function rotateCalendarFeed(userId: string) {
+  getDb().update(users).set({ feedToken: newFeedToken() }).where(eq(users.id, userId)).run();
+}
+
 /** Railway sets X-Real-IP at ingress. Other trusted proxies can explicitly name the header they overwrite. */
 export function loginClientAddress(headers: Pick<Headers, "get">) {
   const header = process.env.TRUSTED_CLIENT_IP_HEADER || (process.env.RAILWAY_ENVIRONMENT_ID && "x-real-ip")

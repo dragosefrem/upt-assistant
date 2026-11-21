@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { isLocale } from "@/i18n/config";
-import { buildings, exams, faculties, occurrenceOverrides, personalEvents, savedContacts, userOverrides } from "@/db/schema";
+import { buildings, exams, faculties, occurrenceOverrides, personalEvents, userOverrides } from "@/db/schema";
 import { normalizeEmail, type User } from "../auth";
 import { planTrip } from "../directions";
 import { emailCalendar, isEmail } from "../export-email";
@@ -26,6 +26,8 @@ import {
   type WeekEntry,
 } from "../schedule";
 import { DAY_NAMES, addDays, formatMinutes, nowLocal, weekday } from "../time";
+import { matchGroups, saveContact, SAVED_NAME_MAX } from "../saved-contacts";
+import { tentativeTimesFor } from "../group-events";
 import { listPeople, personBusy } from "../people";
 import type { AssistantChoice, StoredPreview } from "./choices";
 import { APP_TOOLS } from "./tools-app";
@@ -147,16 +149,6 @@ function parseSlotKey(v: unknown): Array<{ date: string; startMin: number }> {
   const m = typeof v === "string" ? /^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2})/.exec(v.trim()) : null;
   const startMin = m ? parseClock(m[2]) : undefined;
   return m && startMin !== undefined ? [{ date: m[1], startMin }] : [];
-}
-
-type GroupInfo = NonNullable<ReturnType<typeof describeGroup>>;
-const groupLabel = (info: GroupInfo) => `${info.spec.name}, year ${info.group.year}, ${info.label}`;
-
-/** A group by loose name, preferring the student's own faculty. */
-function resolveGroup(query: string, user: User): GroupInfo | null {
-  const [match] = findGroups(query, user.facultyId, user.year, 1, ownCohort(user));
-  const found = match ?? (user.facultyId ? findGroups(query, null, user.year, 1)[0] : undefined);
-  return found ? describeGroup(found.group.id) : null;
 }
 
 function sanitizeChoices(v: unknown): AssistantChoice[] {
@@ -344,7 +336,7 @@ const CORE_TOOLS: AssistantTool[] = [
       const exclude = Array.isArray(input.exclude) ? input.exclude.flatMap(parseSlotKey) : [];
       const count = Math.min(Math.max(Math.round(num(input.count) ?? 3), 1), 6);
 
-      const busy: Array<{ date: string; startMin: number; endMin: number }> = [...eventsBetween(user, from, to)];
+      const busy: Array<{ date: string; startMin: number; endMin: number }> = [...eventsBetween(user, from, to), ...tentativeTimesFor(user.id, from, to)];
       let who = "you";
       let caveat: string | undefined;
       const others = strList(input.with);
@@ -382,21 +374,21 @@ const CORE_TOOLS: AssistantTool[] = [
       properties: {
         name: { type: "string", description: "The person's name as the student calls them." },
         group: { type: "string", description: "Their group, e.g. \"TI 3.2\" or \"Calculatoare anul 2 2.1\"." },
+        group_id: { type: "integer", description: "The chosen groupId when the group search was ambiguous." },
       },
       required: ["name", "group"],
     },
-    run(input, { user }) {
-      const name = str(input.name)?.slice(0, 60);
+    run(input, ctx) {
+      const name = str(input.name);
       const group = str(input.group);
       if (!name || !group) return { error: "A name and a group are required." };
-      const info = resolveGroup(group, user);
-      if (!info) return { error: `No group matches "${group}".` };
-      getDb()
-        .insert(savedContacts)
-        .values({ userId: user.id, name, nameKey: fold(name), groupId: info.group.id })
-        .onConflictDoUpdate({ target: [savedContacts.userId, savedContacts.nameKey], set: { name, groupId: info.group.id } })
-        .run();
-      return { saved: name, group: groupLabel(info), faculty: info.faculty.shortName ?? info.faculty.name };
+      if (name.length > SAVED_NAME_MAX) return { error: `Use at most ${SAVED_NAME_MAX} characters for a name.` };
+      const matches = matchGroups(group, ctx.user.facultyId, ctx.user.year);
+      const choice = input.group_id === undefined ? (matches.length === 1 ? matches[0] : undefined) : matches.find(m => m.groupId === input.group_id);
+      if (!choice) return { error: matches.length ? "Ask which group before saving; pass the same search and its group_id." : "No matching group.", candidates: matches };
+      const saved = saveContact(ctx.user.id, name, choice.groupId);
+      ctx.changed = true;
+      return { saved: saved.name, group: choice.group, faculty: choice.faculty };
     },
   },
   {

@@ -176,7 +176,7 @@ export function RouteView({
               ref={player}
               className="h-full w-full"
               playsInline
-              preload="metadata"
+              preload="none"
               poster={ready ? video.poster : undefined}
               src={ready ? video.url : undefined}
               controls={controls}

@@ -1,8 +1,10 @@
 import "server-only";
-import { InvitationError, answerContact, cancelContactRequest, contactList, inviteContact, removeContact } from "../contacts";
+import { contacts } from "@/i18n/messages/contacts";
+import { InvitationError, answerContact, cancelContactRequest, contactList, lookupContact, inviteContact, removeContact } from "../contacts";
 import { isEmail } from "../export-email";
-import { myGroupEvents, respondToEvent } from "../group-events";
-import { createGroupEvent } from "../group-planning";
+import { memberEvent, myGroupEvents, respondToEvent } from "../group-events";
+import { availabilityDays, hourViews, planningRange } from "../planning-range";
+import { createGroupEvent, groupAvailability } from "../group-planning";
 import { availabilityAt, listPeople, matchPeople, ownBusyAt, personBusy, personGroup, type Person } from "../people";
 import { removeSavedContact } from "../saved-contacts";
 import { describeGroup, findGroups, ownCohort } from "../schedule";
@@ -58,6 +60,42 @@ function failure(error: unknown) {
 
 export const PEOPLE_TOOLS: AssistantTool[] = [
   {
+    name: "lookup_contact",
+    description: "Look up the exact email a student enters on Contacts. Returns that person's name and the existing request or connection status.",
+    input_schema: { type: "object", properties: { email: { type: "string" } }, required: ["email"] },
+    run(input, { user }) {
+      const { person, error } = lookupContact(str(input.email) ?? "");
+      if (!person) return { error };
+      const link = contactList(user.id).find(c => c.id === person.id);
+      return { name: person.name, email: person.email, own_account: person.id === user.id,
+        connection: !link ? "none" : link.accepted ? "linked" : link.requestedBy === user.id ? "sent" : "received" };
+    },
+  },
+  {
+    name: "shared_free_time",
+    description: "All openings in the Contacts planner for the student and selected linked contacts. Use a date range and full/daytime/evening hours. For ranges over 31 days request the next page.",
+    input_schema: { type: "object", properties: {
+      people: { type: "array", items: { type: "string" } }, from: { type: "string", format: "date" }, to: { type: "string", format: "date" },
+      hours: { type: "string", enum: ["full", "daytime", "evening"] }, page: { type: "integer", minimum: 1 },
+    } },
+    run(input, ctx) {
+      const { people, unknown, ambiguous } = resolvePeople(ctx, strList(input.people));
+      if (unknown.length || ambiguous.length || people.some(p => p.kind !== "account")) {
+        return { error: "Select linked contacts from list_contacts. Use find_meeting_slots for saved people.", unknown, ambiguous };
+      }
+      const ids = people.flatMap(p => p.kind === "account" ? [p.id] : []);
+      const now = nowLocal();
+      const range = planningRange(now.date, { from: input.from, to: input.to, page: String(input.page ?? 1) });
+      if (range.error) return { error: range.error };
+      const hours = hourViews.find(h => h.id === (input.hours ?? "full"));
+      if (!hours) return { error: "Choose full, daytime or evening." };
+      const slots = groupAvailability(ctx.user, ids, range.visible, now);
+      return { page: range.page, pages: range.pageCount, days: availabilityDays(range.visible, slots, now, hours).map(day => ({
+        date: day.date, free_minutes: day.freeMinutes, windows: day.slots.map(slot => span(slot.startMin, slot.endMin)),
+      })) };
+    },
+  },
+  {
     name: "list_contacts",
     description:
       "The student's contacts: linked accounts (they accepted each other, so real calendars count), contact requests waiting for an answer or sent, and saved people (a name plus a group, for friends without an account). Use it for \"who are my contacts?\" and before acting on a contact by name.",
@@ -106,7 +144,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
       const busy = checked.filter((a) => a.known && !a.free);
       return {
         slot: `${dated(input.date)} ${span(startMin, endMin)}`,
-        you: own.length ? { free: false, busy_with: own.map((b) => `${b.what} ${span(b.startMin, b.endMin)}`) } : { free: true },
+        you: own.length ? { free: false, busy_with: own.map((b) => `${b.what ?? "busy"} ${span(b.startMin, b.endMin)}`) } : { free: true },
         free: free.map((a) => describePerson(a.person)),
         busy: busy.map((a) => ({
           ...describePerson(a.person),
@@ -245,6 +283,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
       const events = myGroupEvents(user.id).filter((e) => input.include_past === true || e.date >= today);
       return {
         events: events.map((e) => ({
+          id: e.id,
           title: e.title,
           when: `${dated(e.date)} ${span(e.startMin, e.endMin)}`,
           location: e.location,
@@ -256,6 +295,21 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
         })),
         waiting_for_your_answer: events.filter((e) => e.response === "pending" && e.status !== "expired").map((e) => e.title),
       };
+    },
+  },
+  {
+    name: "group_event_details",
+    description: "Read a member invitation, its reply deadline, participants and answers. Pass the ID from list_group_events. The host can request a guest invitation link when sharing was enabled.",
+    input_schema: { type: "object", properties: { id: { type: "string" }, guest_link: { type: "boolean" } }, required: ["id"] },
+    run(input, ctx) {
+      const event = memberEvent(ctx.user.id, str(input.id) ?? "");
+      if (!event) return { error: "No such invitation for this student." };
+      addLink(ctx, event.title, `/contacts/events/${event.id}`);
+      const guestLink = input.guest_link === true && event.shareToken && event.status !== "expired" ? `/join/${event.shareToken}` : undefined;
+      if (guestLink) addLink(ctx, contacts[ctx.locale ?? "en"].guest.title, guestLink);
+      return { title: event.title, host: event.host, date: event.date, time: span(event.startMin, event.endMin),
+        location: event.location, status: event.status, reply_by: new Date(event.deadline).toISOString(),
+        participants: event.roster.map(p => ({ name: p.name, response: p.response })), guest_link_available: !!guestLink };
     },
   },
   {
@@ -308,7 +362,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
       const startMin = parseClock(input.start);
       const duration = Math.round(num(input.duration_minutes) ?? 60);
       if (!title || !isDate(input.date) || startMin === undefined) return { error: "A title, a date and a start time are needed." };
-      if (duration < 15 || startMin + duration > 24 * 60) return { error: "The event must end by midnight and last at least 15 minutes." };
+      if (duration < 1 || startMin + duration > 24 * 60) return { error: "The event must end by midnight and last at least one minute." };
       const endMin = startMin + duration;
       const resolved = resolvePeople(ctx, strList(input.people));
       if (resolved.ambiguous.length) return { error: "Several contacts match a name; ask which one.", several_people_match: resolved.ambiguous };
@@ -338,7 +392,7 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
         guest_link: share,
         reply_by: deadline.replace("T", " "),
         busy_then: [
-          ...(own.length ? [`the student (${own.map((b) => b.what).join(", ")})`] : []),
+          ...(own.length ? [`the student (${own.map((b) => b.what ?? "busy").join(", ")})`] : []),
           ...availability.filter((a) => !a.free).map((a) => a.person.name),
         ],
       };

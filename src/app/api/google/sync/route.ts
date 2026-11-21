@@ -1,9 +1,6 @@
-import { eq } from "drizzle-orm";
-import { getDb } from "@/db";
-import { users } from "@/db/schema";
 import { getLocale, getT } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
-import { GoogleError, syncToGoogle } from "@/lib/google";
+import { disconnectGoogle, GoogleError, syncToGoogle } from "@/lib/google";
 
 /** Re-exports the timetable to the student's Google calendar. */
 export async function POST() {
@@ -25,6 +22,6 @@ export async function POST() {
 export async function DELETE() {
   const user = await getUser();
   if (!user) return Response.json({ error: (await getT()).common.status.notSignedIn }, { status: 401 });
-  getDb().update(users).set({ googleRefreshToken: null, googleCalendarId: null, googleSyncedAt: null }).where(eq(users.id, user.id)).run();
+  disconnectGoogle(user.id);
   return Response.json({ ok: true });
 }

@@ -1,16 +1,23 @@
 import "server-only";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { occurrenceOverrides, userCourses, userOverrides, users } from "@/db/schema";
+import { specializations, userCourses, users } from "@/db/schema";
 import { LOCALE_NAMES, isLocale } from "@/i18n/config";
-import { and, asc } from "drizzle-orm";
-import { sources } from "@/db/schema";
+import { facultyDocuments } from "../faculty-documents";
+import { pickerData, facultyOf } from "../catalog";
+import { programmeOptions } from "../profile-options";
+import { applyStudyProfile, profileError, type StudyProfile } from "../study-profile";
 import { studentBuildings } from "../campus-buildings";
 import { planCampusRoute } from "../campuspath/assistant";
+import { listClassrooms } from "../campuspath/client";
+import { campus } from "@/i18n/messages/campus";
+import { settings } from "@/i18n/messages/settings";
+import { rotateCalendarFeed } from "../auth";
+import { disconnectGoogle, googleConfigured, syncToGoogle } from "../google";
 import { publicBaseUrl } from "../export-email";
 import { matchGroups } from "../saved-contacts";
-import { courseChoices, currentSemester, describeGroup, eventsBetween } from "../schedule";
-import { DAY_NAMES, addDays, nowLocal } from "../time";
+import { courseChoices, currentSemester, describeGroup, eventsBetween, hiddenClasses, unhideClass } from "../schedule";
+import { DAY_NAMES, addDays, formatMinutes, nowLocal } from "../time";
 import { addLink, brief, fold, num, parseClock, span, str, type AssistantTool } from "./toolkit";
 
 /** Tools for the things the Settings page does: profile, course choices, language, plus opening a page. */
@@ -36,9 +43,11 @@ export const APP_TOOLS: AssistantTool[] = [
     input_schema: { type: "object", properties: {} },
     run(_input, { user, locale }) {
       const group = describeGroup(user.groupId);
+      const faculty = group?.faculty ?? facultyOf(user.facultyId);
+      const spec = group?.spec ?? (user.specializationId ? getDb().select().from(specializations).where(eq(specializations.id, user.specializationId)).get() : null);
       return {
-        faculty: group ? (group.faculty.shortName ?? group.faculty.name) : null,
-        programme: group?.spec.name ?? null,
+        faculty: faculty?.shortName ?? faculty?.name ?? null,
+        programme: spec?.name ?? null,
         year: user.year,
         group: group?.label ?? null,
         language: LOCALE_NAMES[user.locale ?? locale ?? "ro"],
@@ -48,43 +57,63 @@ export const APP_TOOLS: AssistantTool[] = [
     },
   },
   {
-    name: "set_group",
-    description:
-      "Changes the group (and with it year and programme) the student's timetable is built from, for example after moving to another semigroup. This replaces their whole timetable and clears their course choices and class changes, so call it without `confirmed` first, read back the group it found, and only pass confirmed: true after the student said yes.",
-    input_schema: {
-      type: "object",
-      properties: {
-        group: { type: "string", description: "The group as the student says it, e.g. \"CTI anul 1 2.1\" or \"TI 3.2\"." },
-        confirmed: { type: "boolean" },
-      },
-      required: ["group"],
+    name: "find_programmes",
+    description: "Find profile options from the same catalogue as Settings. Filter by year, faculty name/code and programme name/code. For a selected programme_id, return its groups and series, or indicate it has no published groups.",
+    input_schema: { type: "object", properties: {
+      year: { type: "integer", minimum: 1, maximum: 6 }, faculty: { type: "string" }, programme: { type: "string" }, programme_id: { type: "integer" },
+    }, required: ["year"] },
+    run(input) {
+      const year = num(input.year);
+      if (!year || !Number.isInteger(year) || year < 1 || year > 6) return { error: "Choose a study year from 1 to 6." };
+      const data = pickerData();
+      const offered = programmeOptions(data.specializations, data.groups, year);
+      const facultyQuery = fold(str(input.faculty) ?? "");
+      const programmeQuery = fold(str(input.programme) ?? "");
+      const faculties = data.faculties.filter(f => fold(`${f.shortName ?? ""} ${f.name}`).includes(facultyQuery));
+      const matches = [...offered.scheduled, ...offered.other].filter(s =>
+        faculties.some(f => f.id === s.facultyId) && fold(`${s.code ?? ""} ${s.name}`).includes(programmeQuery) &&
+        (input.programme_id === undefined || s.id === input.programme_id));
+      return { year, count: matches.length, programmes: matches.slice(0, 30).map(s => ({
+        programme_id: s.id, name: s.name, faculty: faculties.find(f => f.id === s.facultyId)?.name, degree: s.degree, language: s.language,
+        groups: matches.length === 1 ? data.groups.filter(g => g.specializationId === s.id && g.year === year).map(g => ({ group_id: g.id, group: g.name, series: g.series })) : undefined,
+      })), note: matches.length > 30 ? "Narrow the faculty or programme search." : undefined };
     },
+  },
+  {
+    name: "set_group",
+    description: "Change the student's timetable profile. Supply a group name or a programme_id, year and group_id from find_programmes. Omit group_id for a programme without published groups. Confirm the exact selection with the student before replacing course choices and class changes.",
+    input_schema: { type: "object", properties: {
+      group: { type: "string" }, programme_id: { type: "integer" }, year: { type: "integer" }, group_id: { type: "integer" }, confirmed: { type: "boolean" },
+    } },
     run(input, ctx) {
-      const query = str(input.group);
-      if (!query) return { error: "Say which group." };
-      const matches = matchGroups(query, ctx.user.facultyId, ctx.user.year);
-      if (!matches.length) return { error: `No group matches "${query}".`, hint: "Ask for the programme, year and group as written in the timetable; Settings has the full list." };
-      if (matches.length > 1) return { error: "Several groups match; ask which one.", candidates: matches.map((m) => `${m.group} (${m.code ?? ""} ${m.faculty})`.replace("( ", "(")) };
-      const [match] = matches;
-      const info = describeGroup(match.groupId)!;
-      if (info.group.id === ctx.user.groupId) return { error: "That is already the student's group." };
-      if (input.confirmed !== true) {
-        return {
-          needs_confirmation: `Switch the timetable to ${match.group} (${match.faculty})?`,
-          note: "This replaces the whole timetable and clears course choices and class changes. Ask the student; if yes, call again with confirmed: true.",
-        };
+      const locale = ctx.locale ?? "en";
+      let profile: StudyProfile;
+      let label: string;
+      if (input.programme_id !== undefined) {
+        const spec = pickerData().specializations.find(s => s.id === input.programme_id);
+        if (!spec) return { error: "Choose a programme from find_programmes." };
+        profile = { facultyId: spec.facultyId, specializationId: spec.id, year: num(input.year) ?? 0, groupId: num(input.group_id) ?? null };
+        const error = profileError(profile);
+        if (error) return { error: `Invalid ${error}. Use find_programmes for this year.` };
+        const info = describeGroup(profile.groupId, locale);
+        label = [spec.name, `year ${profile.year}`, info?.label ?? "no published group"].join(", ");
+      } else {
+        const query = str(input.group);
+        if (!query) return { error: "Say which group or programme." };
+        const matches = matchGroups(query, ctx.user.facultyId, ctx.user.year, locale);
+        const match = input.group_id === undefined ? (matches.length === 1 ? matches[0] : undefined) : matches.find(m => m.groupId === input.group_id);
+        if (!match) return { error: matches.length ? "Several groups match; ask for a group_id." : "No group matches. Search find_programmes.", candidates: matches };
+        const info = describeGroup(match.groupId)!;
+        profile = { facultyId: info.faculty.id, specializationId: info.spec.id, year: info.group.year, groupId: info.group.id };
+        if (profileError(profile)) return { error: "This group is no longer offered. Search find_programmes." };
+        label = `${match.group} (${match.faculty})`;
       }
-      const db = getDb();
-      // Course picks and personal changes refer to the old group's timetable.
-      db.delete(userCourses).where(eq(userCourses.userId, ctx.user.id)).run();
-      db.delete(userOverrides).where(eq(userOverrides.userId, ctx.user.id)).run();
-      db.delete(occurrenceOverrides).where(eq(occurrenceOverrides.userId, ctx.user.id)).run();
-      db.update(users)
-        .set({ facultyId: info.faculty.id, specializationId: info.spec.id, year: info.group.year, groupId: info.group.id })
-        .where(eq(users.id, ctx.user.id))
-        .run();
+      if (ctx.user.specializationId === profile.specializationId && ctx.user.year === profile.year && ctx.user.groupId === profile.groupId) return { error: "That is already the student's profile." };
+      if (input.confirmed !== true) return { needs_confirmation: `Switch the timetable to ${label}? Ask before replacing the existing timetable choices and class changes.` };
+      applyStudyProfile(ctx.user, profile);
+      Object.assign(ctx.user, profile);
       ctx.changed = true;
-      return { group_is_now: match.group, faculty: match.faculty, note: "If this group has optional courses or labs in several slots, the student should check them (list_course_choices)." };
+      return { group_is_now: label, note: "Use list_course_choices for optional courses and alternative lab slots." };
     },
   },
   {
@@ -121,7 +150,7 @@ export const APP_TOOLS: AssistantTool[] = [
       properties: {
         course: { type: "string", description: "Course name or acronym." },
         following: { type: "boolean", description: "true to follow the course, false to drop it (only for courses that can be dropped)." },
-        slot: { type: "number", description: "Slot number from list_course_choices." },
+        slot: { type: "integer", minimum: 0, description: "Slot number from list_course_choices, or 0 to clear the selected slot." },
         slot_weekday: { type: "number", description: "Alternatively the slot's weekday, 1 = Monday … 7 = Sunday." },
         slot_start: { type: "string", description: "…and its start time, HH:MM." },
       },
@@ -147,7 +176,9 @@ export const APP_TOOLS: AssistantTool[] = [
       const slotNumber = num(input.slot);
       const day = num(input.slot_weekday);
       const start = parseClock(input.slot_start);
-      if (slotNumber !== undefined || day !== undefined || start !== undefined) {
+      if (slotNumber === 0) {
+        slotEntryId = null;
+      } else if (slotNumber !== undefined || day !== undefined || start !== undefined) {
         const wanted = slotNumber !== undefined ? [c.slots[slotNumber - 1]].filter(Boolean) : c.slots.filter((s) => (day === undefined || s.day === day) && (start === undefined || s.startMin === start));
         if (wanted.length !== 1) {
           return {
@@ -200,6 +231,21 @@ export const APP_TOOLS: AssistantTool[] = [
     },
   },
   {
+    name: "browse_classrooms",
+    description: "Search the Campus classroom directory by room or building, filter by tour coverage and page through results. Use a room's ID with campus_route.",
+    input_schema: { type: "object", properties: {
+      query: { type: "string" }, coverage: { type: "string", enum: ["exact", "checkpoint", "unmapped"] }, offset: { type: "integer", minimum: 0 },
+    } },
+    async run(input, ctx) {
+      const coverage = input.coverage;
+      if (coverage !== undefined && coverage !== "exact" && coverage !== "checkpoint" && coverage !== "unmapped") return { error: "Unknown coverage filter." };
+      const lang = ctx.locale ?? ctx.user.locale ?? "en";
+      const page = await listClassrooms({ q: str(input.query), coverage, lang, offset: Math.max(0, Math.floor(num(input.offset) ?? 0)), limit: 20 });
+      return { total: page.total, next_offset: page.offset + page.items.length < page.total ? page.offset + page.items.length : null,
+        rooms: page.items.map(r => ({ id: r.index, code: r.code, room: r.name, building: r.area, floor: r.level, video_reaches: r.reach, sources: r.sources })) };
+    },
+  },
+  {
     name: "campus_route",
     description:
       "The way to a room, lab, amphitheatre or building on campus (\"B419\", \"A315\", \"D1\", \"the library\"), through the university's 360° tour. Without `from` it starts at the best building entrance for that room, chosen automatically, and the button it puts under your reply opens the whole journey: a Google map to that entrance, then the walkthrough video with turn-by-turn directions. `to` may be \"next\" for the student's next class. Pass `from` only when the student says where inside the campus they are starting. If it answers with a question (a room code that exists in two buildings), ask the student. Use get_directions instead for travel times across the city from the student's GPS position.",
@@ -207,6 +253,7 @@ export const APP_TOOLS: AssistantTool[] = [
       type: "object",
       properties: {
         to: { type: "string", description: "Room code or place name, an option value from an earlier question, or \"next\" for the next class." },
+        qr: { type: "boolean", description: "Add a QR image for this walk if the student asks to share it." },
         from: { type: "string", description: "Where the student starts: a place name such as \"AC entrance\", a room, or an option value from an earlier question." },
       },
       required: ["to"],
@@ -237,6 +284,10 @@ export const APP_TOOLS: AssistantTool[] = [
         };
       }
       addLink(ctx, answer.title, answer.link);
+      if (input.qr === true && ctx.origin) {
+        const qr = new URLSearchParams({ link: new URL(answer.link, ctx.origin).href, format: "png" });
+        addLink(ctx, campus[ctx.locale ?? "en"].share.saveImage, `/api/campus/qr?${qr}`);
+      }
       return {
         route: answer.title,
         for_class: event,
@@ -270,17 +321,75 @@ export const APP_TOOLS: AssistantTool[] = [
     input_schema: { type: "object", properties: {} },
     run(_input, { user }) {
       if (!user.facultyId) return { error: "The student has not chosen a faculty yet." };
-      const rows = getDb()
-        .select({ label: sources.label, url: sources.url, kind: sources.kind, status: sources.status, lastFetchedAt: sources.lastFetchedAt })
-        .from(sources)
-        .where(and(eq(sources.facultyId, user.facultyId)))
-        .orderBy(asc(sources.kind), asc(sources.label))
-        .all()
-        .filter((d) => d.kind !== "other" && (d.status === "imported" || d.status === "partial"));
+      const semester = currentSemester();
+      const rows = [...facultyDocuments(user.facultyId, "timetable", semester), ...facultyDocuments(user.facultyId, "exams")];
       return {
-        documents: rows.slice(0, 25).map((d) => ({ title: d.label, kind: d.kind, link: d.url, last_imported: d.lastFetchedAt?.slice(0, 10) ?? null, partly_imported: d.status === "partial" || undefined })),
-        note: rows.length ? "The same list is under Settings." : "No document has been imported for this faculty yet.",
+        documents: rows.map(d => ({ title: d.label, kind: d.kind, link: d.pdfId ? `/api/timetables/${d.pdfId}` : d.url,
+          publication: d.url, status: d.status, import_details: d.message, last_imported: d.lastFetchedAt?.slice(0, 10) ?? null })),
+        note: rows.length ? "Settings lists timetable publications. Exams lists the exam sources." : "No document is listed for this faculty yet.",
       };
+    },
+  },
+  {
+    name: "list_hidden_classes",
+    description: "List individual hidden classes in Settings. Use the entry ID with show_hidden_class to restore visibility while keeping its time, room and one-off moves.",
+    input_schema: { type: "object", properties: {} },
+    run(_input, { user }) {
+      return { classes: hiddenClasses(user.id, currentSemester()?.id).map(e => ({
+        entry_id: e.id, course: e.name, kind: e.kind, weekday: e.movedDay ?? e.day, start: formatMinutes(e.movedTime ?? e.time),
+      })) };
+    },
+  },
+  {
+    name: "show_hidden_class",
+    description: "Make one hidden class visible again. Pass its entry ID from list_hidden_classes.",
+    input_schema: { type: "object", properties: { entry_id: { type: "integer" } }, required: ["entry_id"] },
+    run(input, ctx) {
+      const id = num(input.entry_id);
+      if (!id || !unhideClass(ctx.user.id, id)) return { error: "No hidden class with that ID for this student." };
+      ctx.changed = true;
+      return { shown: id };
+    },
+  },
+  {
+    name: "renew_calendar_link",
+    description: "Replace the private calendar subscription link. Tell the student all old subscriptions stop updating and ask for a yes before passing confirmed: true.",
+    input_schema: { type: "object", properties: { confirmed: { type: "boolean" } } },
+    run(input, ctx) {
+      if (input.confirmed !== true) return { needs_confirmation: "Replace the private feed address and invalidate the old subscriptions?" };
+      rotateCalendarFeed(ctx.user.id);
+      ctx.changed = true;
+      addLink(ctx, settings[ctx.locale ?? "en"].export.file.title, "/settings#export");
+      return { renewed: true, note: "The new link is ready in Settings." };
+    },
+  },
+  {
+    name: "google_calendar",
+    description: "Check the Google Calendar connection, open the student's consent screen, re-export to their dedicated calendar, or disconnect it. Ask before syncing or disconnecting.",
+    input_schema: { type: "object", properties: {
+      action: { type: "string", enum: ["status", "connect", "sync", "disconnect"] }, confirmed: { type: "boolean" },
+    }, required: ["action"] },
+    async run(input, ctx) {
+      const user = getDb().select().from(users).where(eq(users.id, ctx.user.id)).get()!;
+      const configured = googleConfigured();
+      const connected = !!user.googleRefreshToken;
+      const t = settings[ctx.locale ?? user.locale ?? "en"].export.google;
+      if (input.action === "status") return { configured, connected, last_export: user.googleSyncedAt };
+      if (input.action === "connect" && configured) {
+        addLink(ctx, t.connect, "/api/google/connect");
+        return { note: "The student can open Google's consent screen with the button." };
+      }
+      if (!connected) return { error: configured ? t.notConnected : "Google Calendar is not configured." };
+      if (input.action !== "disconnect" && input.action !== "sync") return { error: "Choose sync or disconnect for an existing connection." };
+      if (input.confirmed !== true) return { needs_confirmation: input.action === "sync" ? "Replace the app-managed events in your Google calendar with your current timetable?" : "Disconnect Google Calendar? The existing Google calendar will remain in your account." };
+      if (input.action === "disconnect") {
+        disconnectGoogle(user.id);
+        ctx.changed = true;
+        return { disconnected: true };
+      }
+      const { events } = await syncToGoogle(user, ctx.locale ?? user.locale ?? "en");
+      ctx.changed = true;
+      return { exported_events: events };
     },
   },
   {
@@ -288,9 +397,13 @@ export const APP_TOOLS: AssistantTool[] = [
     description:
       "The student's private calendar subscription link (.ics) for Google Calendar, Apple Calendar or Outlook, which stays in sync with their timetable. Anyone with the link can see the timetable, so remind them to keep it private. To send the calendar by e-mail instead, use email_calendar.",
     input_schema: { type: "object", properties: {} },
-    run(_input, { user }) {
+    run(_input, ctx) {
+      const { user } = ctx;
       const base = publicBaseUrl();
-      const path = `/api/ics/${user.feedToken}`;
+      const token = getDb().select({ value: users.feedToken }).from(users).where(eq(users.id, user.id)).get()!.value;
+      const path = `/api/ics/${token}.ics`;
+      const t = settings[ctx.locale ?? user.locale ?? "en"].export.file;
+      addLink(ctx, t.download, `${path}?download`);
       return base
         ? { subscription_link: `${base}${path}`, how: "Google Calendar: Other calendars → From URL. Apple Calendar: File → New Calendar Subscription. Outlook: Add calendar → Subscribe from web." }
         : { note: "This server has no public address, so a subscription link would not work from outside. The student can download the file or copy the link under Settings → Export your calendar.", page: "calendar_export" };

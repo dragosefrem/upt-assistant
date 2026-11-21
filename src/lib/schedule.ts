@@ -645,3 +645,20 @@ export function findGroups(
   return scored.slice(0, limit);
 }
 
+
+/** Individual hidden classes offered for restoration in Settings and by Poli. */
+export function hiddenClasses(userId: string, semesterId?: number) {
+  return semesterId ? getDb()
+    .select({ id: entries.id, name: courses.name, kind: entries.kind, day: entries.day, time: entries.startMin,
+      movedDay: userOverrides.day, movedTime: userOverrides.startMin })
+    .from(userOverrides)
+    .innerJoin(entries, eq(entries.id, userOverrides.entryId))
+    .innerJoin(courses, eq(courses.id, entries.courseId))
+    .where(and(eq(userOverrides.userId, userId), eq(userOverrides.hidden, true), eq(entries.semesterId, semesterId)))
+    .orderBy(entries.day, entries.startMin).all() : [];
+}
+
+export function unhideClass(userId: string, entryId: number) {
+  const ownClass = and(eq(userOverrides.userId, userId), eq(userOverrides.entryId, entryId), eq(userOverrides.hidden, true));
+  return getDb().update(userOverrides).set({ hidden: false, updatedAt: new Date().toISOString() }).where(ownClass).run().changes > 0;
+}

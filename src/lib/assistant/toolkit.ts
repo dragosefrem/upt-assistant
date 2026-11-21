@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import type { ChecklistEdit } from "../guide-checklist";
 import type { Locale } from "@/i18n/config";
 import type { User } from "../auth";
 import type { LatLng } from "../directions";
@@ -11,6 +12,10 @@ import type { AssistantChoice, AssistantLink, StoredPreview } from "./choices";
 
 export interface ToolContext {
   user: User;
+  /** Origin of the student's app for a shareable campus route. */
+  origin?: string;
+  checklist?: string[];
+  checklistEdits?: ChecklistEdit[];
   /** Browser geolocation, when the student has shared it. */
   location: LatLng | null;
   /** Set by a handler that changed the student's data, so the UI can refresh. */
