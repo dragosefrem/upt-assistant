@@ -8,7 +8,7 @@ Fiecare criteriu e verificabil cu da sau nu.
 | 2 | Butonul „Creează-ți contul” se vede fără scroll pe telefon (390×844) și pe laptop (1440×900) și duce la `/register`. |
 | 3 | Cifrele de pe pagină (ore, examene, facultăți) vin din baza de date, nu sunt scrise de mână, și se potrivesc cu ce e în ea. |
 | 4 | Pe telefon (390 px lățime) niciun text nu iese din ecran și pagina nu are scroll orizontal. |
-| 5 | Linkurile din meniu (Ce face, Examene, Facultăți, Întrebări) duc la secțiunea lor. |
+| 5 | ~~Linkurile din meniu duc la secțiunea lor.~~ Scos pe 21 nov 2026: pagina e acum scurtă și nu mai are meniu. |
 | 6 | Textele sunt în română, cu diacritice corecte (ș, ț, ă, î, â), fără funcții promise care nu există în aplicație. |
 
 ## Criterii de bază

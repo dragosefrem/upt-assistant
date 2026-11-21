@@ -25,3 +25,8 @@ Gata: landing page în română la `/welcome` (`src/app/welcome/page.tsx`, `src/
 Decis: direcția „prietenoasă cu Poli, în română” din `UPT_Orar_Landing_Pages.pdf`, în aplicație, nu ca pagină separată (ales de echipă). Nicio cifră scrisă de mână.
 Nu a mers: PDF-ul promite butonul Accept cu previzualizare, mutare pentru o singură săptămână, calendar pe email și detectarea automată a limbii; în cod nu există, așa că le-am scos de pe pagină după prima rundă de review.
 Următorul pas: traducerea interfeței aplicației în română; un semn de derulare pentru orarul exemplu pe telefon; decizia echipei despre fișierele urcate în rădăcina repo-ului (`desk.png`, `mob.png`, `.zip`, `.patch`).
+
+## 21 nov 2026, 15:25
+Gata: landing page-ul scurtat (`src/app/welcome/page.tsx`): titlul nou „Mereu la timp, pentru tot.”, un exemplu cu „Urmează”, un reminder de examen și Poli, trei carduri (orarul, examenele, Poli), butonul final și subsolul. Scoase: meniul, secțiunile despre calendar, examene, întrebări, facultăți și întrebări frecvente. Pe laptop pagina are acum ~1.150 px în loc de ~3.750.
+Decis: titlu mai sugestiv și pagină scurtă (cerut de echipă). Criteriul 5 (meniul) scos din `docs/CRITERIA.md`, pentru că pagina nu mai are meniu.
+Următorul pas: rămân cele de la intrarea anterioară (traducerea interfeței aplicației în română, fișierele din rădăcina repo-ului).
