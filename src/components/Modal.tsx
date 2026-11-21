@@ -12,12 +12,14 @@ export function Modal({
   open = true,
   title,
   onClose,
+  onKeyDown,
   children,
   wide = false,
 }: {
   open?: boolean;
   title: string;
   onClose: () => void;
+  onKeyDown?: React.KeyboardEventHandler<HTMLDialogElement>;
   children: React.ReactNode;
   wide?: boolean;
 }) {
@@ -36,6 +38,13 @@ export function Modal({
     <dialog
       ref={ref}
       aria-labelledby={titleId}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (event.key !== "Escape" || event.defaultPrevented) return;
+        event.preventDefault();
+        event.stopPropagation();
+        onClose();
+      }}
       onCancel={(event) => {
         if (event.target !== event.currentTarget) return;
         event.preventDefault();

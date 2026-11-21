@@ -27,7 +27,7 @@ export function WelcomeTour({ name }: { name: string }) {
         await finishWelcomeAction();
         setFinished(true);
         if (guide) router.push("/guide");
-        else document.getElementById("student-content")?.focus({ preventScroll: true });
+        else requestAnimationFrame(() => document.getElementById("student-content")?.focus({ preventScroll: true }));
       } catch {
         setFailed(true);
       }
@@ -40,7 +40,17 @@ export function WelcomeTour({ name }: { name: string }) {
       <button type="button" className="btn-ghost text-brand-700" aria-haspopup="dialog" onClick={() => setOpen(true)}>
         <Compass size={16} aria-hidden />{t.title}
       </button>
-      {open && <Modal open title={t.title} onClose={() => setOpen(false)}>
+      {open && <Modal
+        title={t.title}
+        onClose={() => setOpen(false)}
+        onKeyDown={(event) => {
+          if (pending || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+          event.preventDefault();
+          const delta = event.key === "ArrowRight" ? 1 : -1;
+          setIndex((current) => Math.max(0, Math.min(t.slides.length - 1, current + delta)));
+          next.current?.focus();
+        }}
+      >
         <div className="pt-2">
           <div key={index} className="agenda-enter" aria-live="polite" aria-atomic="true">
             <p className="text-xs text-slate-600">{t.progress(index + 1, t.slides.length)}</p>

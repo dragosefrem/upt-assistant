@@ -30,7 +30,8 @@ const en = {
     heading: "Which classes do you follow?",
     almostDone: "Almost done",
     intro: "Some labs run in several slots and some courses are optional. Pick yours once, so the calendar shows only the classes you actually have.",
-    submit: "Finish",
+    submit: "Open my timetable",
+    changeGroup: "Change group",
   },
   tour: {
     title: "Quick tour",
@@ -42,22 +43,18 @@ const en = {
     progress: (n: number, total: number) => `${n} of ${total}`,
     slides: [
       {
-        emoji: "📅",
-        title: (name: string) => `You are in, ${name}!`,
-        body: "This is your calendar: only your group's classes, in the weeks they really take place. Odd and even weeks and holidays are already worked out, and the header shows which teaching week it is.",
+        title: (name: string) => `Your timetable, ${name}`,
+        body: "Open a class to see its time and room. Use the week number above the timetable to check where you are in the semester.",
       },
       {
-        emoji: "🤖",
         title: () => "Meet Poli",
         body: "Ask “Do I have a lab this week?” in the chat. Poli can also find a free hour with a classmate or move an event.",
       },
       {
-        emoji: "🧭",
         title: () => "Find a classroom",
-        body: "Open any class and tap “Show me the way”, or go to Campus: you get a video walkthrough through the university's 360° tour, from the building entrance to the room.",
+        body: "Open Campus and enter the room code, or choose a room from your timetable. Each route shows how far the virtual tour goes.",
       },
       {
-        emoji: "🎓",
         title: () => "New at UPT?",
         body: "The Guide has a checklist for your first week, explains serie, grupă and semigrupă, and shows the buildings you will actually use.",
       },
@@ -96,7 +93,8 @@ const ro: typeof en = {
     heading: "La ce ore mergi?",
     almostDone: "Aproape gata",
     intro: "Unele laboratoare se țin în mai multe intervale, iar unele discipline sunt opționale. Alege-le o dată, ca să vezi în calendar doar orele pe care chiar le ai.",
-    submit: "Finalizează",
+    submit: "Deschide orarul",
+    changeGroup: "Schimbă grupa",
   },
   tour: {
     title: "Tur rapid",
@@ -108,22 +106,18 @@ const ro: typeof en = {
     progress: (n: number, total: number) => `${n} din ${total}`,
     slides: [
       {
-        emoji: "📅",
-        title: (name: string) => `Gata, ${name}, ești înăuntru!`,
-        body: "Acesta e calendarul tău: doar orele grupei tale, în săptămânile în care chiar se țin. Săptămânile pare și impare și vacanțele sunt deja calculate, iar în antet vezi în a câta săptămână de școală ești.",
+        title: (name: string) => `Orarul tău, ${name}`,
+        body: "Deschide o oră ca să vezi intervalul și sala. Numărul de deasupra orarului îți arată săptămâna din semestru.",
       },
       {
-        emoji: "🤖",
         title: () => "Fă cunoștință cu Poli",
         body: "Întreabă în chat „Am laborator săptămâna asta?”. Poli te poate ajuta și să găsești o oră liberă cu un coleg sau să muți un eveniment.",
       },
       {
-        emoji: "🧭",
-        title: () => "Nu mai cauți sălile",
-        body: "Deschide orice oră și apasă „Arată-mi drumul” sau mergi la Campus: primești un video prin turul 360° al universității, de la intrarea în clădire până la sală.",
+        title: () => "Găsește sala",
+        body: "În Campus poți scrie codul sălii sau poți alege o sală din orarul tău. Fiecare traseu arată până unde ajunge turul virtual.",
       },
       {
-        emoji: "🎓",
         title: () => "Ești nou la UPT?",
         body: "Ghidul are o listă de făcut în prima săptămână, îți explică seria, grupa și semigrupa și îți arată clădirile în care chiar ai ore.",
       },

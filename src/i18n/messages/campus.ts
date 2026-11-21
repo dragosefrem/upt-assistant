@@ -15,7 +15,7 @@ const en = {
   page: {
     title: "Campus",
     heading: "Campus directions",
-    lead: "Find the entrance and follow the indoor walkthrough to your classroom.",
+    lead: "Search for a room or building. Where the virtual tour has coverage, you can follow the route indoors.",
     credit: "Panoramas and directions from the UPT virtual tour.",
     tourLink: "Open the UPT 360° tour",
   },
@@ -213,7 +213,7 @@ const ro: typeof en = {
   page: {
     title: "Campus",
     heading: "Trasee în campus",
-    lead: "Găsește intrarea și urmărește traseul video până la sala ta.",
+    lead: "Caută o sală sau o clădire. Dacă traseul este inclus în turul virtual, îl poți urmări și în interior.",
     credit: "Panorame și indicații din turul virtual UPT.",
     tourLink: "Deschide turul UPT 360°",
   },

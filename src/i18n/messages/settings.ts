@@ -63,14 +63,14 @@ const en = {
 
   /** CourseChoicesForm. */
   choices: {
-    slotNotChosen: "Slot not chosen yet",
+    slotNotChosen: "Choose later",
     slotFor: (course: string) => `Lab or seminar slot for ${course}`,
-    yourCourses: "Your courses this semester",
+    yourCourses: "Course choices",
     yourCoursesHint:
-      "These are all the courses in your group’s timetable. Untick the optional ones you did not choose — only ticked courses appear in your calendar.",
+      "Select the courses you attend. Your group’s other courses are already in your timetable.",
     optional: "optional",
     slotsTitle: "Lab and seminar slots",
-    slotsHint: "These activities run in several slots; pick the one you attend.",
+    slotsHint: "Choose the time you attend. The session appears in your timetable once you choose a slot.",
     nothing: "Nothing to choose: your group has no optional courses or alternative lab slots this semester.",
   },
 
@@ -221,14 +221,14 @@ const ro: typeof en = {
   },
 
   choices: {
-    slotNotChosen: "Interval neales încă",
+    slotNotChosen: "Aleg mai târziu",
     slotFor: (course: string) => `Interval de laborator sau seminar pentru ${course}`,
-    yourCourses: "Disciplinele tale din semestrul acesta",
+    yourCourses: "Discipline la alegere",
     yourCoursesHint:
-      "Acestea sunt toate disciplinele din orarul grupei tale. Debifează opționalele pe care nu le-ai ales — în calendar apar doar disciplinele bifate.",
+      "Bifează disciplinele la care mergi. Celelalte discipline ale grupei sunt deja în orar.",
     optional: "opțional",
     slotsTitle: "Ore de laborator și seminar",
-    slotsHint: "Aceste activități au mai multe intervale; alege-l pe cel la care mergi.",
+    slotsHint: "Alege intervalul la care mergi. Ora apare în orar după ce alegi un interval.",
     nothing: "Nu ai ce alege: grupa ta nu are discipline opționale sau intervale alternative de laborator în semestrul acesta.",
   },
 

@@ -177,6 +177,16 @@ export function Calendar({
     }
   };
 
+  const pickDay = (date: string) => {
+    setAnchor(date);
+    setView("day");
+  };
+
+  const goToday = () => {
+    if (view === "week" && window.matchMedia("(max-width: 47.99rem)").matches) pickDay(now.date);
+    else setAnchor(now.date);
+  };
+
   const title = capitalize(
     view === "day"
       ? formatDate(anchor, { weekday: "long", day: "numeric", month: "long" }, locale)
@@ -245,7 +255,7 @@ export function Calendar({
         </h2>
         <div className="calendar-dates">
           <button type="button" className="btn-ghost px-2" onClick={() => step(-1)} aria-label={t.toolbar.previous}><ChevronLeft size={17} aria-hidden /></button>
-          <button type="button" className="btn-ghost px-2.5" onClick={() => setAnchor(today)}>{messages.common.time.today}</button>
+          <button type="button" className="btn-ghost px-2.5" onClick={goToday}>{messages.common.time.today}</button>
           <button type="button" className="btn-ghost px-2" onClick={() => step(1)} aria-label={t.toolbar.next}><ChevronRight size={17} aria-hidden /></button>
         </div>
         <div role="group" aria-label={t.toolbar.viewLabel} className="segments calendar-views">
@@ -270,6 +280,12 @@ export function Calendar({
         </div>
       )}
 
+      {view !== "month" && !visible.length && !loading && !error && loaded.from === range.from && loaded.to === range.to && (
+        <p className="border-b border-slate-100 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          {hasGroup ? t.grid.emptyWithGroup : t.grid.emptyNoGroup}
+        </p>
+      )}
+
       {view === "month" ? (
         <MonthGrid
           from={range.from}
@@ -279,47 +295,13 @@ export function Calendar({
           holidayNames={holidayNames}
           t={t}
           locale={locale}
-          onPickDay={(d) => {
-            setAnchor(d);
-            setView("day");
-          }}
+          onPickDay={pickDay}
           onAddOnDay={(d) => setAdding({ date: d })}
         />
       ) : (
         <>
           {view === "week" && (
-            <div className="week-agenda md:hidden">
-              {visible.length > 0 || days.some((day) => holidayNames.has(day)) ? days.map((date) => {
-                const dayEvents = visible.filter((event) => event.date === date);
-                return (
-                  <section key={date} className="border-t border-slate-100 px-4 py-2.5 first:border-0">
-                    <button type="button" className="flex w-full items-center gap-2 py-1.5 text-left text-sm font-semibold text-brand-900"
-                      onClick={() => { setAnchor(date); setView("day"); }}>
-                      {capitalize(formatDate(date, { weekday: "long", day: "numeric", month: "short" }, locale))}
-                      {date === today && <span className="week-label">{messages.common.time.today}</span>}
-                      <ChevronRight size={15} className="ml-auto shrink-0" aria-hidden />
-                    </button>
-                    {holidayNames.has(date) && <p className="my-1 text-xs font-medium text-amber-800">{holidayNames.get(date)}</p>}
-                    {dayEvents.length ? (
-                      <ul className="agenda-enter">
-                        {dayEvents.map((event) => (
-                          <li key={event.id}>
-                            <button type="button" onClick={() => setSelected(event)} className="agenda-event">
-                              <span className="font-mono text-xs tabular-nums">{formatMinutes(event.startMin)}</span>
-                              <span className={`h-7 w-1 shrink-0 rounded-full ${kindStyle(event.kind).dot}`} aria-hidden />
-                              <span className="min-w-0 flex-1"><strong className="block text-sm">{event.title}</strong>
-                                <span className="text-xs text-slate-600">{kindLabel(event.kind, locale)}{event.room ? ` · ${event.room}` : ""}</span>
-                              </span>
-                              <AttendanceMark status={event.attendance} />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    ) : <p className="text-xs text-slate-600">{t.grid.freeDay}</p>}
-                  </section>
-                );
-              }) : !loading && <p className="p-5 text-sm text-slate-600">{hasGroup ? t.grid.emptyWithGroup : t.grid.emptyNoGroup}</p>}
-            </div>
+            <WeekAgenda days={days} today={today} events={visible} holidayNames={holidayNames} onPickDay={pickDay} onSelect={setSelected} />
           )}
           <div className={view === "week" ? "hidden overflow-auto md:block" : "overflow-auto"}>
           <div className="grid min-w-full" style={{ gridTemplateColumns: `3.25rem repeat(${days.length}, minmax(${view === "day" ? "0" : "5.6rem"}, 1fr))` }}>
@@ -327,10 +309,7 @@ export function Calendar({
             {days.map((d) => (
               <button
                 key={d}
-                onClick={() => {
-                  setAnchor(d);
-                  setView("day");
-                }}
+                onClick={() => pickDay(d)}
                 className={`sticky top-0 z-20 border-b border-l border-slate-200 bg-white px-2 py-2 text-left text-xs ${d === today ? "text-brand-700" : "text-slate-500"}`}
               >
                 <span className="font-medium uppercase tracking-wide">{dayName(weekday(d), locale, "short")}</span>
@@ -386,24 +365,25 @@ export function Calendar({
                     const style = kindStyle(event.kind);
                     const top = ((event.startMin - startHour * 60) / 60) * HOUR_PX;
                     const height = Math.max(22, ((event.endMin - event.startMin) / 60) * HOUR_PX - 2);
+                    const compact = height < 64 || (cols > 1 && view === "week");
+                    const time = formatTimeSlot(event.startMin, event.endMin);
+                    const label = [event.title, time, event.room, kindLabel(event.kind, locale), event.attendance && t.attendance[event.attendance]].filter(Boolean).join(" · ");
                     return (
                       <button
                         key={event.id}
+                        aria-label={label}
+                        title={label}
                         onClick={() => setSelected(event)}
                         className={`absolute flex flex-col items-stretch justify-start overflow-hidden rounded-md border-l-4 px-1.5 py-1 text-left text-xs shadow-sm transition hover:z-10 hover:shadow-md ${style.block}`}
                         style={{ top, height, left: `calc(${(col / cols) * 100}% + 2px)`, width: `calc(${100 / cols}% - 4px)` }}
                       >
                         <AttendanceMark status={event.attendance} className="absolute right-1 top-1" />
-                        <span className={`block truncate font-semibold leading-tight ${event.attendance ? "pr-4" : ""}`}>
-                          {cols > 2 || (view === "week" && days.length > 5) ? (event.abbr ?? event.title) : event.title}
+                        <span className={`font-semibold leading-tight ${compact ? "truncate" : "line-clamp-2"} ${event.attendance ? "pr-4" : ""}`}>
+                          {compact ? (event.abbr ?? event.title) : event.title}
                         </span>
-                        {height > 34 && (
-                          <span className="block truncate opacity-80">
-                            {formatTimeSlot(event.startMin, event.endMin)}
-                            {event.room ? ` · ${event.room}` : ""}
-                          </span>
-                        )}
-                        {height > 54 && <span className="block truncate opacity-70">{kindLabel(event.kind, locale)}{event.teacher ? ` · ${event.teacher}` : ""}</span>}
+                        {height > 32 && <span className="truncate tabular-nums">{time}</span>}
+                        {height > 46 && event.room && <span className="truncate font-medium">{event.room}</span>}
+                        {height > 84 && <span className="mt-0.5 truncate opacity-75">{kindLabel(event.kind, locale)}{event.teacher ? ` · ${event.teacher}` : ""}</span>}
                       </button>
                     );
                   })}
@@ -411,11 +391,7 @@ export function Calendar({
               );
             })}
           </div>
-          {!visible.length && !loading && (
-            <p className="border-t border-slate-100 px-4 py-6 text-center text-sm text-slate-500">
-              {hasGroup ? t.grid.emptyWithGroup : t.grid.emptyNoGroup}
-            </p>
-          )}
+
           </div>
         </>
       )}
@@ -445,6 +421,57 @@ export function Calendar({
         </p>
       )}
     </section>
+  );
+}
+
+function WeekAgenda({ days, today, events, holidayNames, onPickDay, onSelect }: {
+  days: string[];
+  today: string;
+  events: CalEvent[];
+  holidayNames: Map<string, string>;
+  onPickDay: (date: string) => void;
+  onSelect: (event: CalEvent) => void;
+}) {
+  const messages = useT();
+  const locale = useLocale();
+  if (!events.length && !days.some((day) => holidayNames.has(day))) return null;
+
+  return (
+    <div className="week-agenda divide-y divide-slate-100 md:hidden">
+      {days.map((date) => {
+        const dayEvents = events.filter((event) => event.date === date);
+        return (
+          <section key={date} className="px-4 py-2.5">
+            <button type="button" className="flex w-full items-center gap-2 py-1.5 text-left text-sm font-semibold text-brand-900" onClick={() => onPickDay(date)}>
+              {capitalize(formatDate(date, { weekday: "long", day: "numeric", month: "short" }, locale))}
+              {date === today && <span className="week-label">{messages.common.time.today}</span>}
+              <ChevronRight size={15} className="ml-auto shrink-0" aria-hidden />
+            </button>
+            {holidayNames.has(date) && <p className="my-1 text-xs font-medium text-amber-800">{holidayNames.get(date)}</p>}
+            {dayEvents.length ? (
+              <ul className="agenda-enter">
+                {dayEvents.map((event) => (
+                  <li key={event.id}>
+                    <button type="button" onClick={() => onSelect(event)} className="agenda-event">
+                      <span className="flex flex-col font-mono text-xs tabular-nums">
+                        <span>{formatMinutes(event.startMin)}</span>
+                        {event.endMin !== event.startMin && <span className="text-slate-500"><span className="sr-only">– </span>{formatMinutes(event.endMin)}</span>}
+                      </span>
+                      <span className={`h-7 w-1 shrink-0 rounded-full ${kindStyle(event.kind).dot}`} aria-hidden />
+                      <span className="min-w-0 flex-1">
+                        <strong className="block text-sm">{event.title}</strong>
+                        <span className="text-xs text-slate-600">{kindLabel(event.kind, locale)}{event.room ? ` · ${event.room}` : ""}</span>
+                      </span>
+                      <AttendanceMark status={event.attendance} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="text-xs text-slate-600">{messages.calendar.grid.freeDay}</p>}
+          </section>
+        );
+      })}
+    </div>
   );
 }
 

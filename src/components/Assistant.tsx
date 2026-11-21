@@ -552,9 +552,6 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         </span>
         <div className="min-w-0 flex-1">
           <h2 className="whitespace-nowrap text-base font-semibold text-slate-900">Poli</h2>
-          <p className="truncate text-xs text-slate-500">
-            {tr.engine[engine ?? "unknown"]}
-          </p>
         </div>
         <button
           className={`btn px-2 text-xs ${position ? "bg-emerald-50 text-emerald-700" : "text-slate-500 hover:bg-slate-100"}`}

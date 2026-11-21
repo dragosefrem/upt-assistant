@@ -37,6 +37,7 @@ export function CourseChoicesForm({ choices, returnTo, submitLabel }: { choices:
         <section>
           <h2 className="text-sm font-semibold text-slate-900">{m.yourCourses}</h2>
           <p className="mb-3 mt-1 text-sm text-slate-600">{m.yourCoursesHint}</p>
+          {optional.some((course) => course.slots.length > 0) && <p className="mb-3 text-sm text-slate-600">{m.slotsHint}</p>}
           <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
             {optional.map((c) => (
               <li key={c.courseId} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">

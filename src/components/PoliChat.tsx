@@ -1,15 +1,19 @@
 "use client";
 
-import { MessageCircle, X } from "lucide-react";
+import Image from "next/image";
+import { X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/client";
 import { Assistant } from "./Assistant";
-import { ASK_ASSISTANT } from "./Mascot";
-import { OPEN_CHAT } from "./poliFx";
+import { ASK_ASSISTANT, MASCOT_HAPPY_SRC, MASCOT_SRC } from "./Mascot";
+import { burstFrom, OPEN_CHAT } from "./poliFx";
 
 export function PoliChat() {
   const t = useT().calendar.poli;
   const [open, setOpen] = useState(false);
+  const [happy, setHappy] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   const opener = useRef<HTMLElement | null>(null);
   const panel = useRef<HTMLDivElement>(null);
 
@@ -42,16 +46,27 @@ export function PoliChat() {
     return () => window.removeEventListener("keydown", dismiss);
   }, [open, close]);
 
+  const toggle = (event: React.MouseEvent<HTMLButtonElement>) => {
+    burstFrom(event.currentTarget, .8);
+    setHappy(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setHappy(false), 700);
+    if (open) close();
+    else show();
+  };
+
   return (
     <>
       <div id="poli-chat" ref={panel} tabIndex={-1} role="region" aria-label={t.chat}
-        className={`poli-panel fixed inset-x-2 bottom-2 z-50 h-[min(82dvh,calc(100dvh-5rem))] sm:inset-x-auto sm:right-5 sm:w-96 lg:bottom-20 lg:h-[min(36rem,calc(100dvh-7rem))] ${open ? "poli-open" : ""}`}
+        className={`poli-panel poli-chat-position ${open ? "poli-open" : ""}`}
         aria-hidden={!open} inert={!open}>
         <Assistant onClose={close} />
       </div>
-      <button type="button" onClick={open ? close : show} aria-controls="poli-chat" aria-expanded={open} aria-label={open ? t.closeChat : t.chat}
-        className="fixed right-5 bottom-5 z-40 hidden items-center gap-2 rounded-full bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:bg-brand-900 lg:inline-flex">
-        {open ? <X size={18} aria-hidden /> : <MessageCircle size={18} aria-hidden />} Poli
+      <button type="button" onClick={toggle} aria-controls="poli-chat" aria-expanded={open}
+        aria-label={open ? t.closeChat : t.chat} title={open ? t.closeChat : t.chat}
+        className={`poli-launcher ${open ? "is-open" : ""}`}>
+        <Image unoptimized src={happy ? MASCOT_HAPPY_SRC : MASCOT_SRC} alt="" width={70} height={70} className={happy ? "poli-jump" : ""} />
+        <span className="poli-close-badge" aria-hidden><X size={17} strokeWidth={2.5} /></span>
       </button>
     </>
   );

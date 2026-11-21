@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CourseChoicesForm } from "@/components/CourseChoicesForm";
 import { OnboardingFrame } from "@/components/OnboardingFrame";
@@ -23,6 +24,7 @@ export default async function OnboardingCoursesPage() {
         <>
           <p className="text-sm font-semibold text-brand-700">
             {group ? `${group.spec.name} · ${messages.common.time.year(group.group.year)} · ${group.label}` : t.almostDone}
+            <Link href="/onboarding" className="ml-3 inline-block font-medium underline">{t.changeGroup}</Link>
           </p>
           <h1>{t.heading}</h1>
           <p className="mt-1 text-sm leading-relaxed text-slate-600">{t.intro}</p>

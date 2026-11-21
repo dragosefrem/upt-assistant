@@ -4,10 +4,10 @@ const en = {
   nav: { signIn: "Sign in", openApp: "Open my calendar" },
   hero: {
     audience: "Politehnica Timișoara",
-    headline: "Your timetable,",
-    accent: "in one place.",
-    sub: "See when your group has class, find the room and plan the time in between. Odd and even weeks are already worked out for you.",
-    cta: "Set up my timetable",
+    headline: "Your group’s",
+    accent: "timetable.",
+    sub: "Find your next class, its room and the free time in between. Labs that meet every other week appear on the right dates.",
+    cta: "Create an account",
     note: "Free for UPT students. Choose your group when you sign up.",
   },
   preview: {
@@ -21,7 +21,7 @@ const en = {
   },
   features: {
     heading: "Between classes",
-    campus: { title: "Find your classroom", body: "Follow the route from the building entrance to your next room with the UPT virtual tour." },
+    campus: { title: "Find your classroom", body: "Look up a classroom and explore its building in the UPT virtual tour." },
     contacts: { title: "Meet up with classmates", body: "Compare calendars, find a free hour and invite your group." },
     poli: { title: "Ask Poli", body: "Ask when your next lab is or where you need to be. Poli checks your timetable and answers in English or Romanian." },
   },
@@ -35,10 +35,10 @@ const ro: typeof en = {
   nav: { signIn: "Intră în cont", openApp: "Deschide calendarul" },
   hero: {
     audience: "Politehnica Timișoara",
-    headline: "Orarul tău,",
-    accent: "într-un singur loc.",
-    sub: "Vezi când ai ore cu grupa, găsește sala și fă-ți planuri pentru pauze. Calendarul ține deja cont de săptămânile pare și impare.",
-    cta: "Configurează-mi orarul",
+    headline: "Orarul",
+    accent: "grupei tale.",
+    sub: "Vezi când ai ore, în ce sală și când ai pauză. Laboratoarele din două în două săptămâni apar în zilele în care se țin.",
+    cta: "Creează un cont",
     note: "Gratuit pentru studenții UPT. Alegi facultatea, anul și grupa.",
   },
   preview: {
@@ -52,7 +52,7 @@ const ro: typeof en = {
   },
   features: {
     heading: "Între cursuri",
-    campus: { title: "Găsește sala", body: "Urmărește traseul de la intrarea în clădire spre sala ta, în turul virtual al UPT." },
+    campus: { title: "Găsește sala", body: "Caută o sală și explorează clădirea în turul virtual al UPT." },
     contacts: { title: "Întâlnește-te cu colegii", body: "Compară orarele, găsește o oră liberă și invită-ți colegii." },
     poli: { title: "Întreabă-l pe Poli", body: "Află când ai următorul laborator sau în ce sală trebuie să ajungi. Poli verifică orarul și răspunde în română sau engleză." },
   },

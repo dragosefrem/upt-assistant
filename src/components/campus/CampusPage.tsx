@@ -91,7 +91,7 @@ export function CampusPage({
   const [question, setQuestion] = useState<Question | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<"route" | "example" | null>(initial.to ? "route" : null);
   const [unavailable, setUnavailable] = useState(false);
   const [picker, setPicker] = useState<{ locate: boolean } | null>(null);
   const [browsing, setBrowsing] = useState(false);
@@ -107,6 +107,17 @@ export function CampusPage({
   const resultBox = useRef<HTMLDivElement>(null);
   const promptBox = useRef<HTMLTextAreaElement>(null);
   const contextRef = useRef(context);
+  const focusNextResult = useRef(false);
+
+  useEffect(() => {
+    if (!focusNextResult.current || busy || picker || (!result && !question && !unavailable && !error)) return;
+    const heading = resultBox.current?.querySelector<HTMLElement>("h2, [role=alert]");
+    if (heading) {
+      focusNextResult.current = false;
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+    }
+  }, [busy, result, question, unavailable, error, picker]);
 
   const chooseStart = useCallback((next: Start | null) => {
     setStart(next);
@@ -150,7 +161,8 @@ export function CampusPage({
       setQuestion(null);
       setError(null);
       setFormError(null);
-      setBusy(input.prompt || String(input.destination ?? ""));
+      focusNextResult.current = !quiet;
+      setBusy("route");
       if (!quiet) reveal(resultBox.current);
       const body: PlanBody = { prompt: input.prompt, destination: input.destination, hint: input.hint };
       const fromText = input.auto ? null : (input.from ?? startText);
@@ -200,6 +212,7 @@ export function CampusPage({
     setError(null);
     setFormError(null);
     setResult(null);
+    focusNextResult.current = true;
     setBusy("example");
     try {
       const route = await campusApi.example();
@@ -243,7 +256,7 @@ export function CampusPage({
         auto: !initial.from,
         from: first ? undefined : initial.from,
       };
-      void plan(input, first);
+      void plan(input, first, true);
     }
   }, [initial, plan]);
 
@@ -317,7 +330,7 @@ export function CampusPage({
     setUnavailable(false);
     setError(null);
     const last = retry.current;
-    if (last && last !== "example") void plan(last.input, last.from, true);
+    if (last && last !== "example") void plan(last.input, last.from);
     else void loadExample();
   };
 
@@ -417,8 +430,8 @@ export function CampusPage({
               <p className="mt-1 text-xs text-slate-500">{start?.area ?? t.planner.startHint}</p>
             </div>
 
-            <button type="submit" className="btn-primary w-full py-2.5" disabled={!!busy && busy !== "example"}>
-              {busy && busy !== "example" ? t.planner.submitting : t.planner.submit}<ArrowRight size={17} aria-hidden />
+            <button type="submit" className="btn-primary w-full py-2.5" disabled={busy === "route"}>
+              {busy === "route" ? t.planner.submitting : t.planner.submit}<ArrowRight size={17} aria-hidden />
             </button>
           </form>
         </section>
