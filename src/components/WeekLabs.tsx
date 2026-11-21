@@ -5,7 +5,7 @@ import type { User } from "@/lib/auth";
 import { campusJourneyHref } from "@/lib/campuspath/links";
 import { kindLabel, kindStyle } from "@/lib/kinds";
 import { practicalsInWeek } from "@/lib/labs";
-import { capitalize, dayName, describeWeeks, formatDate, formatTimeSlot, weekday } from "@/lib/time";
+import { capitalize, dayName, describeWeeks, formatDate, formatMinutes, formatTimeSlot, weekday } from "@/lib/time";
 import { MakeupButton } from "./MakeupFinder";
 
 /**
@@ -14,8 +14,8 @@ import { MakeupButton } from "./MakeupFinder";
  */
 export function WeekLabs({ user, date, locale }: { user: User; date: string; locale: Locale }) {
   const t = messagesFor(locale).study.labs;
-  const week = practicalsInWeek(user, date);
-  if (!user.groupId || (!week.running.length && !week.skipped.length)) return null;
+  const week = practicalsInWeek(user, date, undefined, locale);
+  if (!user.groupId || (!week.running.length && !week.skipped.length && !week.holidays.length)) return null;
   const shortDate = (d: string) => formatDate(d, { weekday: "short", day: "numeric", month: "short" }, locale);
 
   return (
@@ -28,6 +28,14 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
           </span>
         )}
       </div>
+
+      {week.holidays.length > 0 && (
+        <ul aria-label={t.publicHolidays} className="mt-3 space-y-1 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          {week.holidays.map(({ date, name }) => (
+            <li key={date}><strong>{capitalize(shortDate(date))}</strong> · {name}</li>
+          ))}
+        </ul>
+      )}
 
       {week.pause && (
         <p className="mt-2 text-sm text-slate-600">
@@ -54,7 +62,7 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
                         {e.room && (
                           <>
                             {" · "}
-                            <Link href={campusJourneyHref({ to: e.room, building: e.place?.name, course: e.title })} className="font-medium text-brand-700 hover:underline">{e.room}</Link>
+                            <Link href={campusJourneyHref({ to: e.room, building: e.place?.name, course: e.title, date: e.date, at: formatMinutes(e.startMin) })} className="font-medium text-brand-700 hover:underline">{e.room}</Link>
                           </>
                         )}
                         {" · "}

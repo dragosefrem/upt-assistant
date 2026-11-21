@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
 import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
+import type { PublicHoliday } from "@/lib/holidays";
 import type { CalEvent } from "@/lib/schedule";
 import { addDays, capitalize, dayName, formatDate, formatMinutes, formatTimeSlot, mondayOf, nowLocal, weekday } from "@/lib/time";
 import { kindLabel, kindStyle } from "@/lib/kinds";
@@ -77,6 +79,7 @@ function layoutDay(events: CalEvent[]) {
 
 export function Calendar({
   initialEvents,
+  initialHolidays,
   initialFrom,
   initialTo,
   initialWeek,
@@ -84,6 +87,7 @@ export function Calendar({
   hasGroup,
 }: {
   initialEvents: CalEvent[];
+  initialHolidays: PublicHoliday[];
   initialFrom: string;
   initialTo: string;
   initialWeek: number | null;
@@ -96,6 +100,8 @@ export function Calendar({
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(today);
   const [events, setEvents] = useState<CalEvent[]>(initialEvents);
+  const [holidays, setHolidays] = useState(initialHolidays);
+  const holidayNames = new Map(holidays.map((holiday) => [holiday.date, holiday.name]));
   // Event notes come in the interface language, so a language switch also reloads.
   const [loaded, setLoaded] = useState({ from: initialFrom, to: initialTo, locale });
   const [teachingWeek, setTeachingWeek] = useState<number | null>(initialWeek);
@@ -105,6 +111,7 @@ export function Calendar({
   const [adding, setAdding] = useState<NewEvent | null>(null);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [hiddenClass, setHiddenClass] = useState<string | null>(null);
   const [now, setNow] = useState(() => nowLocal());
   const requestId = useRef(0);
 
@@ -117,9 +124,10 @@ export function Calendar({
     try {
       const res = await fetch(`/api/events?from=${from}&to=${to}`, { cache: "no-store" });
       if (!res.ok) throw new Error(res.status === 401 ? t.grid.sessionExpired : t.grid.loadFailed);
-      const data = (await res.json()) as { events: CalEvent[]; teachingWeek: number | null };
+      const data = (await res.json()) as { events: CalEvent[]; holidays: PublicHoliday[]; teachingWeek: number | null };
       if (id !== requestId.current) return;
       setEvents(data.events);
+      setHolidays(data.holidays);
       setTeachingWeek(data.teachingWeek);
       setLoaded({ from, to, locale });
     } catch (err) {
@@ -259,6 +267,15 @@ export function Calendar({
       </header>
 
       {error && <p role="alert" className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
+      {hiddenClass && (
+        <div className="flex items-center gap-3 border-b border-brand-100 bg-brand-50 px-4 py-2 text-sm text-slate-800">
+          <p role="status" className="min-w-0 flex-1">
+            {t.grid.hidden(hiddenClass)}{" "}
+            <Link className="font-medium text-brand-700 underline" href="/settings#hidden-classes">{t.grid.manageHidden}</Link>
+          </p>
+          <button type="button" className="btn-ghost px-2" aria-label={messages.common.actions.close} onClick={() => setHiddenClass(null)}>✕</button>
+        </div>
+      )}
 
       {view === "month" ? (
         <MonthGrid
@@ -266,6 +283,7 @@ export function Calendar({
           month={anchor.slice(0, 7)}
           today={today}
           events={visible}
+          holidayNames={holidayNames}
           t={t}
           locale={locale}
           onPickDay={(d) => {
@@ -291,6 +309,7 @@ export function Calendar({
                 <span className={`ml-1.5 inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-sm font-semibold ${d === today ? "bg-brand-600 text-white" : "text-slate-800"}`}>
                   {+d.slice(8)}
                 </span>
+                {holidayNames.has(d) && <span className="mt-1 block font-medium text-amber-800">{holidayNames.get(d)}</span>}
               </button>
             ))}
 
@@ -381,7 +400,7 @@ export function Calendar({
         ))}
       </footer>
 
-      {selected && <EventDialog event={selected} onClose={() => setSelected(null)} />}
+      {selected && <EventDialog event={selected} onHidden={setHiddenClass} onClose={() => setSelected(null)} />}
       {adding && (
         <PersonalEventDialog
           defaultDate={adding.date}
@@ -405,6 +424,7 @@ function MonthGrid({
   month,
   today,
   events,
+  holidayNames,
   onPickDay,
   onAddOnDay,
   t,
@@ -414,6 +434,7 @@ function MonthGrid({
   month: string;
   today: string;
   events: CalEvent[];
+  holidayNames: Map<string, string>;
   t: Messages["calendar"];
   locale: Locale;
   onPickDay: (date: string) => void;
@@ -428,24 +449,29 @@ function MonthGrid({
       {cells.map((d) => {
         const dayEvents = events.filter((e) => e.date === d);
         const inMonth = d.startsWith(month);
+        const holiday = holidayNames.get(d);
         return (
           <div key={d} className={`group/cell relative min-h-24 border-b border-l border-slate-100 transition hover:bg-slate-50 ${inMonth ? "" : "bg-slate-50/60 text-slate-400"}`}>
           <button
             type="button"
             onClick={() => onAddOnDay(d)}
-            className="absolute right-1 top-1 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white opacity-0 shadow-sm transition group-hover/cell:opacity-100 focus-visible:opacity-100 max-sm:opacity-60"
+            className="absolute right-0 top-0 z-10 flex h-8 w-1/2 max-w-8 items-center justify-center text-sm font-bold text-white opacity-0 transition group-hover/cell:opacity-100 focus-visible:opacity-100 max-sm:opacity-60"
             aria-label={t.grid.addOn(formatDate(d, { weekday: "long", day: "numeric", month: "long" }, locale))}
             title={t.grid.addEvent}
           >
-            +
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-brand-600 shadow-sm sm:h-6 sm:w-6">+</span>
           </button>
           <button
             onClick={() => onPickDay(d)}
-            className="flex h-full min-h-24 w-full min-w-0 flex-col justify-start p-1.5 text-left"
+            className="flex h-full min-h-24 w-full min-w-0 flex-col justify-start px-0.5 py-1.5 text-left sm:p-1.5"
           >
-            <span className={`inline-flex h-6 min-w-6 self-start items-center justify-center rounded-full px-1 text-sm font-semibold ${d === today ? "bg-brand-600 text-white" : ""}`}>
+            <span className={`inline-flex h-5 min-w-5 self-start items-center justify-center rounded-full px-0.5 text-xs font-semibold sm:h-6 sm:min-w-6 sm:px-1 sm:text-sm ${d === today ? "bg-brand-600 text-white" : ""}`}>
               {+d.slice(8)}
             </span>
+            {holiday && <span title={holiday} className="mt-1 flex max-w-full items-center gap-1 rounded bg-amber-50 px-1 py-0.5 text-amber-900">
+              <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-600" />
+              <span className="truncate">{holiday}</span>
+            </span>}
             <span className="mt-1 block min-w-0 space-y-0.5">
               {dayEvents.slice(0, 3).map((e) => (
                 <span key={e.id} className="flex items-center gap-1 truncate">

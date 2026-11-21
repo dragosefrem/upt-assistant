@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return Response.json({ error: t.study.plan.card.failed }, { status: 400 });
   const { save, ...options } = parsed.data;
   const { plan, ...view } = describe(options, user);
-  const saved = save ? saveStudyPlan(user.id, plan.sessions, user.locale ?? (await getLocale())) : studyBlocks(user.id).length;
+  const saved = save ? saveStudyPlan(user.id, plan.sessions, await getLocale()) : studyBlocks(user.id).length;
   return Response.json({ ...view, saved, justSaved: !!save });
 }
 

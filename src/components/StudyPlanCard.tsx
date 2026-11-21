@@ -93,9 +93,10 @@ export function StudyPlanCard({ examCount, savedBlocks }: { examCount: number; s
         </div>
       </div>
 
-      {examCount > 0 && (
+      {(examCount > 0 || saved > 0 || note) && (
         <div className="space-y-4 px-4 py-4 sm:px-5">
-          <fieldset className="flex flex-wrap items-end gap-x-5 gap-y-3" disabled={busy}>
+          {examCount > 0 ? <fieldset className="flex flex-wrap items-end gap-x-5 gap-y-3" disabled={busy}
+            onChange={() => { setProposal(null); setNote(null); }}>
             <legend className="sr-only">{t.options}</legend>
             <label className="text-sm">
               <span className="label">{t.hoursPerExam}</span>
@@ -119,7 +120,7 @@ export function StudyPlanCard({ examCount, savedBlocks }: { examCount: number; s
               </button>
               {saved > 0 && <button type="button" className="btn-ghost" onClick={clear}>{t.clear}</button>}
             </div>
-          </fieldset>
+          </fieldset> : saved > 0 && <button type="button" className="btn-ghost" disabled={busy} onClick={clear}>{t.clear}</button>}
 
           {proposal && (
             <div>
@@ -130,7 +131,7 @@ export function StudyPlanCard({ examCount, savedBlocks }: { examCount: number; s
                     <p className="text-sm font-semibold text-slate-900">{x.course}</p>
                     <p className="text-xs text-red-700">
                       {t.examOn(`${day(x.date)}, ${formatMinutes(x.startMin)}`)}
-                      {x.alsoOn.length > 0 && <span className="text-slate-500"> · {x.alsoOn.map(day).join(", ")}</span>}
+                      {x.alsoOn.length > 0 && <span className="block text-slate-500">{t.alsoOn(x.alsoOn.map(day).join(", "))}</span>}
                     </p>
                     <ul className="mt-2 space-y-1">
                       {x.sessions.map((s) => (

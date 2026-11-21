@@ -19,7 +19,7 @@ const fromClock = (v: string) => {
   return h * 60 + (m || 0);
 };
 
-export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () => void }) {
+export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onHidden: (title: string) => void; onClose: () => void }) {
   const messages = useT();
   const t = messages.calendar.event;
   const locale = useLocale();
@@ -43,6 +43,7 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
     try {
       const res = await fetch("/api/schedule", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? t.saveFailed);
+      if (body.action === "hide") onHidden(event.title);
       window.dispatchEvent(new Event(SCHEDULE_CHANGED));
       onClose();
     } catch (err) {
@@ -78,7 +79,7 @@ export function EventDialog({ event, onClose }: { event: CalEvent; onClose: () =
         <div className="mt-3 flex flex-wrap gap-2">
           {walkable && (
             <Link
-              href={campusJourneyHref({ to: event.room!, building: event.place?.name, course: event.title, at: event.date === nowLocal().date ? formatMinutes(event.startMin) : null })}
+              href={campusJourneyHref({ to: event.room!, building: event.place?.name, course: event.title, at: formatMinutes(event.startMin), date: event.date })}
               className="btn-secondary"
               onClick={onClose}
             >

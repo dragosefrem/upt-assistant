@@ -16,6 +16,7 @@ const en = {
       inCalendar: (n: number) => `${n} study ${n === 1 ? "block is" : "blocks are"} in your calendar.`,
       preview: "Proposed plan",
       examOn: (when: string) => `Exam ${when}`,
+      alsoOn: (dates: string) => `Also offered on ${dates}`,
       hours: (h: number) => `${h} h`,
       short: (planned: number, wanted: number) => `Only ${planned} of ${wanted} blocks fit before this exam.`,
       options: "Options",
@@ -28,6 +29,7 @@ const en = {
   },
   labs: {
     title: "Labs and seminars this week",
+    publicHolidays: "Public holidays this week",
     weekOdd: (n: number) => `Week ${n} · odd`,
     weekEven: (n: number) => `Week ${n} · even`,
     noTeaching: {
@@ -77,6 +79,7 @@ const ro: typeof en = {
       inCalendar: (n: number) => (n === 1 ? "Ai o repriză de învățat în calendar." : `Ai ${n}${n >= 20 ? " de" : ""} reprize de învățat în calendar.`),
       preview: "Planul propus",
       examOn: (when: string) => `Examen ${when}`,
+      alsoOn: (dates: string) => `Examenul se mai ține și pe ${dates}`,
       hours: (h: number) => `${h} h`,
       short: (planned: number, wanted: number) => `Doar ${planned} din ${wanted} reprize încap înainte de acest examen.`,
       options: "Opțiuni",
@@ -89,6 +92,7 @@ const ro: typeof en = {
   },
   labs: {
     title: "Laboratoare și seminare săptămâna aceasta",
+    publicHolidays: "Zile libere legale săptămâna aceasta",
     weekOdd: (n: number) => `Săptămâna ${n} · impară`,
     weekEven: (n: number) => `Săptămâna ${n} · pară`,
     noTeaching: {

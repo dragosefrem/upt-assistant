@@ -5,6 +5,7 @@ import { QuickActions } from "@/components/QuickActions";
 import { WeekLabs } from "@/components/WeekLabs";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
+import { holidaysBetween } from "@/lib/holidays";
 import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
 import { addDays, mondayOf, nowLocal } from "@/lib/time";
 
@@ -40,6 +41,7 @@ export default async function HomePage() {
         <WeekLabs user={user} date={today} locale={locale} />
         <Calendar
           initialEvents={eventsBetween(user, from, to, locale)}
+          initialHolidays={holidaysBetween(from, to, locale)}
           initialFrom={from}
           initialTo={to}
           initialWeek={semester ? teachingWeek(semester, from) : null}
