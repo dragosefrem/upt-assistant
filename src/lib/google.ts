@@ -109,7 +109,9 @@ function toGoogleEvent(item: ExportItem) {
     recurrence: recurrence.length ? recurrence : undefined,
     // Marks events this app owns, so a re-sync replaces exactly those.
     extendedProperties: { private: { uptOrar: item.uid } },
-    reminders: { useDefault: true },
+    reminders: item.alarms?.length
+      ? { useDefault: false, overrides: item.alarms.map((minutes) => ({ method: "popup", minutes })) }
+      : { useDefault: true },
   };
 }
 

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Mascot } from "@/components/Mascot";
 import { getUser } from "@/lib/auth";
 
 export default async function AuthLayout({ children }: LayoutProps<"/">) {
@@ -7,9 +8,11 @@ export default async function AuthLayout({ children }: LayoutProps<"/">) {
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-lg font-bold text-white">U</div>
-          <h1 className="text-2xl font-semibold tracking-tight">UPT Orar</h1>
-          <p className="mt-1 text-sm text-slate-600">Your timetable, exams and study assistant at Politehnica Timișoara.</p>
+          <div className="mx-auto mb-3 flex h-24 w-24 items-center justify-center rounded-[2rem] bg-white shadow-[0_8px_30px_-8px_rgba(31,72,196,0.35)]">
+            <Mascot size={72} wave chat={false} />
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight">Hi, I&apos;m Poli! 👋</h1>
+          <p className="mt-1 text-sm text-slate-600">Your timetable, exams and study buddy at Politehnica Timișoara.</p>
         </div>
         <div className="card p-6">{children}</div>
       </div>

@@ -23,7 +23,12 @@ export interface ExportItem {
   /** Weekly recurrence until this date (inclusive), skipping `exdates`. */
   until?: string;
   exdates?: string[];
+  /** Reminders, in minutes before the start. */
+  alarms?: number[];
 }
+
+/** Exams remind a day and two hours before, so phones alert even with the app closed. */
+export const EXAM_ALARMS = [1440, 120];
 
 const KIND_LABEL: Record<string, string> = { course: "Lecture", seminar: "Seminar", lab: "Lab", project: "Project", other: "" };
 
@@ -74,12 +79,15 @@ export function exportItems(user: User): ExportItem[] {
   for (const x of examsForUser(user)) {
     items.push({
       uid: `exam-${x.id}`,
-      title: `Exam: ${x.courseName}`,
-      description: [x.teacher, x.audience, x.endMin === x.startMin ? "End time unpublished" : null].filter(Boolean).join(" · "),
+      title: `Exam: ${x.courseName}${x.room ? ` · ${x.room}` : ""}`,
+      description: [x.room ? `Room ${x.room}` : null, x.teacher, x.audience, x.endMin === x.startMin ? "End time unpublished" : null, "Good luck! 🍀"]
+        .filter(Boolean)
+        .join(" · "),
       location: where(x.room),
       date: x.date,
       startMin: x.startMin,
       endMin: x.endMin,
+      alarms: EXAM_ALARMS,
     });
   }
   const horizon = semester ? (semester.examEnd ?? semester.endDate) : addDays(new Date().toISOString().slice(0, 10), 120);
@@ -184,6 +192,15 @@ export function toICS(items: ExportItem[], calendarName = "UPT Orar"): string {
       if (item.exdates?.length) {
         lines.push(`EXDATE;TZID=${TIME_ZONE}:${item.exdates.map((d) => localStamp(d, item.startMin)).join(",")}`);
       }
+    }
+    for (const before of item.alarms ?? []) {
+      lines.push(
+        "BEGIN:VALARM",
+        "ACTION:DISPLAY",
+        `DESCRIPTION:${escapeText(`${item.title}${item.location ? ` – ${item.location}` : ""}`)}`,
+        `TRIGGER:-PT${before}M`,
+        "END:VALARM",
+      );
     }
     lines.push("END:VEVENT");
   }

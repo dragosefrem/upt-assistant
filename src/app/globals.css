@@ -10,6 +10,19 @@
   --color-brand-600: #1f48c4;
   --color-brand-700: #1b3a9c;
   --color-brand-900: #142457;
+
+  --animate-wiggle: wiggle 2.4s ease-in-out infinite;
+  --animate-pop: pop 0.25s ease-out both;
+  @keyframes wiggle {
+    0%, 70%, 100% { transform: rotate(0deg); }
+    78% { transform: rotate(-8deg); }
+    86% { transform: rotate(8deg); }
+    94% { transform: rotate(-4deg); }
+  }
+  @keyframes pop {
+    from { opacity: 0; transform: translateY(6px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
 }
 
 :root {
@@ -17,13 +30,99 @@
 }
 
 body {
-  background: #f6f7fb;
+  /* Soft, friendly backdrop: a pale blue wash with a warm corner. */
+  background:
+    radial-gradient(60rem 30rem at 100% 0%, #fff4dc 0%, transparent 60%),
+    radial-gradient(50rem 30rem at 0% 0%, #e6eeff 0%, transparent 60%),
+    #f7f8fc;
+  background-attachment: fixed;
   color: #0f172a;
+}
+
+/* Three bouncing dots while the assistant is thinking. */
+.typing-dots span {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 3px;
+  border-radius: 9999px;
+  background: currentColor;
+  animation: typing 1s infinite ease-in-out;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.15s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* ---------- Poli, the chat button ---------- */
+.poli-fab {
+  width: 84px; height: 84px; padding: 0; border-radius: 9999px; background: #fff; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 30px -6px rgba(31, 72, 196, 0.45), 0 0 0 4px rgba(255, 255, 255, 0.9);
+}
+.poli-fab:focus-visible { outline: 3px solid #2f5fe0; outline-offset: 4px; }
+.poli-bot { width: 70px; height: 70px; animation: poli-bob 3s ease-in-out infinite; }
+.poli-fab:hover .poli-bot { animation-duration: 1.2s; }
+.poli-fab.poli-boop .poli-bot { animation: poli-boop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.poli-ball { transition: fill 0.2s; }
+.poli-wave { transform-box: fill-box; transform-origin: 50% 100%; }
+.poli-fab:hover .poli-wave { animation: poli-wave 0.6s ease-in-out 2; }
+.poli-ring { position: absolute; inset: -6px; border-radius: 9999px; border: 3px solid #2f5fe0; opacity: 0; pointer-events: none; }
+.poli-boop .poli-ring { animation: poli-ring 0.6s ease-out; }
+.poli-badge {
+  position: absolute; top: -2px; right: -2px; width: 26px; height: 26px; border-radius: 9999px; background: #1f48c4; color: #fff;
+  font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 3px #fff;
+  transform: scale(0); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.poli-is-open .poli-badge { transform: scale(1); }
+.poli-speech {
+  background: #fff; color: #0f172a; font-weight: 600; font-size: 14px; padding: 8px 14px; border-radius: 16px 16px 4px 16px; white-space: nowrap;
+  box-shadow: 0 8px 24px -6px rgba(20, 36, 87, 0.3); pointer-events: none; opacity: 0; transform: translateX(10px) scale(0.9);
+  transition: opacity 0.3s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.poli-speech.poli-show { opacity: 1; transform: none; }
+.poli-panel {
+  transform-origin: calc(100% - 44px) calc(100% + 60px);
+  opacity: 0; transform: scale(0.4) translateY(30px); visibility: hidden; pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s linear 0.35s;
+}
+.poli-panel.poli-open {
+  opacity: 1; transform: none; visibility: visible; pointer-events: auto;
+  transition: opacity 0.2s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0s;
+}
+.poli-hit { cursor: pointer; transition: transform 0.15s; }
+.poli-hit:hover { transform: scale(1.06); }
+.poli-hit:focus-visible { outline: 3px solid #2f5fe0; outline-offset: 3px; }
+.poli-jump { animation: poli-boop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.poli-burst { position: fixed; z-index: 60; pointer-events: none; font-size: 18px; animation: poli-fly 0.9s ease-out both; }
+@keyframes poli-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes poli-boop {
+  0% { transform: scale(1); }
+  15% { transform: scale(1.18, 0.82); }
+  35% { transform: translateY(-18px) scale(0.92, 1.1) rotate(-8deg); }
+  55% { transform: translateY(0) scale(1.08, 0.92) rotate(6deg); }
+  75% { transform: scale(0.97, 1.03) rotate(-3deg); }
+  100% { transform: none; }
+}
+@keyframes poli-wave { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-25deg); } }
+@keyframes poli-ring { from { opacity: 0.8; transform: scale(0.9); } to { opacity: 0; transform: scale(1.5); } }
+@keyframes poli-fly {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.4); }
+  20% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(var(--r)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .typing-dots span, .animate-wiggle, .animate-pop, .poli-bot, .poli-wave, .poli-ring, .poli-burst, .poli-jump { animation: none !important; }
+  .poli-hit { transition: none !important; }
+  .poli-panel, .poli-badge, .poli-speech { transition: none !important; }
 }
 
 /* Custom utilities (Tailwind v4): unlike plain classes, these can be composed with @apply. */
 @utility btn {
-  @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex items-center justify-center gap-2 rounded-xl px-3.5 py-2 text-sm font-medium transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @utility btn-primary {
@@ -43,7 +142,7 @@ body {
 }
 
 @utility field {
-  @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-2 focus:outline-brand-200;
+  @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-brand-500 focus:outline-2 focus:outline-brand-200;
 }
 
 @utility label {
@@ -51,5 +150,5 @@ body {
 }
 
 @utility card {
-  @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+  @apply rounded-3xl border border-slate-200/70 bg-white shadow-[0_2px_12px_-4px_rgba(31,72,196,0.12)];
 }

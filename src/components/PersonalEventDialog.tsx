@@ -1,17 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { DAY_NAMES, weekday } from "@/lib/time";
+import { DAY_NAMES, formatMinutes, weekday } from "@/lib/time";
 import { SCHEDULE_CHANGED } from "./Calendar";
 import { Modal } from "./Modal";
 
-export function PersonalEventDialog({ defaultDate, onClose }: { defaultDate: string; onClose: () => void }) {
+export function PersonalEventDialog({
+  defaultDate,
+  defaultStartMin = 18 * 60,
+  defaultEndMin,
+  onClose,
+  onSaved,
+}: {
+  defaultDate: string;
+  defaultStartMin?: number;
+  defaultEndMin?: number;
+  onClose: () => void;
+  onSaved?: (title: string) => void;
+}) {
   const [title, setTitle] = useState("");
   const [weekly, setWeekly] = useState(false);
   const [date, setDate] = useState(defaultDate);
   const [day, setDay] = useState(weekday(defaultDate));
-  const [start, setStart] = useState("18:00");
-  const [end, setEnd] = useState("19:00");
+  const [start, setStart] = useState(formatMinutes(defaultStartMin));
+  const [end, setEnd] = useState(formatMinutes(Math.min(defaultEndMin ?? defaultStartMin + 60, 23 * 60 + 59)));
   const [location, setLocation] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +52,7 @@ export function PersonalEventDialog({ defaultDate, onClose }: { defaultDate: str
       });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "The event could not be saved.");
       window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+      onSaved?.(title.trim());
       onClose();
     } catch (err) {
       setError((err as Error).message);

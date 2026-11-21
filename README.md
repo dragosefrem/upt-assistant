@@ -14,9 +14,17 @@ export, directions to the next room, and a chat/voice assistant.
   (holidays, odd/even weeks, "weeks 1–7" courses).
 - **Exams.** A student's own exam bookings, and search across the faculty's.
 - **Changing your timetable.** Hide a class, move it to another slot, add personal
-  events — from the calendar or by asking the assistant. Changes affect only you.
+  events: click or drag on the calendar, or ask the assistant. Changes affect only you.
 - **Directions.** With location sharing on, the app estimates how to reach the next
   room (walk / bike / transit / car), when to leave, and links to Google Maps.
+- **Exam reminders.** The exams page shows each upcoming exam with a countdown, the
+  room and building, a map link and a few tips from Poli, plus a search across the
+  faculty's exams. A bell in the header lists exams in the next 30 days and can notify
+  the device a week, a day, 2 hours and 30 minutes before (while the app is open); the
+  Google Calendar and `.ics` exports carry alerts a day and 2 hours before each exam.
+- **Poli.** The assistant's mascot. Pressing any Poli opens the chat; it also greets the
+  student with one-tap questions on the calendar page. Placeholder images live in
+  `public/images`; `docs/IMAGINI.md` has prompts for the final artwork.
 - **Assistant.** Text chat and voice (speech recognition and read-aloud in the
   browser), in Romanian or English: "Unde am examenul la AC?", "When is group TI 3.2
   free on Monday?", "Hide the PM lecture".
