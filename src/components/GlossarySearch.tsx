@@ -26,8 +26,7 @@ export function GlossarySearch() {
           {found.map((e) => (
             <div key={e.id} id={`term-${e.id}`} className="scroll-mt-24 rounded-2xl border border-slate-200 bg-white p-4">
               <dt className="text-base font-semibold text-slate-900" lang="ro">{e.term}</dt>
-              <dd className="mt-0.5 text-sm font-medium text-brand-700">{e.short}</dd>
-              <dd className="mt-1.5 text-sm leading-relaxed text-slate-600">{e.body}</dd>
+              <dd className="mt-1 text-sm leading-relaxed text-slate-600">{e.short} {e.body}</dd>
             </div>
           ))}
         </dl>

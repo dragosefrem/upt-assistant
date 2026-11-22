@@ -336,8 +336,8 @@ export const STUDY_TOOLS: AssistantTool[] = [
       const term = str(input.term);
       if (!term) return { error: "Say which word." };
       const locale = ctx.locale ?? ctx.user.locale ?? "ro";
-      const found = searchGlossary(guide[locale].entries, term).slice(0, 3);
-      if (!found.length) return { not_in_glossary: term, hint: "Say you are not sure what it means at UPT and suggest asking the year tutor or the faculty secretariat. The Guide page (open_page guide) has the full glossary." };
+      const found = searchGlossary(guide[locale].entries, term, "terms").slice(0, 3);
+      if (!found.length) return { not_in_glossary: term, hint: "For everyday vocabulary, explain the ordinary meaning. For an unfamiliar UPT abbreviation, ask where the student saw it." };
       return { entries: found.map((e) => ({ term: e.term, meaning: e.short, details: e.body })), more: "The Guide page has the full glossary (open_page guide)." };
     },
   },
@@ -364,7 +364,7 @@ export const STUDY_TOOLS: AssistantTool[] = [
   {
     name: "first_week_guide",
     description:
-      "The checklist for a new student's first week (check the group, find the rooms, which labs run this week, pick lab slots, put the timetable on the phone, add colleagues, read each course's rules). Use it when a student says they are new, asks where to start, or what they should do first. Walk them through it conversationally, a few steps at a time, and offer to do the steps you can do yourself.",
+      "Shows the Guide’s first-week checklist and marks steps complete or incomplete on this device. Use it when a new student asks where to start. Walk through a few steps at a time and offer to help with them.",
     input_schema: { type: "object", properties: {
       step: { type: "string", description: "To tick or untick a step on this device, use its id from this checklist." },
       done: { type: "boolean", description: "Whether the named step is complete." },
