@@ -641,6 +641,19 @@ describe("printed and interactive timetables", () => {
     expect(read("A223, Etică şi Integritate Academică (S)\ns. 1,3,5 grupa 1\ns. 2,4,6 grupa 2")).toHaveLength(1);
   });
 
+  it("lets the length a timetable states for a class win over the box it is drawn in", () => {
+    // IEE, year 3: "Controlere Logice Programabile (s:1-8 2h, s:9-12 3h)" is drawn in the 12-14
+    // row. In weeks 9 to 12 the calendar and the assistant said it ends at 14:00.
+    const cells: Box[] = [
+      [1, 0, 2, 1, "Grupa 1"], [0, 1, 1, 2, "12-14"], [0, 2, 1, 3, "14-16"], [0, 3, 1, 4, "16-18"],
+      [1, 1, 2, 2, "Controlere Logice Programabile (s:1-8 2h, s:9-12 3h), curs, Sala D104"],
+    ];
+    const table = readPrintedTable(cells, "Anul III", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Electrotehnică", degree: "bachelor" }, year: 3, series: "", name: labels[0],
+    })));
+    expect(table.entries.map((e) => [e.weeks, e.startMin / 60, e.endMin / 60])).toEqual([["1-8", 12, 14], ["9-12", 12, 15]]);
+  });
+
   it("gives a class written in half of its row the whole row", () => {
     // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
     // box covers the lower half of the row only (coordinates as read from the published PDF).

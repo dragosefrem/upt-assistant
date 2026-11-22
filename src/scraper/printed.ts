@@ -335,7 +335,8 @@ export function readPrintedTable(
         }
         for (const [weeks, groups] of byRule) {
           result.entries.push({ sheet, day: start.day, startMin: time.startMin,
-            endMin: load ? Math.min(time.endMin, time.startMin + load.hours * 60) : time.endMin, groups, weeks,
+            // The length the timetable states wins over the box: "s:9-12 3h" in a two-hour row ends an hour later.
+            endMin: load ? time.startMin + load.hours * 60 : time.endMin, groups, weeks,
             courseName: parsed.name, courseAbbr: parsed.abbr, kind: parsed.kind,
             room: parsed.room ?? (roomCell ? squash(roomCell[4]).replace(/^sal[aă]\s+/i, "") : null),
             teacher: parsed.teacher, rawText: squash(activity), isSlotOption: false,

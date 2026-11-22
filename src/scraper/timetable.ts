@@ -368,7 +368,7 @@ export function parseTimetable(grid: Grid, opts: {
       const loads = relocated ? [] : hourLoads(regular);
       if (loads.length) {
         for (const load of loads) {
-          out.entries.push({ ...entry, weeks: load.weeks, endMin: Math.min(entry.endMin, entry.startMin + load.hours * 60) });
+          out.entries.push({ ...entry, weeks: load.weeks, endMin: entry.startMin + load.hours * 60 });
         }
         continue;
       }
