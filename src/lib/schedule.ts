@@ -151,6 +151,23 @@ export function placeResolver(facultyId: number | null) {
   };
 }
 
+/**
+ * The place behind a building name a link carries (`/campus?building=…`): a building of the
+ * table, or the student's own faculty building, which is how a guess is named.
+ */
+export function placeByName(name: string, facultyId: number | null): Place | null {
+  const db = getDb();
+  const building = db.select().from(buildings).where(eq(buildings.name, name)).orderBy(asc(buildings.priority)).get();
+  if (building && building.code !== "ONLINE") {
+    return { name: building.name, address: building.address, lat: building.lat, lng: building.lng, approximate: /approx/i.test(building.notes ?? "") };
+  }
+  const faculty = facultyId ? db.select().from(faculties).where(eq(faculties.id, facultyId)).get() : undefined;
+  if (faculty && faculty.name === name && faculty.lat != null && faculty.lng != null) {
+    return { name: faculty.name, address: faculty.address, lat: faculty.lat, lng: faculty.lng, approximate: true, guessed: true };
+  }
+  return null;
+}
+
 /* ───────────────────────────── A student's week ───────────────────────────── */
 
 export interface WeekEntry {

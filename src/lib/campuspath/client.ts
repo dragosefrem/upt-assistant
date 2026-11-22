@@ -73,6 +73,7 @@ export function planOutcome(status: number, body: unknown): PlanOutcome {
       kind: "question",
       question: {
         field: q.field === "start" ? "start" : "destination",
+        key: typeof q.key === "string" ? q.key : undefined,
         message: String(q.message ?? ""),
         options: Array.isArray(q.options) ? q.options : [],
         needsChoice: Boolean(q.needsChoice),

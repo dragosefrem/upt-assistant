@@ -1,4 +1,4 @@
-import { placeResolver } from "@/lib/schedule";
+import { placeByName, placeResolver } from "@/lib/schedule";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getDb } from "@/db";
@@ -398,6 +398,25 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     const resolve = placeResolver(ana.facultyId);
     expect(resolve(null)).toBeNull();
     expect(resolve("  ")).toBeNull();
+  });
+
+  it("finds the building a calendar link names, and knows the faculty building is only a guess", () => {
+    const db = getDb();
+    expect(placeByName("Clădirea Electro (AC, ETcTI, IEE)", ana.facultyId)).toMatchObject({ address: "Bd. Vasile Pârvan 2, Timișoara", approximate: false });
+    expect(placeByName("Clădirea SPM", ana.facultyId)).toMatchObject({ approximate: true });
+    expect(placeByName("Clădirea SPM", ana.facultyId)?.guessed).toBeFalsy();
+    expect(placeByName("Online", ana.facultyId)).toBeNull();
+    expect(placeByName("A building nobody listed", ana.facultyId)).toBeNull();
+    // The faculty has no coordinates in this fixture: nothing to lead to, so no place.
+    expect(placeByName("Automatică și Calculatoare", ana.facultyId)).toBeNull();
+    db.update(faculties).set({ lat: 45.7474, lng: 21.2262, address: "Bd. Vasile Pârvan 2" }).where(eq(faculties.id, ana.facultyId!)).run();
+    try {
+      expect(placeByName("Automatică și Calculatoare", ana.facultyId)).toMatchObject({ guessed: true, approximate: true, lat: 45.7474 });
+      expect(placeResolver(ana.facultyId)("XYZ 1")).toMatchObject({ name: "Automatică și Calculatoare", guessed: true });
+      expect(placeResolver(ana.facultyId)("SPM 204")?.guessed).toBeFalsy();
+    } finally {
+      db.update(faculties).set({ lat: null, lng: null, address: null }).where(eq(faculties.id, ana.facultyId!)).run();
+    }
   });
 
   it("explains terms and opens pages", () => {

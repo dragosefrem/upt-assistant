@@ -11,6 +11,8 @@ export interface TimetableRoom {
   approximate: boolean;
   /** The building is a guess (the student's faculty), not a match on the room code. */
   guessed: boolean;
+  /** Where the building is, for the map when the tour does not know the room. */
+  where: { address: string | null; lat: number; lng: number } | null;
   /** Classes a week held there. */
   classes: number;
   courses: { title: string; kinds: string[] }[];
@@ -26,6 +28,9 @@ interface Place {
   name: string;
   approximate: boolean;
   guessed?: boolean;
+  address?: string | null;
+  lat?: number;
+  lng?: number;
 }
 
 /** "c 219" and "C219" are the same room. */
@@ -64,6 +69,9 @@ export function groupRooms(
       building: item.place?.name ?? null,
       approximate: item.place?.approximate ?? false,
       guessed: item.place?.guessed ?? false,
+      where: item.place && item.place.lat != null && item.place.lng != null
+        ? { address: item.place.address ?? null, lat: item.place.lat, lng: item.place.lng }
+        : null,
       classes: item.classes,
       courses: [...item.courses].map(([title, kinds]) => ({
         title,

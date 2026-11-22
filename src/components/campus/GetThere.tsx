@@ -5,10 +5,15 @@ import { useLocale, useT } from "@/i18n/client";
 import { planTrip, type TravelOption } from "@/lib/directions";
 import { metresBetween } from "@/lib/campuspath/links";
 import { leaveBy, mapsDirectionsUrl, mapsEmbedUrl, TRAVEL_MODES, type TravelMode } from "@/lib/campuspath/maps";
-import type { Checkpoint } from "@/lib/campuspath/types";
+import type { Pin } from "@/lib/campuspath/types";
 import { useLocation } from "../LocationProvider";
 
-type Entrance = Checkpoint & { pin: NonNullable<Checkpoint["pin"]> };
+/** A building entrance of the tour, or a whole building when the tour does not know the room. */
+interface Entrance {
+  name: string;
+  area?: string;
+  pin: Pin;
+}
 
 /** Within this many metres of the pin the student is at the entrance already. */
 const HERE_METRES = 60;
@@ -22,11 +27,14 @@ export function GetThere({
   entrance,
   at,
   mapsKey,
+  building = false,
 }: {
   entrance: Entrance;
   /** Start of the class, "HH:MM", to say when to leave. */
   at: string | null;
   mapsKey: string | null;
+  /** The map leads to a building as a whole: there is no walk inside to follow afterwards. */
+  building?: boolean;
 }) {
   const messages = useT();
   const t = messages.campus.journey;
@@ -55,10 +63,12 @@ export function GetThere({
     return (
       <p className="flex flex-wrap items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
         <span aria-hidden>✅</span>
-        <span className="min-w-0 flex-1">{t.youAreAt(entrance.name)}</span>
-        <a href="#campus-leg2" className="font-medium text-emerald-800 underline-offset-2 hover:underline">
-          {t.nextInside} ↓
-        </a>
+        <span className="min-w-0 flex-1">{building ? messages.campus.lost.here(entrance.name) : t.youAreAt(entrance.name)}</span>
+        {!building && (
+          <a href="#campus-leg2" className="font-medium text-emerald-800 underline-offset-2 hover:underline">
+            {t.nextInside} ↓
+          </a>
+        )}
       </p>
     );
   }
@@ -78,7 +88,7 @@ export function GetThere({
         <div>
           <p className="font-semibold text-slate-900">{t.entrance(entrance.name)}</p>
           {where && <p className="text-sm text-slate-600">{where}</p>}
-          <p className="mt-1 text-xs text-slate-500">{t.entranceHint}</p>
+          <p className="mt-1 text-xs text-slate-500">{building ? messages.campus.lost.mapHint : t.entranceHint}</p>
         </div>
         {origin ? (
           <>

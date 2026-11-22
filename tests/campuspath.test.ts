@@ -215,7 +215,10 @@ describe("Locate me and rooms that share a code", () => {
     expect(rooms.map((r) => r.room)).toEqual(["A315", "B018"]);
     expect(rooms[0]).toMatchObject({ classes: 2, building: "Facultatea de Automatică și Calculatoare", guessed: true, courses: [{ title: "Programming", kinds: ["Curs", "Laborator"] }] });
     // The building a rule matched is what settles a duplicate code; a guess is marked as one.
-    expect(rooms[1]).toMatchObject({ building: "Clădirea Electro", guessed: false });
+    expect(rooms[1]).toMatchObject({ building: "Clădirea Electro", guessed: false, where: null });
+    const placed = groupRooms([{ title: "Chimie", kind: "lab", room: "301CP" }], () => ({ name: "Facultatea de Chimie", approximate: false, address: "Bd. Vasile Pârvan 6", lat: 45.7478, lng: 21.2332 }), "ro");
+    // Where the building is, so a room the tour does not know still leads somewhere.
+    expect(placed[0].where).toEqual({ address: "Bd. Vasile Pârvan 6", lat: 45.7478, lng: 21.2332 });
   });
 });
 
@@ -255,6 +258,9 @@ describe("planner answers", () => {
   it("maps a 422 to a question and a 200 to a route with app media", () => {
     const question = planOutcome(422, { field: "destination", message: "Several places match.", options: [room()], needsChoice: true });
     expect(question).toEqual({ kind: "question", question: { field: "destination", message: "Several places match.", options: [room()], needsChoice: true } });
+    // The key tells an unknown room from a choice between rooms, whatever the language of the message.
+    const unknown = planOutcome(422, { field: "destination", key: "ask.unknown", message: "„301CP” nu este printre sălile…", options: [], needsChoice: false });
+    expect(unknown.kind === "question" && unknown.question.key).toBe("ask.unknown");
     const planned = planOutcome(200, route);
     expect(planned.kind === "route" && planned.route.video).toMatchObject({ url: `/api/campus/media/${KEY}.mp4` });
     expect(() => planOutcome(400, { message: "Send a JSON object with a route request." })).toThrow("Send a JSON object");

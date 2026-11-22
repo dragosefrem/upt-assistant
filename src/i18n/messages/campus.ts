@@ -180,6 +180,18 @@ const en = {
     startElsewhere: "Start from somewhere else",
     nextInside: "Next: inside the building",
   },
+  /** A room of the student's timetable that the tour has no record of. */
+  lost: {
+    title: (room: string) => `“${room}” is not in the virtual tour yet`,
+    known: (building: string, address: string | null) =>
+      `Your timetable places it in ${building}${address ? ` (${address})` : ""}. The map takes you to the building. Inside, look for the room number on the doors or ask at the front desk.`,
+    guessed: (building: string) =>
+      `Your timetable does not say which building it is in. It is most likely in your faculty’s building, ${building}. Check with a colleague or the faculty office before you set off.`,
+    nowhere: "We do not know which building it is in. Ask a colleague or your faculty office.",
+    approximate: "The building’s position on the map is approximate.",
+    mapHint: "The map leads to the building, not to the room.",
+    here: (name: string) => `You are at ${name}. Look for the room inside.`,
+  },
   floors: {
     ground: "Ground floor",
     basement: "Basement",
@@ -375,6 +387,17 @@ const ro: typeof en = {
     chosenStart: (name: string) => `Pornește de la ${name}.`,
     startElsewhere: "Pornește din alt loc",
     nextInside: "Mai departe: în clădire",
+  },
+  lost: {
+    title: (room: string) => `„${room}” nu este încă în turul virtual`,
+    known: (building: string, address: string | null) =>
+      `Orarul tău o plasează în ${building}${address ? ` (${address})` : ""}. Harta te duce până la clădire. Înăuntru, caută numărul sălii pe uși sau întreabă la portar.`,
+    guessed: (building: string) =>
+      `Orarul nu spune în ce clădire este. Cel mai probabil e în clădirea facultății tale, ${building}. Întreabă un coleg sau secretariatul înainte să pleci.`,
+    nowhere: "Nu știm în ce clădire este. Întreabă un coleg sau secretariatul facultății.",
+    approximate: "Poziția clădirii pe hartă este aproximativă.",
+    mapHint: "Harta te duce până la clădire, nu până la sală.",
+    here: (name: string) => `Ești la ${name}. Caută sala înăuntru.`,
   },
   floors: {
     ground: "Parter",

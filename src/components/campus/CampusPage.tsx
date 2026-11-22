@@ -12,6 +12,7 @@ import { Mascot } from "../Mascot";
 import { campusApi, CampusApiError, type PlanBody } from "./api";
 import { ClassroomBrowser } from "./ClassroomBrowser";
 import { reveal, roomFacts } from "./format";
+import { RoomNotInTour, type KnownPlace } from "./RoomNotInTour";
 import { Journey } from "./Journey";
 import type { RouteKind } from "./RouteView";
 import { ShareDialog } from "./ShareDialog";
@@ -33,6 +34,12 @@ interface PlanInput {
   hint?: string;
   /** The student's faculty: settles a timetable room whose building is not named. */
   faculty?: string;
+  /**
+   * The request is for a room of the student's timetable, with the building it is placed in
+   * (null when none is known). Such a room is never a typo: when the tour does not know it,
+   * the page leads to the building instead of asking for another code.
+   */
+  timetable?: KnownPlace | null;
   /** Start at the building entrance nearest the room, whatever is chosen in the planner. */
   auto?: boolean;
   /** A starting place a link named in words. */
@@ -73,6 +80,7 @@ export function CampusPage({
   initial,
   rooms,
   faculty,
+  initialPlace,
   hasSemester,
   admin,
   mapsKey,
@@ -81,6 +89,8 @@ export function CampusPage({
   rooms: TimetableRoom[];
   /** The student's faculty, by name. A room's building is a guess when it is this one. */
   faculty: string | null;
+  /** The place behind the building a link names. */
+  initialPlace: KnownPlace | null;
   hasSemester: boolean;
   admin: boolean;
   /** A Google Maps Embed API key, if configured; otherwise the keyless embed is used. */
@@ -95,6 +105,8 @@ export function CampusPage({
   const [result, setResult] = useState<{ route: Route; kind: RouteKind; id: number } | null>(null);
   const [context, setContext] = useState<Context>({ building: initial.building, at: initial.at, date: initial.date, course: initial.course });
   const [question, setQuestion] = useState<Question | null>(null);
+  /** A timetable room the tour does not know, with the building the timetable places it in. */
+  const [lost, setLost] = useState<{ room: string; place: KnownPlace | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"route" | "example" | null>(initial.to ? "route" : null);
@@ -116,14 +128,14 @@ export function CampusPage({
   const focusNextResult = useRef(false);
 
   useEffect(() => {
-    if (!focusNextResult.current || busy || picker || (!result && !question && !unavailable && !error)) return;
+    if (!focusNextResult.current || busy || picker || (!result && !question && !lost && !unavailable && !error)) return;
     const heading = resultBox.current?.querySelector<HTMLElement>("h2, [role=alert]");
     if (heading) {
       focusNextResult.current = false;
       heading.tabIndex = -1;
       heading.focus({ preventScroll: true });
     }
-  }, [busy, result, question, unavailable, error, picker]);
+  }, [busy, result, question, lost, unavailable, error, picker]);
 
   const chooseStart = useCallback((next: Start | null) => {
     setStart(next);
@@ -165,6 +177,7 @@ export function CampusPage({
       setResult(null);
       setUnavailable(false);
       setQuestion(null);
+      setLost(null);
       setError(null);
       setFormError(null);
       focusNextResult.current = !quiet;
@@ -195,6 +208,8 @@ export function CampusPage({
             setError(q.message);
           } else if (q.options.length) {
             setQuestion(q);
+          } else if (q.key === "ask.unknown" && q.field === "destination" && input.timetable !== undefined) {
+            setLost({ room: input.prompt, place: input.timetable });
           } else {
             setError(q.message);
             setFormError(q.message);
@@ -215,6 +230,7 @@ export function CampusPage({
     pending.current = null;
     setUnavailable(false);
     setQuestion(null);
+    setLost(null);
     setError(null);
     setFormError(null);
     setResult(null);
@@ -262,12 +278,14 @@ export function CampusPage({
         // as a guess. That guess must not outvote a building the room really is in.
         hint: initial.building && initial.building !== faculty ? initial.building : undefined,
         faculty: faculty ?? undefined,
+        // A link that names the class or its building comes from the student's own timetable.
+        timetable: initial.building || initial.course ? initialPlace : undefined,
         auto: !initial.from,
         from: first ? undefined : initial.from,
       };
       void plan(input, first, true);
     }
-  }, [initial, plan, faculty]);
+  }, [initial, plan, faculty, initialPlace]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,7 +302,8 @@ export function CampusPage({
     setBrowsing(false);
     setPrompt(room.room);
     applyContext({ building: room.building ?? undefined });
-    void plan({ prompt: room.room, hint: room.guessed ? undefined : (room.building ?? undefined), faculty: faculty ?? undefined });
+    const place = room.building && room.where ? { name: room.building, ...room.where, approximate: room.approximate, guessed: room.guessed } : null;
+    void plan({ prompt: room.room, hint: room.guessed ? undefined : (room.building ?? undefined), faculty: faculty ?? undefined, timetable: place });
   };
 
   const takeRoom = (room: Classroom) => {
@@ -516,6 +535,7 @@ export function CampusPage({
                   </button>
                 </section>
               )}
+              {lost && <RoomNotInTour room={lost.room} place={lost.place} at={context.at ?? null} mapsKey={mapsKey} />}
               {result ? (
                 <Journey
                   key={result.id}
@@ -530,7 +550,7 @@ export function CampusPage({
                   onStartElsewhere={startElsewhere}
                 />
               ) : (
-                !busy && !question && !error && (
+                !busy && !question && !lost && !error && (
                   <section className="campus-example">
                     <Image src={entrancePhoto} alt="" fill sizes="(min-width: 1024px) 640px, 100vw" className="object-cover" />
                     <div className="campus-example-copy">

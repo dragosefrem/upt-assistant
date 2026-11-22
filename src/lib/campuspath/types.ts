@@ -104,6 +104,8 @@ export interface Route {
 /** The planner needs a choice before it can plan (HTTP 422). */
 export interface Question {
   field: "start" | "destination";
+  /** Which question it is, whatever the language: "ask.unknown", "ask.several", … */
+  key?: string;
   message: string;
   options: CampusPlace[];
   needsChoice: boolean;

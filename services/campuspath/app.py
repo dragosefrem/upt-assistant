@@ -62,7 +62,8 @@ def create_app(tour=None):
         try:
             route = tour.plan(data.get("prompt", ""), data.get("start"), data.get("destination"), lang, data.get("from"))
         except RouteQuestion as question:
-            return jsonify(message=question.text(lang), field=question.field,
+            # "key" says which question it is ("ask.unknown", "ask.several"), whatever the language.
+            return jsonify(message=question.text(lang), field=question.field, key=question.key,
                            options=localized(question.options, lang), needsChoice=question.choose), 422
         # A walkthrough needs somewhere to walk: one checkpoint is answered with its notice alone.
         return jsonify(**route, video=videos.request(route) if len(route["steps"]) > 1 else None)

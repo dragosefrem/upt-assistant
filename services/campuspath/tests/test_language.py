@@ -130,8 +130,11 @@ class LanguageTests(unittest.TestCase):
     def test_questions_are_asked_in_the_requested_language(self):
         with self.assertRaises(RouteQuestion) as unknown:
             self.tour.plan("Z999", 355, lang="ro")
-        self.assertIn("No indexed room or checkpoint matches “Z999”", str(unknown.exception))
-        self.assertIn("nu se potrivește cu „Z999”", unknown.exception.text("ro"))
+        self.assertIn("“Z999” is not among the rooms and places of the virtual tour", str(unknown.exception))
+        self.assertIn("„Z999” nu este printre sălile și locurile din turul virtual", unknown.exception.text("ro"))
+        missing = self.client.post("/api/routes", json={"prompt": "Z999", "start": "auto", "lang": "ro"})
+        # The app tells an unknown room from a choice between rooms by the key, not by the wording.
+        self.assertEqual((missing.status_code, missing.get_json()["key"], missing.get_json()["options"]), (422, "ask.unknown", []))
         reply = self.client.post("/api/routes", json={"prompt": "De la Hol Principal la B419", "lang": "ro"})
         body = reply.get_json()
         self.assertEqual((reply.status_code, body["field"]), (422, "start"))

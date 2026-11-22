@@ -11,9 +11,10 @@ TEXT = {
                         "La ce sală sau punct vrei să ajungi?"),
     "ask.several": ("Several places match. Choose the room or building you mean.",
                     "Se potrivesc mai multe locuri. Alege sala sau clădirea la care te referi."),
-    "ask.unknown": ("No indexed room or checkpoint matches “{query}”. Try a room code or place name.",
-                    "Nicio sală și niciun punct din index nu se potrivește cu „{query}”. "
-                    "Încearcă un cod de sală sau numele unui loc."),
+    "ask.unknown": ("“{query}” is not among the rooms and places of the virtual tour. "
+                    "Check the room code, or search for the building instead.",
+                    "„{query}” nu este printre sălile și locurile din turul virtual. "
+                    "Verifică codul sălii sau caută clădirea."),
     "ask.length": ("Enter a route request of up to 1,000 characters.",
                    "Scrie o cerere de traseu de cel mult 1.000 de caractere."),
     "ask.start_room": ("Your starting room has no verified tour view. Choose a checkpoint you recognize.",

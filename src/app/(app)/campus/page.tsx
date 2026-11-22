@@ -4,7 +4,7 @@ import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf } from "@/lib/catalog";
 import { parseCampusLink } from "@/lib/campuspath/links";
 import { groupRooms } from "@/lib/campuspath/rooms";
-import { currentSemester, placeResolver, studentWeek } from "@/lib/schedule";
+import { currentSemester, placeByName, placeResolver, studentWeek } from "@/lib/schedule";
 
 export async function generateMetadata() {
   const t = await getT();
@@ -29,6 +29,7 @@ export default async function CampusRoute({ searchParams }: PageProps<"/campus">
       initial={link}
       rooms={rooms}
       faculty={faculty}
+      initialPlace={link.building ? placeByName(link.building, user.facultyId) : null}
       hasSemester={!!semester}
       admin={user.role === "admin"}
       mapsKey={process.env.GOOGLE_MAPS_EMBED_KEY?.trim() || null}
