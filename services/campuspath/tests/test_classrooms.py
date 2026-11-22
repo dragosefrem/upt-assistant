@@ -76,6 +76,27 @@ class ClassroomTests(unittest.TestCase):
             self.tour.plan("A206 SPM", "auto")
         self.assertEqual(unknown.exception.key, "ask.unknown")
 
+    def test_a_building_alone_leads_to_its_entrance(self):
+        # "M (L) Orologerie, etaj I": the timetable names the building and no room.
+        for request in ("Orologerie", "sala Orologerie"):
+            with self.subTest(request=request):
+                route = self.tour.plan(request, "auto", lang="ro")
+                self.assertNotIn("destination", route)
+                self.assertEqual(route["steps"][-1]["index"], self.tour.classrooms.entrances["orologerie"])
+        self.assertEqual(self.tour.plan("SPM", "auto")["steps"][-1]["index"], self.tour.classrooms.entrances["spm"])
+        # A room that is not in the building's list is unknown, not an amphitheatre elsewhere.
+        for request in ("A1 SPM", "P08 SPM", "225 A SPM"):
+            with self.subTest(request=request), self.assertRaises(RouteQuestion) as unknown:
+                self.tour.plan(request, "auto")
+            self.assertEqual(unknown.exception.key, "ask.unknown")
+
+    def test_architecture_amphitheatres_are_found_by_the_names_its_timetable_uses(self):
+        search = self.tour.classrooms.search
+        for request, room in (("H. Fack.", "room:constructii-ca4"), ("H.Fack.", "room:constructii-ca4"), ("H. Fack", "room:constructii-ca4"),
+                              ("V. Gioncu", "room:constructii-ca5"), ("V.Gioncu", "room:constructii-ca5"), ("CA4", "room:constructii-ca4")):
+            with self.subTest(request=request):
+                self.assertEqual([r["index"] for r in search(request, strict=True)], [room])
+
     def test_two_rooms_in_one_timetable_cell_are_offered_as_a_choice(self):
         search = self.tour.classrooms.search
         both = {"room:mecanica-m214", "room:mecanica-n214"}

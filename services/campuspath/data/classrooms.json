@@ -3070,7 +3070,12 @@
         "scene": "panorama_25B9E7AE_3954_5488_41A1_D72380F855B1",
         "yaw": -164.4,
         "pitch": -3.9
-      }
+      },
+      "aliases": [
+        "H. Fack",
+        "H. Fackelmann",
+        "Hans Fackelmann"
+      ]
     },
     {
       "id": "constructii-ca5",
@@ -3085,7 +3090,11 @@
         "arch",
         "exams"
       ],
-      "level": "Etaj 5"
+      "level": "Etaj 5",
+      "aliases": [
+        "V. Gioncu",
+        "Victor Gioncu"
+      ]
     },
     {
       "id": "constructii-cnm",

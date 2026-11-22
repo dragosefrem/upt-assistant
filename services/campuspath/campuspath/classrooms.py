@@ -101,11 +101,17 @@ class Classrooms:
         self.names = defaultdict(set)
         self.fields = {}
         self.sites = {}
+        self.entrances = {key: tour.by_id[site["checkpoint"]] for key, site in data["sites"].items()
+                          if site.get("checkpoint") in tour.by_id}
         # Buildings whose name in a request rules out a room with the same code elsewhere.
         self.only = defaultdict(set)
+        self.named = {}
         for key, site in data["sites"].items():
-            for alias in site.get("aliases", []) if site.get("only") else []:
+            aliases = site.get("aliases", []) if site.get("only") else []
+            for alias in aliases:
                 self.only[fold(alias)].add(key)
+            if aliases:
+                self.named[fold(aliases[0])] = key
         rows = []
         outside = defaultdict(list)
         reach = {}
@@ -233,6 +239,17 @@ class Classrooms:
         # Two rooms in one cell: "M214/N214", "C402-C403".
         parts = re.split(r"[-/]", token)
         return set(parts) if len(parts) > 1 and all(part in self.codes for part in parts) else set()
+
+    def building(self, query):
+        """The one building a request names and nothing else: "Orologerie", "sala SPM"."""
+        asked = words(query)
+        # A building's first alias is its own name; "SPM" also covers its IMF wing.
+        sites = {self.named[word] for word in asked if word in self.named}
+        return next(iter(sites)) if len(sites) == 1 and all(word in self.only for word in asked) else None
+
+    def names_building(self, query):
+        """Whether a request says which building it means ("A1 SPM")."""
+        return any(word in self.only for word in words(query))
 
     def search(self, query, *, strict=False):
         wanted = words(query)

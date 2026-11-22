@@ -218,7 +218,15 @@ class Tour:
             return matches
         if matches and terms(query) & {"doorway", "entrance", "intrare", "intrarea", "hall", "hol", "stairwell", "landing", "corridor"}:
             return matches
+        # A timetable that gives only the building ("M (L) Orologerie, etaj I") is answered with
+        # its entrance, not with a list of the rooms inside to choose from.
+        site = self.classrooms.building(query)
+        if site in self.classrooms.entrances:
+            return [self.records[self.classrooms.entrances[site]]]
         rooms = self.classrooms.search(query, strict=True)
+        if not rooms and self.classrooms.names_building(query):
+            # "A1 SPM" is not in the catalogue. A place called A1 somewhere else is not it.
+            return []
         if rooms:
             return rooms
         return matches
