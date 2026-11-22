@@ -56,12 +56,16 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
             <th className="px-4 py-2 font-medium">{t.columns.time}</th>
             <th className="px-4 py-2 font-medium">{t.columns.course}</th>
             <th className="px-4 py-2 font-medium">{t.columns.where}</th>
-            <th className="px-4 py-2 font-medium">{t.columns.audience}</th>
+            <th className="hidden px-4 py-2 font-medium sm:table-cell">{t.columns.audience}</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
           {list.map((x) => {
             const p = place(x.room);
+            // A distance-learning exam is published per programme and year, in three sittings.
+            const audience = examSitting(x.audience)
+                    ? [x.session?.split(" · ")[0], x.year ? messages.common.time.year(x.year) : null, examAudience(x.audience, locale)].filter(Boolean).join(" · ")
+                    : examAudience(x.audience, locale);
             return (
               <tr key={x.id} className={x.date < today ? "text-slate-400" : ""}>
                 <td className="whitespace-nowrap px-4 py-2.5 font-medium">{capitalize(formatDate(x.date, { weekday: "short", day: "numeric", month: "short", year: "numeric" }, locale))}</td>
@@ -70,17 +74,14 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
                   <span className="font-medium">{x.courseName}</span>
                   {x.courseAbbr && x.courseAbbr !== x.courseName && <span className="ml-1.5 text-xs text-slate-500">{x.courseAbbr}</span>}
                   {x.teacher && <span className="block text-xs text-slate-500">{x.teacher}</span>}
+                  {/* On a phone the last column is off the screen: who the exam is for is said here. */}
+                  {audience && <span className="mt-0.5 block text-xs text-slate-600 sm:hidden">{t.columns.audience}: {audience}</span>}
                 </td>
                 <td className="px-4 py-2.5">
                   <span className="font-medium">{x.room ?? "—"}</span>
                   {p && <span className="block text-xs text-slate-500">{p.name}</span>}
                 </td>
-                <td className="px-4 py-2.5 text-xs text-slate-600">
-                  {/* A distance-learning exam is published per programme and year, in three sittings. */}
-                  {examSitting(x.audience)
-                    ? [x.session?.split(" · ")[0], x.year ? messages.common.time.year(x.year) : null, examAudience(x.audience, locale)].filter(Boolean).join(" · ")
-                    : examAudience(x.audience, locale)}
-                </td>
+                <td className="hidden px-4 py-2.5 text-xs text-slate-600 sm:table-cell">{audience}</td>
               </tr>
             );
           })}
