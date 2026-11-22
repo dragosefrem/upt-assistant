@@ -124,17 +124,22 @@ export function civilCell(raw: string) {
   }
   // The caption of the room box may come first: "Sală GEOLOGIE INGINEREASCĂ", "Sală M.e.f. - elemente avansate".
   parsed.name = parsed.name.replace(/^Sal[aă]\s+(?=\p{Lu})/u, "");
+  // The hall is written last: after the lecturer ("GEOLOGIE INGINEREASCA Ciopec NM"), where it
+  // must be taken before the lecturer is or it ends up in the lecturer's name, or after the
+  // title ("AMENAJĂRI HIDROTEHNICE H1 Conf. …"), where it shows once the lecturer is split off.
+  const takeHall = () => {
+    const hall = parsed.room ? null : /\s([A-Z]{1,3}\d{1,4}[a-z]?|NM|PN|VV)$/.exec(parsed.name);
+    if (!hall) return;
+    parsed.room = hall[1];
+    parsed.name = parsed.name.slice(0, hall.index).trim();
+  };
+  takeHall();
   const lecture = parsed.teacher ? null : civilLecture.exec(parsed.name);
   if (lecture) {
     parsed.name = lecture[1].trim();
     parsed.teacher = lecture[2].trim();
   }
-  // "AMENAJĂRI HIDROTEHNICE H1": the hall, written after the title.
-  const hall = parsed.room ? null : /\s([A-Z]{1,3}\d{1,4}[a-z]?|NM|PN|VV)$/.exec(parsed.name);
-  if (hall) {
-    parsed.room = hall[1];
-    parsed.name = parsed.name.slice(0, hall.index).trim();
-  }
+  takeHall();
   return parsed;
 }
 

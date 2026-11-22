@@ -710,6 +710,9 @@ describe("printed and interactive timetables", () => {
       // Alone in the upper half of its row: one hour, as printed.
       "b 14-15 TUTORIERE @A111 -",
     ]);
+    // The hall written after the lecturer, or between the title and the lecturer, is the room.
+    expect(civilCell("Sală GEOLOGIE INGINEREASCA Ciopec NM")).toMatchObject({ name: "GEOLOGIE INGINEREASCA", room: "NM", teacher: "Ciopec" });
+    expect(civilCell("AMENAJĂRI HIDROTEHNICE H1 Conf\n.dr.ing NICOARA SV")).toMatchObject({ name: "AMENAJĂRI HIDROTEHNICE", room: "H1" });
   });
 
   it("gives a series lecture to every group, with the room boxed at the end of its row", () => {
