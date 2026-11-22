@@ -424,4 +424,34 @@ describe("Poli reply cards", () => {
       log.mockRestore();
     }
   });
+
+  it("finishes and saves the answer when the page is reloaded while Poli is still writing it", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test");
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    let answer!: () => void;
+    const thinking = new Promise<void>((resolve) => { answer = resolve; });
+    generate.mockImplementationOnce(async () => {
+      await thinking;
+      return { candidates: [{ content: { role: "model", parts: [{ functionCall: { name: "get_schedule", args: { from: day } } }] }, finishReason: "STOP" }] };
+    });
+    geminiTurn([{ text: "Your day starts with the reading group at 10." }]);
+    try {
+      const res = await POST(new Request("http://localhost/api/assistant", { method: "POST", body: JSON.stringify({ message: "What do I have today?" }) }));
+      // The student reloads: the browser stops reading the answer.
+      await res.body!.cancel();
+      answer();
+      const saved = () => getDb().select().from(chatMessages).all();
+      await vi.waitFor(() => expect(saved().map((m) => m.role)).toEqual(["user", "assistant"]));
+      // The turn was not thrown away, not answered a second time by the built-in assistant,
+      // and not reported as a failure of the model.
+      expect(saved()[1].content).toBe("Your day starts with the reading group at 10.");
+      expect(parseReplyCard(saved()[1].card)?.type).toBe("schedule");
+      expect(log).not.toHaveBeenCalled();
+      // Back on the page, the conversation has the answer.
+      const history = await (await GET()).json();
+      expect(history.messages.at(-1)).toMatchObject({ role: "assistant", content: "Your day starts with the reading group at 10." });
+    } finally {
+      log.mockRestore();
+    }
+  });
 });

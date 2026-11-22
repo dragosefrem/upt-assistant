@@ -130,9 +130,23 @@ export async function POST(request: Request) {
   };
 
   const encoder = new TextEncoder();
+  // The student may reload or close the page while Poli is answering. The turn is already
+  // under way (and paid for, and its tools may have acted), so it is finished and saved
+  // whoever is still listening: the answer is in the conversation when they come back.
+  let listening = true;
   const stream = new ReadableStream({
+    cancel() {
+      listening = false;
+    },
     async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+      const send = (obj: unknown) => {
+        if (!listening) return;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
+        } catch {
+          listening = false;
+        }
+      };
       let reply = "";
       let engine: Engine = "basic";
       let notice: string | undefined;
@@ -201,7 +215,13 @@ export async function POST(request: Request) {
         checklistEdits: ctx.checklistEdits,
         notice,
       });
-      controller.close();
+      if (listening) {
+        try {
+          controller.close();
+        } catch {
+          // The browser went away between the last line and the end of the stream.
+        }
+      }
     },
   });
   return new Response(stream, {

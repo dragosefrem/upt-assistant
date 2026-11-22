@@ -395,6 +395,8 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       setActivity(tr.thinking);
       let reply = "";
       let offered: AssistantChoice[] = [];
+      // Whether the question reached Poli: until then nothing is stored and it can be sent again.
+      let received = false;
       try {
         await loadHistory();
         const res = await fetch("/api/assistant", {
@@ -407,6 +409,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
           if (res.status === 409) setMessages((list) => list.filter((m) => m.id !== userId));
           throw new Error(error.error ?? (res.status === 401 ? tr.errors.sessionExpired : tr.errors.unavailable));
         }
+        received = true;
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
@@ -451,8 +454,16 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         // In a spoken conversation, options read aloud are followed by listening for the pick.
         if (speak || spoken) say(reply, spoken && offered.length ? listen : undefined);
       } catch (err) {
-        setMessages((m) => m.filter((x) => x.id !== replyId || x.content));
-        setNotice((err as Error).message);
+        if (received) {
+          setMessages((m) => m.filter((x) => x.id !== replyId || x.content));
+        } else {
+          // Nothing was sent: no question left hanging without an answer, and the text is
+          // back in the box to send again.
+          setMessages((m) => m.filter((x) => x.id !== replyId && x.id !== userId));
+          setInput((current) => current || message);
+        }
+        // A dropped connection is reported by the browser in its own words ("Failed to fetch").
+        setNotice(err instanceof TypeError ? tr.errors.serverUnreachable : (err as Error).message);
       } finally {
         setBusy(false);
         setActivity(null);
@@ -578,6 +589,35 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   };
 
   const last = messages.at(-1);
+
+  // The page was reloaded or closed while Poli was answering: the answer is still being
+  // written on the server. Wait for it instead of showing a question nobody answered.
+  const unanswered = !busy && last?.role === "user" && last.dbId ? last.dbId : null;
+  const [gaveUpOn, setGaveUpOn] = useState<number | null>(null);
+  const resuming = unanswered !== null && gaveUpOn !== unanswered;
+  useEffect(() => {
+    if (!unanswered) return;
+    let tries = 0;
+    let stopped = false;
+    const check = async () => {
+      const data = await fetch("/api/assistant").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      if (stopped) return;
+      const rows: (Omit<Message, "id"> & { id: number })[] = data?.messages ?? [];
+      const answer = rows.at(-1);
+      if (answer?.role === "assistant" && answer.id > unanswered) {
+        setMessages(rows.map((m) => ({ ...m, id: String(m.id), dbId: m.id })));
+      } else if (++tries < 24) {
+        timer = window.setTimeout(check, 2500);
+      } else {
+        setGaveUpOn(unanswered);
+      }
+    };
+    let timer = window.setTimeout(check, 1500);
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+    };
+  }, [unanswered]);
 
   const questionButton = (s: { emoji: string; text: string }) => (
     <button
@@ -709,6 +749,12 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
           );
         })}
         {busy && activity && messages.at(-1)?.content && <p className="text-xs text-slate-400">{activity}</p>}
+        {resuming && !busy && (
+          <p role="status" className="flex items-center gap-2 text-sm text-slate-500">
+            <span className="typing-dots text-brand-500" aria-hidden><span /><span /><span /></span>
+            {tr.stillAnswering}
+          </p>
+        )}
       </div>
 
       {notice && <p role="status" className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-800">{notice}</p>}

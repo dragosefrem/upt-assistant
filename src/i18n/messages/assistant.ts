@@ -53,6 +53,7 @@ const en = {
     { emoji: "📚", text: "Make me a study plan for the exam session" },
   ],
   thinking: "Thinking…",
+  stillAnswering: "Poli is still writing the answer to your last question…",
   working: "Working…",
   /** What Poli says it is doing while a tool runs. */
   tools: {
@@ -259,6 +260,7 @@ const ro: typeof en = {
     { emoji: "📚", text: "Fă-mi un plan de învățat pentru sesiune" },
   ],
   thinking: "Mă gândesc…",
+  stillAnswering: "Poli încă scrie răspunsul la ultima ta întrebare…",
   working: "Lucrez…",
   tools: {
     get_schedule: "Mă uit în orarul tău…",
