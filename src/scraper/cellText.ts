@@ -221,6 +221,8 @@ export function parseCellText(input: string): ParsedText {
     }
   }
   if (!room && /\bonline\b/i.test(rest)) room = "online";
+  // "A2CH" is how one ETcTI sheet shortens "A2 Chimie", the amphitheatre the others spell out.
+  if (room && /^[A-Z]\d{1,3}\s?CH$/.test(room)) room = room.replace(/\s?CH$/, " Chimie");
 
   // "Chimie" or "Mecanica" alone can be a subject; beside a room they say where the room is.
   const building = BUILDING.exec(rest);

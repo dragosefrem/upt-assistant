@@ -193,6 +193,7 @@ describe("parseCellText", () => {
     expect(parseCellText("LP1(c) P. Serafin, A2 Chimie, s1-10")).toMatchObject({ teacher: "P. Serafin", room: "A2 Chimie", weeks: "1-10" });
     expect(parseCellText("SwEA(c) S.Mischie A2 Chimie")).toMatchObject({ teacher: "S. Mischie", room: "A2 Chimie" });
     expect(parseCellText("Pedagogie (c) H0 Hidrotehnica")).toMatchObject({ room: "H0 Hidrotehnica", teacher: null });
+    expect(parseCellText("TTI(c) H. Balta A2CH")).toMatchObject({ room: "A2 Chimie", teacher: "H. Balta" });
     expect(parseCellText("NM II (C), Orologerie building, Room 206")).toMatchObject({ kind: "course", room: "206 Orologerie", teacher: null });
     expect(parseCellText("TM (L) SPM parter P01 Marius Pop‐Călimanu")).toMatchObject({ kind: "lab", room: "P01 SPM", teacher: "Marius Pop‐Călimanu" });
     expect(parseCellText("GDDT (L) Salcianu L. Sala 225 A (SPM)")).toMatchObject({ room: "225 A SPM", teacher: "Salcianu L." });
