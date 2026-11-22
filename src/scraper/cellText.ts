@@ -56,7 +56,7 @@ const TEACHER =
 /** The end of an untyped title: "… ALGAD sala M306 Sl. univ. dr. …", "Germana sala 304 Facultatea de Chimie". */
 const UNTYPED_ROOM = (() => {
   const code = String.raw`\p{Lu}{0,4}\s?\d{1,4}[A-Za-z]?`;
-  return new RegExp(String.raw`(?<=[\p{L}\d)])\s+(?=(?:sal[aă]|room)\s+${code}(?:\s*\/\s*(?:sal[aă]\s+)?${code})*` +
+  return new RegExp(String.raw`(?<=[\p{L}\d)])\s*[-–]?\s+(?=(?:sal[aă]|room)\s+${code}(?:\s*\/\s*(?:sal[aă]\s+)?${code})*` +
     String.raw`(?:\s+(?:Facultatea\s+de\s+)?(?:Chimie|Mecanic[aă]))?\s*(?:$|,|(?:Prof|Conf|Asist|Lect|Drd)\b|[SȘŞ]\.?\s?l\.))`, "iu");
 })();
 
@@ -132,6 +132,11 @@ export function extractWeeks(input: string) {
     parities.add(/^i/i.test(flag) ? "odd" : "even");
     return " ";
   });
+  // The English sheets write it the other way round: "room ASPC - odd weeks", "even weeks - room ASPC".
+  rest = rest.replace(/(?:\s*[-–,]\s*)?(?<![\p{L}\d])(odd|even)\s+weeks?(?![\p{L}\d])(?:\s*[-–,](?=\s))?/giu, (_, flag: string) => {
+    parities.add(flag.toLowerCase());
+    return " ";
+  });
   const weeks = [numbers.size ? [...numbers].join(",") : "", parities.size === 1 ? [...parities][0] : ""]
     .filter(Boolean).join("&") || "all";
   // What is left of "[S1-S12]*" or "(s:1-8 2h, s:9-12 3h)" once the weeks are read.
@@ -175,6 +180,17 @@ export function parseCellText(input: string): ParsedText {
     marker = true;
     name = text.slice(0, word.index);
     rest = text.slice(word.index + word[0].length);
+  }
+
+  if (!marker) {
+    // "(2C)", "(2L)", "(2P)": the weekly hours and the kind of a class, as the Robotică master's sheets write it.
+    const hours = /\(\s*\d\s*([CSLP])\s*\)/i.exec(text);
+    if (hours) {
+      kind = KIND_BY_LETTER[hours[1].toLowerCase()] ?? "other";
+      marker = true;
+      name = text.slice(0, hours.index);
+      rest = text.slice(hours.index + hours[0].length);
+    }
   }
 
   // MPT trailing parity flag: "…, O.Irizoiu, p" / "…, i".
@@ -282,7 +298,8 @@ export function parseCellText(input: string): ParsedText {
   let abbr: string | null = null;
   // "… (ALGAD)" or "… diferentiala- ALGAD": the acronym the timetable gives the course.
   const explicit = /\(([\p{Lu}][\p{L}\d.]{0,7})\)\s*$/u.exec(name) ?? /(?<=\p{Ll})\s*[-–]\s*(\p{Lu}[\p{Lu}\d]{1,7})\s*$/u.exec(name);
-  if (explicit && name.length > explicit[0].length + 3) {
+  // "Germana (Cartis)" names the lecturer, not the course: an acronym is short or in capitals.
+  if (explicit && name.length > explicit[0].length + 3 && (explicit[1].length <= 4 || looksLikeAcronym(explicit[1]))) {
     abbr = explicit[1];
     name = clean(name.slice(0, explicit.index));
   } else if (looksLikeAcronym(name)) {

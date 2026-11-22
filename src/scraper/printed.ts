@@ -99,7 +99,9 @@ export function electricalActivities(text: string): string[] {
 }
 
 /** Civil Engineering puts the room and lecturer on a second line below the title. */
-const civilRoom = /^(?:[Ss]al[aă]\s+)?(LG\s*\d+|[A-Z]{1,3}\s?-?\d+[a-z]?|PN|NM|V[Vv]|\d+)\b\s*(.*)$/u;
+// The halls are named by letters there: NM, PN, VV, MP, and the laboratories LN, LS, LI, LV, LE,
+// sometimes with the room in brackets ("LN (Ca2)").
+const civilRoom = /^(?:[Ss]al[aă]\s+)?(LG\s*\d+|[A-Z]{1,3}\s?-?\d+[a-z]?|(?:L[NSIVE]|MP)(?:\s*\(Ca\d\))?|PN|NM|V[Vv]|Rectorat|\d+)(?![\p{L}\d])\s*(.*)$/u;
 export function civilDetail(text: string) { return civilRoom.test(squash(text)); }
 
 /** A lecture is titled in capitals, with its lecturer after it: "GEOMETRIE DESCRIPTIVĂ C.Voicu". */
@@ -117,22 +119,27 @@ export function civilCell(raw: string) {
     // "NM (săpt. 5-11) Conf.dr.ing Ș.V. NICOARĂ": the weeks may be written between the room and the lecturer.
     const after = extractWeeks(detail[2]);
     if (after.weeks !== "all" && parsed.weeks === "all") parsed.weeks = after.weeks;
-    const lecturer = squash(after.rest.replace(/\(\s*\)/g, " "));
+    const lecturer = squash(after.rest.replace(/\(\s*(?:Ca\d)?\s*\)/gi, " "));
     if (lecturer) parsed.teacher = lecturer;
   }
   // The caption of the room box may come first: "Sală GEOLOGIE INGINEREASCĂ", "Sală M.e.f. - elemente avansate".
   parsed.name = parsed.name.replace(/^Sal[aă]\s+(?=\p{Lu})/u, "");
+  // The hall is written last: after the lecturer ("GEOLOGIE INGINEREASCA Ciopec NM"), where it
+  // must be taken before the lecturer is or it ends up in the lecturer's name, or after the
+  // title ("AMENAJĂRI HIDROTEHNICE H1 Conf. …"), where it shows once the lecturer is split off.
+  const takeHall = () => {
+    const hall = parsed.room ? null : /\s([A-Z]{1,3}\d{1,4}[a-z]?|NM|PN|VV)$/.exec(parsed.name);
+    if (!hall) return;
+    parsed.room = hall[1];
+    parsed.name = parsed.name.slice(0, hall.index).trim();
+  };
+  takeHall();
   const lecture = parsed.teacher ? null : civilLecture.exec(parsed.name);
   if (lecture) {
     parsed.name = lecture[1].trim();
     parsed.teacher = lecture[2].trim();
   }
-  // "AMENAJĂRI HIDROTEHNICE H1": the hall, written after the title.
-  const hall = parsed.room ? null : /\s([A-Z]{1,3}\d{1,4}[a-z]?|NM|PN|VV)$/.exec(parsed.name);
-  if (hall) {
-    parsed.room = hall[1];
-    parsed.name = parsed.name.slice(0, hall.index).trim();
-  }
+  takeHall();
   return parsed;
 }
 
@@ -272,9 +279,14 @@ export function readPrintedTable(
   }
   for (const b of blocks) {
     const raw = squash(b[4]);
-    if (parseTimeRange(raw) || dayOf(raw) || !/\p{L}/u.test(raw) || detailCell(raw) || continuation.test(raw) || weekHeading.test(raw)) continue;
-    const adjoiningRoom = cells.find((r) => roomOnly.test(squash(r[4])) && Math.abs(r[0] - b[2]) < 0.05 &&
-      Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
+    // "Sală" alone is the caption of a room box, never a class.
+    if (parseTimeRange(raw) || dayOf(raw) || !/\p{L}/u.test(raw) || detailCell(raw) || continuation.test(raw) || weekHeading.test(raw) || /^sal[aă]$/i.test(raw)) continue;
+    // The hall of a lecture for the whole series is boxed at the end of its row, in the last
+    // group's column: "VV", "MP", "LN Ca2", sometimes after a box that only says "Sală".
+    const beside = (edge: number, test: (text: string) => boolean) => cells.find((r) => test(squash(r[4])) &&
+      Math.abs(r[0] - edge) < 0.05 && Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
+    const caption = beside(b[2], (text) => /^sal[aă]$/i.test(text));
+    const adjoiningRoom = beside(caption?.[2] ?? b[2], (text) => roomOnly.test(text) || (detailCell(text) && text.length <= 12));
     const covered = indexed.filter((c) => Math.min(c.right, adjoiningRoom?.[2] ?? b[2]) - Math.max(c.left, b[0]) > 0.1);
     if (!covered.length) continue;
     // A narrow continuation line under a course often only supplies the room.
@@ -294,9 +306,11 @@ export function readPrintedTable(
       if (!row || span < 120) return fallback;
       return row.time.startMin + Math.round(((y - row.box[1]) / (row.box[3] - row.box[1])) * (span / 60)) * 60;
     };
-    // That holds for a class that runs from one row into another. A box that lies inside a
-    // single row is the written half of a cell split by a diagonal: the class lasts the whole row.
-    const inOneRow = clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && b[3] <= box[3] + 0.05);
+    // That holds where rows are drawn to scale. Mecanică's are not: there, a box that lies
+    // inside a single row is the written half of a cell split by a diagonal, and the class
+    // lasts the whole row. (At Construcții the other half of the row can be another class.)
+    const inOneRow = !!options.splitSharedHours &&
+      clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && b[3] <= box[3] + 0.05);
     // Mecanică's rows are not drawn to scale: there, a class put together from two boxes whose
     // first line sat inside one row starts with that row ("GDDT (L) Farkas A." written
     // half-way down 18-20, with its room in 20-21). Construcții does draw to scale: a title in

@@ -214,6 +214,32 @@ describe("parseCellText", () => {
     expect(parseCellText("M.A.C.I. (L) (Sala 207-RM et. 2)")).toMatchObject({ kind: "lab", room: "207-RM et. 2" });
   });
 
+  it("reads the room of a class written \"title - sala N 210\", and does not take a lecturer in brackets for an acronym", () => {
+    // Mecanică, year 1: the tutoring and revision lectures had no room and no way to them.
+    expect(parseCellText("CURS TUTORIAT - sala N 210")).toMatchObject({ name: "CURS TUTORIAT", kind: "course", room: "N 210" });
+    expect(parseCellText("Curs recapitulare FIZICA - sala N 110")).toMatchObject({ name: "Curs recapitulare FIZICA", room: "N 110" });
+    expect(parseCellText("Limbi straine - Germana (Cartis) - Sala N 212")).toMatchObject({ name: "Limbi straine - Germana (Cartis)", abbr: null, room: "N 212" });
+    expect(parseCellText("Fizica (Fiz) (c) A. Palcu A0")).toMatchObject({ name: "Fizica", abbr: "Fiz" });
+  });
+
+  it("reads \"odd weeks\" and \"even weeks\" as the English sheets write them", () => {
+    // Calculatoare in English, year 2: "Computer Architecture" showed every Thursday, in room
+    // "ASPC - odd". Year 3: "Artificial Intelligence Fundamentals", every week instead of even weeks.
+    expect(parseCellText("Computer Architecture (c) F. Opritoiu room ASPC - odd weeks")).toMatchObject({ weeks: "odd", room: "ASPC", teacher: "F. Opritoiu" });
+    expect(parseCellText("Artificial Intelligence Fundamentals (c) C. Cernazanu, even weeks - room ASPC")).toMatchObject({ weeks: "even", room: "ASPC", teacher: "C. Cernazanu" });
+    expect(parseCellText("Even and odd functions (c) A. Pop room A204")).toMatchObject({ name: "Even and odd functions", weeks: "all" });
+  });
+
+  it("takes the kind of a class from \"(2C)\", \"(2L)\", \"(2P)\" when that is all the sheet says", () => {
+    // Robotică, master: every class was "Altele" with "(2C)" in its name, so a subject's
+    // lecture and lab were two unrelated activities.
+    expect(parseCellText("Inteligență artificială pentru robotică (2C) sala 411")).toMatchObject({ name: "Inteligență artificială pentru robotică", kind: "course", room: "411" });
+    expect(parseCellText("Inteligență artificială pentru robotică (2L) sala 411")).toMatchObject({ name: "Inteligență artificială pentru robotică", kind: "lab", room: "411" });
+    expect(parseCellText("Modelare 3D ( 2P) sala 409")).toMatchObject({ name: "Modelare 3D", kind: "project", room: "409" });
+    // Several kinds in one cell cannot be told apart: left as it is.
+    expect(parseCellText("Modelare Simulare 3D (2C + 2P) sala 409/SPM 225")).toMatchObject({ name: "Modelare Simulare 3D (2C + 2P)", kind: "other" });
+  });
+
   it("keeps a building named before the room out of the lecturer's name", () => {
     // ETcTI, year 3: "IV(c) M.Lascu Mecanica M304". The lecturer was shown as "M. Lascu Mecanica".
     expect(parseCellText("IV(c) M.Lascu Mecanica M304")).toMatchObject({ name: "IV", kind: "course", teacher: "M. Lascu", room: "M304 Mecanica" });
@@ -547,9 +573,8 @@ describe("printed and interactive timetables", () => {
       spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 2, series: "", name: labels[0].slice(-1),
     })));
     const times = Object.fromEntries(table.entries.map((e) => [`${e.courseName.slice(0, 5)} ${table.groups[e.groups[0]].name}`, [e.startMin / 60, e.endMin / 60]]));
-    // The half-hour precision is for a class that runs from one row into the next. A box that
-    // lies inside one row keeps the row's two hours.
-    expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 12] });
+    // Construcții draws its rows to scale: a box in the upper half of 10-12 is an hour long.
+    expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 11] });
   });
 
   it("does not make a group of its own out of a heading drawn one column too wide", () => {
@@ -672,23 +697,64 @@ describe("printed and interactive timetables", () => {
     expect(civilCell("Sală M.e.f. - elemente avansate Mărginean\nA311")).toMatchObject({ name: "M.e.f. - elemente avansate Mărginean", room: "A311" });
   });
 
-  it("gives a class written in half of its row the whole row", () => {
+  it("gives a Mecanică class written in half of its row the whole row", () => {
     // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
     // box covers the lower half of the row only (coordinates as read from the published PDF).
     // Read as "the second hour", the student arrived at 15:00 for a lab that starts at 14:00.
-    // Construcții stacks a lecture's title and its lecturer in the two halves of a row.
     const cells: Box[] = [
       [86.52, 84, 178.46, 90, "semigrupa 1"], [178.46, 84, 272.79, 90, "semigrupa 2"],
       [68.4, 185.04, 86.52, 194.64, "12_14"], [68.4, 194.64, 86.52, 207.86, "14_16"], [68.4, 207.86, 86.52, 226.21, "16_18"],
       [178.46, 201.42, 272.79, 207.86, "Chimie (L)"],
-      [86.52, 207.86, 178.46, 217.03, "CĂI FERATE 1"], [86.52, 217.03, 178.46, 226.21, "Algebra (S) N 305"],
+    ];
+    const read = (splitSharedHours: boolean) => readPrintedTable(cells, "Anul I", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Bioinginerie", degree: "bachelor" }, year: 1, series: "", name: labels[0],
+    })), "all", undefined, { splitSharedHours }).entries.map((e) => [e.courseName, e.startMin / 60, e.endMin / 60]);
+    expect(read(true)).toEqual([["Chimie", 14, 16]]);
+    // Only there: rows drawn to scale keep the hour the box shows.
+    expect(read(false)).toEqual([["Chimie", 15, 16]]);
+  });
+
+  it("reads a Construcții lecture with its hall and lecturer on a second line as one class", () => {
+    // English line, year 1: "LINEAR ALGEBRA A.GEOM." with "MP Arieșanu" below it was shown as
+    // two classes side by side, the second called "MP Arieșanu" and given the room of the
+    // year-2 column next to it. Cadastru: "ANALIZĂ" and "LN (Ca2) (CA2) S.l.dr.Hedrea".
+    const cells: Box[] = [
+      [1, 0, 2, 1, "a"], [2, 0, 3, 1, "b"],
+      [0, 1, 1, 3, "12-14"], [0, 3, 1, 5, "14-16"], [0, 5, 1, 7, "16-18"],
+      [1, 1, 2, 2, "LINEAR ALGEBRA A.GEOM."], [1, 2, 2, 3, "MP Arieșanu"],
+      [2, 1, 3, 2, "COMP. AIDED GRAPHICS"], [2, 2, 3, 3, "A109"],
+      [1, 3, 2, 4, "ANALIZĂ"], [1, 4, 2, 5, "LN (Ca2) (CA2) S.l.dr.Hedrea"],
+      [2, 3, 3, 4, "TUTORIERE A111"],
     ];
     const table = readPrintedTable(cells, "Anul I", (headers) => headerColumns(headers, (labels) => ({
-      spec: { name: "Bioinginerie", degree: "bachelor" }, year: 1, series: "", name: labels[0],
-    })));
-    expect(table.entries.map((e) => [e.courseName, e.startMin / 60, e.endMin / 60])).toEqual([
-      ["Chimie", 14, 16], ["CĂI FERATE 1", 16, 18], ["Algebra", 16, 18],
+      spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 1, series: "", name: labels[0],
+    })), "all", civilCell, { isDetail: civilDetail });
+    expect(table.entries.map((e) => `${table.groups[e.groups[0]].name} ${e.startMin / 60}-${e.endMin / 60} ${e.courseName} @${e.room} ${e.teacher ?? "-"}`).sort()).toEqual([
+      "a 12-14 LINEAR ALGEBRA A.GEOM. @MP Arieșanu",
+      "a 14-16 ANALIZĂ @LN (Ca2) S.l.dr.Hedrea",
+      "b 12-14 COMP. AIDED GRAPHICS @A109 -",
+      // Alone in the upper half of its row: one hour, as printed.
+      "b 14-15 TUTORIERE @A111 -",
     ]);
+    // A series lecture's hall boxed beside it, in the last group's column: "LN Ca2", or "Ca2"
+    // after a box that only says "Sală". That group had a class called "LN" or "Sală" instead
+    // of the lecture (coordinates as read from the published PDFs).
+    const series: Box[] = [
+      [315.54, 60, 346.49, 70, "115 a"], [346.49, 60, 532.23, 70, "117 a"], [532.23, 60, 563.52, 70, "118 b"],
+      [40, 437.23, 68.04, 453.06, "14-16"], [40, 453.06, 68.04, 468.98, "16-18"], [40, 468.98, 68.04, 484.8, "18-20"],
+      [315.54, 453.06, 532.23, 468.98, "TOPOGRAFIE(TEH.MĂS.)\nSală"], [532.23, 453.06, 563.52, 468.98, "LN Ca2"],
+      [315.54, 468.98, 346.49, 484.8, "GEOMETRIE DESCRIPTIVĂ"], [346.49, 468.98, 532.23, 484.8, "Sală"], [532.23, 468.98, 563.52, 484.8, "Ca2"],
+    ];
+    const lectures = readPrintedTable(series, "Anul I", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 1, series: "", name: labels[0],
+    })), "all", civilCell, { isDetail: civilDetail });
+    expect(lectures.entries.map((e) => `${e.startMin / 60}-${e.endMin / 60} ${e.courseName} @${e.room} for ${e.groups.map((i) => lectures.groups[i].name).join(", ")}`)).toEqual([
+      "16-18 TOPOGRAFIE @LN Ca2 for 115 a, 117 a, 118 b",
+      "18-20 GEOMETRIE DESCRIPTIVĂ @Ca2 for 115 a, 117 a, 118 b",
+    ]);
+    // The hall written after the lecturer, or between the title and the lecturer, is the room.
+    expect(civilCell("Sală GEOLOGIE INGINEREASCA Ciopec NM")).toMatchObject({ name: "GEOLOGIE INGINEREASCA", room: "NM", teacher: "Ciopec" });
+    expect(civilCell("AMENAJĂRI HIDROTEHNICE H1 Conf\n.dr.ing NICOARA SV")).toMatchObject({ name: "AMENAJĂRI HIDROTEHNICE", room: "H1" });
   });
 
   it("gives a series lecture to every group, with the room boxed at the end of its row", () => {

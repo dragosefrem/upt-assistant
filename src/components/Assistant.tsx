@@ -624,6 +624,8 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       if (rows.at(-1)?.role === "assistant" || data.answering !== pending) {
         setMessages(rows.map((m) => ({ ...m, id: String(m.id), dbId: m.id })));
         setAnswering(typeof data.answering === "number" ? data.answering : null);
+        // "Poli is still answering…" from a refused send is no longer true.
+        setNotice(null);
       } else {
         timer = window.setTimeout(check, 2500);
       }

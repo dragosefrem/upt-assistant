@@ -17,7 +17,7 @@ import { latestMessage, reviewTime } from "@/lib/assistant/preview";
 import type { AssistantChunk } from "@/lib/assistant/prompt";
 import { parseReplyCard } from "@/lib/assistant/reply-card";
 import type { ToolContext } from "@/lib/assistant/tools";
-import { beginTurn, endTurn, runningTurn } from "@/lib/assistant/turns";
+import { beginTurn, discardRunningTurn, endTurn, runningTurn, turnDiscarded } from "@/lib/assistant/turns";
 
 type Engine = "gemini" | "claude" | "basic";
 
@@ -187,7 +187,8 @@ export async function POST(request: Request) {
       const links = engine !== "basic" && reply && ctx.links?.length ? ctx.links : undefined;
       const card = reply && !preview && !choices && !ctx.changed ? ctx.card : undefined;
 
-      const saved = reply
+      // Cleared meanwhile: an answer with no question above it is not put back into the conversation.
+      const saved = reply && !turnDiscarded(turn.id)
         ? db
             .insert(chatMessages)
             .values({
@@ -262,6 +263,7 @@ export async function GET() {
 export async function DELETE() {
   const user = await getUser();
   if (!user) return Response.json({ error: (await getT()).assistant.api.notSignedIn }, { status: 401 });
+  discardRunningTurn(user.id);
   getDb().delete(chatMessages).where(and(eq(chatMessages.userId, user.id))).run();
   forgetSession(user);
   return Response.json({ ok: true });
