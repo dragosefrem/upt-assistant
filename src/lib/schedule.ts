@@ -478,7 +478,7 @@ function originalEvents(
 
   for (const e of sharedEventsFor(user.id, from, to)) {
     events.push({
-      id: `g:${e.id}`, groupEventId: e.id, campusRoom: campusRoomCode(e.location), type: "shared", kind: "shared", title: e.title,
+      id: `g:${e.id}`, groupEventId: e.id, type: "shared", kind: "shared", title: e.title,
       date: e.date, startMin: e.startMin, endMin: e.endMin, room: e.location,
       abbr: null, teacher: null, note: null, place: null,
       seriesKey: `g:${e.id}`, courseKey: `g:${e.id}`, attendance: null,
@@ -497,6 +497,7 @@ export function eventsBetween(
   const byDay = new Map<string, CalEvent[]>();
   for (const e of events) {
     e.title ||= calendarMessages[locale].personal.untitled;
+    if (!e.place) e.campusRoom = campusRoomCode(e.room);
     const key = `${e.seriesKey}|${e.date}`;
     const day = byDay.get(key);
     if (day) day.push(e);

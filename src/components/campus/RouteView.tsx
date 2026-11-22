@@ -144,14 +144,16 @@ export function RouteView({
   return (
     <article className="card overflow-hidden" aria-labelledby="campus-route-title">
       <div className="border-b border-slate-100 p-4 sm:p-5">
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-            partial ? "bg-amber-100 text-amber-800" : kind === "example" ? "bg-slate-100 text-slate-700" : "bg-brand-50 text-brand-700"
-          }`}
-        >
-          <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${partial ? "bg-amber-500" : kind === "example" ? "bg-slate-400" : "bg-brand-500"}`} />
-          {steps.length === 1 ? t.route.kindPlace : partial ? t.route.kindPartial : kind === "example" ? t.route.kindExample : t.route.kindYours}
-        </span>
+        {steps.length > 0 && (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
+              partial ? "bg-amber-100 text-amber-800" : kind === "example" ? "bg-slate-100 text-slate-700" : "bg-brand-50 text-brand-700"
+            }`}
+          >
+            <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${partial ? "bg-amber-500" : kind === "example" ? "bg-slate-400" : "bg-brand-500"}`} />
+            {steps.length === 1 ? t.route.kindPlace : partial ? t.route.kindPartial : kind === "example" ? t.route.kindExample : t.route.kindYours}
+          </span>
+        )}
         <h2 id="campus-route-title" className="mt-2 break-words text-xl font-bold tracking-tight text-slate-900 sm:text-2xl">
           {title || t.route.unmappedTitle}
         </h2>
