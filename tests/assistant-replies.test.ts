@@ -438,6 +438,28 @@ describe("Poli reply cards", () => {
     }
   });
 
+  it("does not bring an answer back into a conversation that was cleared while it was being written", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test");
+    let answer!: () => void;
+    const thinking = new Promise<void>((resolve) => { answer = resolve; });
+    generate.mockImplementationOnce(async () => {
+      await thinking;
+      return { candidates: [{ content: { role: "model", parts: [{ text: "You have a seminar on Wednesday." }] }, finishReason: "STOP" }] };
+    });
+    const res = await POST(new Request("http://localhost/api/assistant", { method: "POST", body: JSON.stringify({ message: "Anything on Wednesday?" }) }));
+    await res.body!.cancel();
+    // The student reopens the chat and deletes the conversation while the answer is on its way.
+    expect((await DELETE()).status).toBe(200);
+    answer();
+    await vi.waitFor(async () => expect((await (await GET()).json()).answering).toBeNull());
+    // It used to reappear on the next opening: Poli's answer alone, with no question above it.
+    expect(getDb().select().from(chatMessages).all()).toEqual([]);
+    // The next conversation starts clean and is saved as usual.
+    geminiTurn([{ text: "Nothing on Friday." }]);
+    expect((await ask("And on Friday?")).text).toBe("Nothing on Friday.");
+    expect(getDb().select().from(chatMessages).all().map((m) => m.role)).toEqual(["user", "assistant"]);
+  });
+
   it("finishes and saves the answer when the page is reloaded while Poli is still writing it", async () => {
     vi.stubEnv("GEMINI_API_KEY", "test");
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
