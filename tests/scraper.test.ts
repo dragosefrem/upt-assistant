@@ -664,6 +664,14 @@ describe("printed and interactive timetables", () => {
     expect(table.entries.map((e) => [e.weeks, e.startMin / 60, e.endMin / 60])).toEqual([["1-8", 12, 14], ["9-12", 12, 15]]);
   });
 
+  it("reads the weeks a Construcții class is limited to when they stand between its room and its lecturer", () => {
+    // Master OSH: shown every week, with "(săpt. 5-11) Conf.dr.ing Ș.V. NICOARĂ" as the lecturer.
+    expect(civilCell("Teoria elasticitaţii şi calculul plastic al structurilor\nNM (săpt. 5-11) Conf.dr.ing Ș.V. NICOARĂ"))
+      .toMatchObject({ room: "NM", weeks: "5-11", teacher: "Conf.dr.ing Ș.V. NICOARĂ" });
+    // The caption of the room box is not part of the name, whatever case the title is in.
+    expect(civilCell("Sală M.e.f. - elemente avansate Mărginean\nA311")).toMatchObject({ name: "M.e.f. - elemente avansate Mărginean", room: "A311" });
+  });
+
   it("gives a class written in half of its row the whole row", () => {
     // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
     // box covers the lower half of the row only (coordinates as read from the published PDF).

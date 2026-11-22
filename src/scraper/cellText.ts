@@ -92,7 +92,7 @@ export function hourLoads(text: string): Array<{ weeks: string; hours: number }>
 }
 const parityWeeks = new RegExp(String.raw`(?<![\p{L}\d.])${weekWord}\s*[:.]?\s*(${parityWord})(?!\p{L})\.?`, "giu");
 
-function extractWeeks(input: string) {
+export function extractWeeks(input: string) {
   const numbers = new Set<string>();
   const parities = new Set<string>();
   let rest = input.replace(/\d+\s*h\s*\/\s*\d+\s*s[aă]pt\w*/gi, " ");

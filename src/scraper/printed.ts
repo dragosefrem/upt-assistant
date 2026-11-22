@@ -1,4 +1,4 @@
-import { hasKindMarker, hourLoads, isFacultative, parseCellText } from "./cellText";
+import { extractWeeks, hasKindMarker, hourLoads, isFacultative, parseCellText } from "./cellText";
 import { activityTime, norm, parseDayWord, parseTimeRange, squash, type TimeRange } from "./text";
 import type { NormalizedGroup, NormalizedTimetable } from "./types";
 
@@ -114,10 +114,14 @@ export function civilCell(raw: string) {
   const parsed = parseCellText((detail ? lines.slice(0, -1) : lines).join(" "));
   if (detail) {
     parsed.room = detail[1];
-    if (detail[2]) parsed.teacher = detail[2];
+    // "NM (săpt. 5-11) Conf.dr.ing Ș.V. NICOARĂ": the weeks may be written between the room and the lecturer.
+    const after = extractWeeks(detail[2]);
+    if (after.weeks !== "all" && parsed.weeks === "all") parsed.weeks = after.weeks;
+    const lecturer = squash(after.rest.replace(/\(\s*\)/g, " "));
+    if (lecturer) parsed.teacher = lecturer;
   }
-  // In the year-2 layout the caption of the room box comes first: "Sală GEOLOGIE INGINEREASCĂ".
-  parsed.name = parsed.name.replace(/^Sal[aă]\s+(?=\p{Lu}{3})/u, "");
+  // The caption of the room box may come first: "Sală GEOLOGIE INGINEREASCĂ", "Sală M.e.f. - elemente avansate".
+  parsed.name = parsed.name.replace(/^Sal[aă]\s+(?=\p{Lu})/u, "");
   const lecture = parsed.teacher ? null : civilLecture.exec(parsed.name);
   if (lecture) {
     parsed.name = lecture[1].trim();
