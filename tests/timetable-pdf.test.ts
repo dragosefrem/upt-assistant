@@ -63,4 +63,17 @@ describe.skipIf(!reader)("timetable PDFs, read from the published documents", ()
       expect.arrayContaining(["Curs de pregătire la Matematică"]),
     );
   });
+
+  it("gives a three-hour seminar on a two-hour grid its printed hours (Construcții, year 2)", async () => {
+    const { tables } = await read("ct-ing-civila-an2-2026-27-sem1.pdf", printedSlugs.CT, {
+      label: "2. ANII ING CIVILA ORARE SEM 1 2026-2027", context: "Orare semestrul I V9 06/10/26",
+    });
+    // Thursday: "Rezistenţa Materialelor 8-11", "11-14" and "14-17" are drawn across a row and
+    // a half. Groups 123 and 124 were told 12:00 for a seminar that starts at 11:00.
+    const seminar = (group: string) => day(tables, group, 4).filter((e) => /^Rezisten/.test(e.courseName)).map((e) => [e.startMin, e.endMin]);
+    expect(seminar("121 a")).toEqual([[hm(8), hm(11)]]);
+    expect(seminar("123 a")).toEqual([[hm(11), hm(14)]]);
+    expect(seminar("124 b")).toEqual([[hm(11), hm(14)]]);
+    expect(seminar("125 a")).toEqual([[hm(14), hm(17)]]);
+  });
 });

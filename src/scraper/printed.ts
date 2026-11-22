@@ -187,6 +187,16 @@ export function readPrintedTable(
     });
     const start = rows[0], end = rows.at(-1);
     if (!start || !end || start.day !== end.day || start.day < 1 || start.day > 7) continue;
+    // On a grid of two-hour rows, a three-hour class ("8-11") is drawn across one row and half
+    // of the next: an edge inside a row falls on the hour between its two.
+    const hourAt = (y: number, fallback: number) => {
+      const row = clock.find(({ box, day }) => day === start.day && box[1] < y - 0.05 && y < box[3] - 0.05);
+      const span = row ? row.time.endMin - row.time.startMin : 0;
+      if (!row || span < 120) return fallback;
+      return row.time.startMin + Math.round(((y - row.box[1]) / (row.box[3] - row.box[1])) * (span / 60)) * 60;
+    };
+    const slot = { startMin: hourAt(b[1], start.time.startMin), endMin: hourAt(b[3], end.time.endMin) };
+    if (slot.endMin <= slot.startMin) { slot.startMin = start.time.startMin; slot.endMin = end.time.endMin; }
     const roomCell = adjoiningRoom ?? cells.find((other) => roomOnly.test(squash(other[4])) &&
       Math.abs(other[1] - b[3]) < 0.05 && Math.abs(other[0] - b[0]) < 0.05 &&
       Math.abs(other[2] - b[2]) < 0.05 && other[3] <= end.box[3] + 0.05);
@@ -210,7 +220,7 @@ export function readPrintedTable(
         byRule.set(weeks, ids);
       }
       for (const [weeks, groups] of byRule) {
-        const time = activityTime(activity, { startMin: start.time.startMin, endMin: end.time.endMin });
+        const time = activityTime(activity, slot);
         result.entries.push({ sheet, day: start.day, ...time, groups, weeks,
           courseName: parsed.name, courseAbbr: parsed.abbr, kind: parsed.kind,
           room: parsed.room ?? (roomCell ? squash(roomCell[4]).replace(/^sal[aă]\s+/i, "") : null),

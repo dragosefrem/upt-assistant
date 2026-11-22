@@ -443,6 +443,21 @@ describe("printed and interactive timetables", () => {
     ]));
   });
 
+  it("reads a class drawn across half of a two-hour row to the hour between", () => {
+    // Construcții, year 2, Thursday: three-hour seminars on a grid of two-hour rows.
+    const cells: Box[] = [
+      [1, 0, 2, 1, "Grupa 1"], [2, 0, 3, 1, "Grupa 2"], [3, 0, 4, 1, "Grupa 3"],
+      [0, 1, 1, 3, "8-10"], [0, 3, 1, 5, "10-12"], [0, 5, 1, 7, "12-14"],
+      [1, 1, 2, 4, "Rezistenţa Materialelor 8-11 A308"], [2, 4, 3, 7, "Rezistenţa Materialelor 11-14 M201"],
+      [3, 1, 4, 3, "Topografie (c)"], [3, 3, 4, 4, "TUTORIERE"],
+    ];
+    const table = readPrintedTable(cells, "Anul II", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 2, series: "", name: labels[0].slice(-1),
+    })));
+    const times = Object.fromEntries(table.entries.map((e) => [`${e.courseName.slice(0, 5)} ${table.groups[e.groups[0]].name}`, [e.startMin / 60, e.endMin / 60]]));
+    expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 11] });
+  });
+
   it("reads the printed term, room and lecturer without treating evening hours as an academic year", () => {
     expect(pageTerm("20-21\nSemestrul I 2026/2027")).toEqual({ academicYear: "2026-2027", semester: 1 });
     expect(pageTerm("ORAR\nSemestrul II\nAnul III Anul universitar 2026/2027")).toEqual({ academicYear: "2026-2027", semester: 2 });
