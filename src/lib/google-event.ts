@@ -22,6 +22,7 @@ export function localFields(item: ExportItem): CalendarFields {
     ...(unspecified ? { endTimeUnspecified: true } : {}), ...(recurrence.length ? { recurrence } : {}),
   };
   return { summary: item.title, location: item.location, description: item.description, timing,
+    ...(item.transparent ? { transparency: "transparent" } : {}),
     reminders: item.alarms?.length ? { useDefault: false, overrides: item.alarms.map(minutes => ({ method: "popup", minutes })) } : { useDefault: true } };
 }
 

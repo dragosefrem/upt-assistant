@@ -160,6 +160,7 @@ const en = {
     step2: (room: string) => `Inside to ${room}`,
     leg1: "Get to the building",
     leg2: "Inside the building",
+    roomDetails: "Room details",
     entrance: (name: string) => `Head for ${name}`,
     entranceHint: "The entrance from which the walk inside to your room is shortest.",
     youAreAt: (name: string) => `You are at ${name}. Follow the walk inside below.`,
@@ -169,6 +170,7 @@ const en = {
     declined: "Location access is blocked. Allow it in the browser’s settings, or open Google Maps below.",
     unsupported: "This browser cannot share your location. Open Google Maps below for directions.",
     mode: "How are you getting there?",
+    distanceFromYou: (distance: string) => `About ${distance} from you`,
     modes: { walking: "On foot", bicycling: "By bike", transit: "Transit", driving: "By car" },
     minutes: (n: number) => `~${n} min`,
     leaveBy: (time: string) => `Leave by ${time}`,
@@ -188,9 +190,7 @@ const en = {
     guessed: (building: string) =>
       `Your timetable does not say which building it is in. It is most likely in your faculty’s building, ${building}. Check with a colleague or the faculty office before you set off.`,
     nowhere: "We do not know which building it is in. Ask a colleague or your faculty office.",
-    approximate: "The building’s position on the map is approximate.",
     mapHint: "The map leads to the building, not to the room.",
-    here: (name: string) => `You are at ${name}. Look for the room inside.`,
   },
   floors: {
     ground: "Ground floor",
@@ -368,6 +368,7 @@ const ro: typeof en = {
     step2: (room: string) => `Înăuntru, până la ${room}`,
     leg1: "Până la clădire",
     leg2: "În clădire",
+    roomDetails: "Detalii despre sală",
     entrance: (name: string) => `Mergi spre ${name}`,
     entranceHint: "Intrarea de la care drumul prin clădire până la sala ta e cel mai scurt.",
     youAreAt: (name: string) => `Ești la ${name}. Urmează mai jos drumul prin clădire.`,
@@ -377,6 +378,7 @@ const ro: typeof en = {
     declined: "Accesul la locație e blocat. Permite-l din setările browserului sau deschide Google Maps mai jos.",
     unsupported: "Browserul acesta nu poate trimite locația. Deschide Google Maps mai jos pentru indicații.",
     mode: "Cum ajungi acolo?",
+    distanceFromYou: (distance: string) => `La aproximativ ${distance} de tine`,
     modes: { walking: "Pe jos", bicycling: "Cu bicicleta", transit: "Transport în comun", driving: "Cu mașina" },
     minutes: (n: number) => `~${n} min`,
     leaveBy: (time: string) => `Pleacă până la ${time}`,
@@ -395,9 +397,7 @@ const ro: typeof en = {
     guessed: (building: string) =>
       `Orarul nu spune în ce clădire este. Cel mai probabil e în clădirea facultății tale, ${building}. Întreabă un coleg sau secretariatul înainte să pleci.`,
     nowhere: "Nu știm în ce clădire este. Întreabă un coleg sau secretariatul facultății.",
-    approximate: "Poziția clădirii pe hartă este aproximativă.",
     mapHint: "Harta te duce până la clădire, nu până la sală.",
-    here: (name: string) => `Ești la ${name}. Caută sala înăuntru.`,
   },
   floors: {
     ground: "Parter",

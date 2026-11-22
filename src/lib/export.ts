@@ -1,11 +1,13 @@
 import "server-only";
+import { createHash } from "node:crypto";
+import { and, eq } from "drizzle-orm";
 import { examAudience } from "./exam-audience";
-import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { googleEventLinks, googleExceptions, personalEvents } from "@/db/schema";
-import type { Locale } from "@/i18n/config";
+import { calendarFeedRevisions, googleEventLinks, googleExceptions, personalEvents, users } from "@/db/schema";
+import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import { settings } from "@/i18n/messages/settings";
+import { sponsoredNote } from "@/i18n/messages/sponsored";
 import type { User } from "./auth";
 import type { CalendarTime, CalendarTiming } from "./calendar-types";
 import { instant, personalTimes, timingOf } from "./calendar-timing";
@@ -13,8 +15,9 @@ import { sharedEventsFor } from "./group-events";
 import { isPublicHoliday } from "./holidays";
 import { kindLabel } from "./kinds";
 import { EVENT_NOTICE_MINUTES } from "./notification-timing";
-import { currentSemester, examsForUser, occurrenceMoves, placeResolver, studentWeek, type Semester } from "./schedule";
+import { currentSemester, examsForUser, occurrenceMoves, placeResolver, savedSponsoredEvents, studentWeek, type Semester } from "./schedule";
 import { TIME_ZONE, addDays, describeWeeks, formatDate, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
+import { isUptSubscriber, matchingUptEvents } from "./upt-events";
 
 /**
  * Calendar-neutral description of a student's timetable, shared by the .ics feed and
@@ -37,6 +40,7 @@ export interface ExportItem {
   exdates?: string[];
   /** Reminders, in minutes before the start. */
   alarms?: number[];
+  transparent?: boolean;
 }
 
 /** Exams remind a day and two hours before, so phones alert even with the app closed. */
@@ -141,6 +145,17 @@ export function sourceItems(user: User, locale: Locale = user.locale ?? "en"): E
     items.push({ uid: `group-${e.id}`, title: e.title, location: e.location ?? "", description: common[locale].kinds.shared,
       date: e.date, startMin: e.startMin, endMin: e.endMin });
   }
+  for (const e of savedSponsoredEvents(user.id)) {
+    items.push({ uid: `sponsored-${e.id}`, title: e.title, location: e.location,
+      date: e.date, startMin: e.startMin, endMin: e.endMin,
+      description: sponsoredNote(e, locale) });
+  }
+  if (isUptSubscriber(user.id)) {
+    for (const e of matchingUptEvents(user)) {
+      items.push({ uid: e.id, title: e.title, description: [e.note, e.sourceUrl].filter(Boolean).join("\n"),
+        location: e.room ?? "", date: e.date, startMin: e.startMin, endMin: e.endMin, transparent: true });
+    }
+  }
   return items.map((item) => ({ ...item, alarms: item.alarms ?? [EVENT_NOTICE_MINUTES] }));
 }
 
@@ -177,6 +192,7 @@ export function exportItems(user: User, locale: Locale = user.locale ?? "en"): E
 /* ───────────────────────────── iCalendar ───────────────────────────── */
 
 const pad = (n: number) => String(n).padStart(2, "0");
+const ICAL_WEEKDAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 
 /** "20261120T080000" — local wall-clock time, paired with a TZID. */
 export function localStamp(date: string, minutes: number): string {
@@ -241,8 +257,41 @@ function icsPoint(name: string, point: CalendarTime) {
   return name + ":" + instant(point).toUTC().toFormat("yyyyMMdd'T'HHmmss'Z'");
 }
 
-export function toICS(items: ExportItem[], calendarName = "Poli"): string {
-  const stamp = `${new Date().toISOString().replace(/[-:]/g, "").slice(0, 15)}Z`;
+type CalendarEventText = { uid: string; lines: string[]; revision?: { sequence: number; modifiedAt: number } };
+
+function calendarEventText(item: ExportItem): CalendarEventText {
+  const lines = [
+    ...(item.calendarTiming ? [icsPoint("DTSTART", item.calendarTiming.start), ...(item.calendarTiming.endTimeUnspecified ? [] : [icsPoint("DTEND", item.calendarTiming.end)]), ...(item.calendarTiming.recurrence ?? [])] : [
+      `DTSTART;TZID=${TIME_ZONE}:${localStamp(item.date, item.startMin)}`,
+      ...(item.endMin === item.startMin ? [] : [`DTEND;TZID=${TIME_ZONE}:${localStamp(item.date, item.endMin)}`]),
+    ]),
+    `SUMMARY:${escapeText(item.title)}`,
+  ];
+  if (item.location) lines.push(`LOCATION:${escapeText(item.location)}`);
+  if (item.description) lines.push(`DESCRIPTION:${escapeText(item.description)}`);
+  if (item.transparent) lines.push("TRANSP:TRANSPARENT");
+  if (item.until) {
+    // UNTIL is in UTC; the end of that day in UTC is safely after the last class.
+    lines.push(`RRULE:FREQ=WEEKLY;UNTIL=${item.until.replace(/-/g, "")}T235959Z;BYDAY=${ICAL_WEEKDAYS[weekday(item.date) - 1]}`);
+    if (item.exdates?.length) {
+      lines.push(`EXDATE;TZID=${TIME_ZONE}:${item.exdates.map((d) => localStamp(d, item.startMin)).join(",")}`);
+    }
+  }
+  for (const start of item.excludedStarts ?? []) lines.push(icsPoint("EXDATE", start));
+  for (const before of item.alarms ?? []) {
+    lines.push(
+      "BEGIN:VALARM",
+      "ACTION:DISPLAY",
+      `DESCRIPTION:${escapeText(`${item.title}${item.location ? ` – ${item.location}` : ""}`)}`,
+      `TRIGGER:-PT${before}M`,
+      "END:VALARM",
+    );
+  }
+  return { uid: item.uid, lines };
+}
+
+function renderCalendar(events: CalendarEventText[], calendarName: string): string {
+  const now = Date.now();
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -253,38 +302,53 @@ export function toICS(items: ExportItem[], calendarName = "Poli"): string {
     `X-WR-TIMEZONE:${TIME_ZONE}`,
     ...VTIMEZONE,
   ];
-  for (const item of items) {
+  for (const { uid, lines: properties, revision } of events) {
+    const stamp = new Date(revision?.modifiedAt ?? now).toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${item.uid}@upt-orar`,
+      `UID:${uid}@upt-orar`,
       `DTSTAMP:${stamp}`,
-      ...(item.calendarTiming ? [icsPoint("DTSTART", item.calendarTiming.start), ...(item.calendarTiming.endTimeUnspecified ? [] : [icsPoint("DTEND", item.calendarTiming.end)]), ...(item.calendarTiming.recurrence ?? [])] : [
-        `DTSTART;TZID=${TIME_ZONE}:${localStamp(item.date, item.startMin)}`,
-        ...(item.endMin === item.startMin ? [] : [`DTEND;TZID=${TIME_ZONE}:${localStamp(item.date, item.endMin)}`]),
-      ]),
-      `SUMMARY:${escapeText(item.title)}`,
+      ...(revision ? [`SEQUENCE:${revision.sequence}`, `LAST-MODIFIED:${stamp}`] : []),
+      ...properties, "END:VEVENT",
     );
-    if (item.location) lines.push(`LOCATION:${escapeText(item.location)}`);
-    if (item.description) lines.push(`DESCRIPTION:${escapeText(item.description)}`);
-    if (item.until) {
-      // UNTIL is in UTC; the end of that day in UTC is safely after the last class.
-      lines.push(`RRULE:FREQ=WEEKLY;UNTIL=${item.until.replace(/-/g, "")}T235959Z`);
-      if (item.exdates?.length) {
-        lines.push(`EXDATE;TZID=${TIME_ZONE}:${item.exdates.map((d) => localStamp(d, item.startMin)).join(",")}`);
-      }
-    }
-    for (const start of item.excludedStarts ?? []) lines.push(icsPoint("EXDATE", start));
-    for (const before of item.alarms ?? []) {
-      lines.push(
-        "BEGIN:VALARM",
-        "ACTION:DISPLAY",
-        `DESCRIPTION:${escapeText(`${item.title}${item.location ? ` – ${item.location}` : ""}`)}`,
-        `TRIGGER:-PT${before}M`,
-        "END:VALARM",
-      );
-    }
-    lines.push("END:VEVENT");
   }
   lines.push("END:VCALENDAR");
   return `${lines.map(fold).join("\r\n")}\r\n`;
+}
+
+export function toICS(items: ExportItem[], calendarName = "Poli"): string {
+  return renderCalendar(items.map(calendarEventText), calendarName);
+}
+
+/** Keep a stable revision for each event published on this student's subscription. */
+export function subscriptionCalendar(token: string): string | null {
+  const events = getDb().transaction(tx => {
+    const user = tx.select().from(users).where(eq(users.feedToken, token)).get();
+    if (!user) return null;
+    const current = exportItems(user, user.locale ?? DEFAULT_LOCALE).map(calendarEventText);
+    const table = calendarFeedRevisions;
+    const account = eq(table.userId, user.id);
+    const remaining = new Map(tx.select().from(table).where(account).all().map(row => [row.uid, row]));
+    const now = Date.now();
+    for (const event of current) {
+      const fingerprint = createHash("sha256").update(event.lines.join("\r\n")).digest("hex");
+      const prior = remaining.get(event.uid);
+      remaining.delete(event.uid);
+      if (prior?.fingerprint === fingerprint) {
+        event.revision = prior;
+        continue;
+      }
+      // Previously published feeds had an implicit SEQUENCE of zero.
+      const change = { sequence: (prior?.sequence ?? 0) + 1, modifiedAt: now, fingerprint };
+      tx.insert(table).values({ userId: user.id, uid: event.uid, ...change })
+        .onConflictDoUpdate({ target: [table.userId, table.uid], set: change }).run();
+      event.revision = change;
+    }
+    // A restored event must supersede its last visible version even if its content matches.
+    for (const row of remaining.values()) {
+      if (row.fingerprint !== null) tx.update(table).set({ fingerprint: null }).where(and(account, eq(table.uid, row.uid))).run();
+    }
+    return current;
+  }, { behavior: "immediate" });
+  return events === null ? null : renderCalendar(events, "Poli");
 }

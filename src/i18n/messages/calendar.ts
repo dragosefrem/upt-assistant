@@ -2,6 +2,23 @@ import { plural } from "../config";
 
 /** Texts for the calendar home page: welcome card, "next up", the calendar, its dialogs, travel tips and Poli. */
 const en = {
+  subscription: {
+    name: "Evenimente UPT",
+    intro: "Automatically show university events when you’re free.",
+    subscribe: "Subscribe",
+    subscribed: "Subscribed",
+    unsubscribe: "Unsubscribe from Evenimente UPT",
+    updating: "Saving…",
+    enabled: "Subscription saved. Your calendar will update automatically.",
+    disabled: "University calendar removed.",
+    empty: "No university events fit this period.",
+    browse: "Browse UPT events",
+    matches: (n: number) => `${n} university ${n === 1 ? "event fits" : "events fit"} your schedule in this view.`,
+    source: "View event on upt.ro",
+    location: "Location",
+    access: "Admission",
+    failed: "Couldn’t save your subscription. Try again.",
+  },
   page: {
     heading: "My timetable",
     title: "Calendar",
@@ -63,6 +80,8 @@ const en = {
     teacher: "Teacher",
     note: "Note",
     groupLink: "View group and change RSVP",
+    getDirections: "Get directions",
+    directionsHint: "Map and indoor walkthrough where available",
     move: "Move…",
     hide: "Hide from my timetable",
     undoWeek: "Undo this week's move",
@@ -93,16 +112,7 @@ const en = {
     saveFailed: "The event could not be saved.",
   },
   trip: {
-    blocked: "Location access is blocked in your browser. Allow it for this site to get travel suggestions.",
-    unsupported: "This browser cannot share a location.",
-    waiting: "Waiting for your location…",
-    enable: "Use my location for directions",
-    unavailable: "No directions available.",
-    loadFailed: "Could not load directions.",
-    working: "Working out the route…",
     leaveBy: (time: string) => `Leave by ${time}.`,
-    leaveByOnTime: (time: string) => `Leave by ${time} to be on time.`,
-    openMap: "Open map",
     approximate: "The building position is approximate.",
   },
   /** Travel options and the one-line summary from src/lib/directions.ts. */
@@ -133,6 +143,24 @@ const en = {
 };
 
 const ro: typeof en = {
+  subscription: {
+    name: "Evenimente UPT",
+    intro: "Vezi automat evenimentele universității când ai timp liber.",
+    subscribe: "Abonează-te",
+    subscribed: "Abonat",
+    unsubscribe: "Dezabonează-te de la Evenimente UPT",
+    updating: "Se salvează…",
+    enabled: "Abonamentul a fost salvat. Calendarul se actualizează automat.",
+    disabled: "Calendarul universității a fost eliminat.",
+    empty: "Niciun eveniment UPT nu se potrivește în această perioadă.",
+    browse: "Vezi lista UPT",
+    matches: (n: number) => n === 1 ? "Un eveniment UPT se potrivește cu orarul tău în această perioadă."
+      : `${n} ${plural("ro", n, { one: "eveniment UPT", few: "evenimente UPT", other: "de evenimente UPT" })} se potrivesc cu orarul tău în această perioadă.`,
+    source: "Vezi evenimentul pe upt.ro",
+    location: "Loc",
+    access: "Acces",
+    failed: "Abonamentul nu a putut fi salvat. Încearcă din nou.",
+  },
   page: {
     heading: "Orarul meu",
     title: "Calendar",
@@ -195,6 +223,8 @@ const ro: typeof en = {
     teacher: "Cadru didactic",
     note: "Observații",
     groupLink: "Vezi grupul și schimbă-ți răspunsul",
+    getDirections: "Vezi traseul",
+    directionsHint: "Hartă și tur ghidat în interior, unde este disponibil",
     move: "Mută…",
     hide: "Ascunde din orarul meu",
     undoWeek: "Anulează mutarea de săptămâna asta",
@@ -225,16 +255,7 @@ const ro: typeof en = {
     saveFailed: "Evenimentul nu a putut fi salvat.",
   },
   trip: {
-    blocked: "Accesul la locație e blocat în browser. Permite-l pentru acest site ca să primești sugestii de drum.",
-    unsupported: "Browserul acesta nu poate trimite locația.",
-    waiting: "Se așteaptă locația ta…",
-    enable: "Folosește locația mea pentru indicații",
-    unavailable: "Nu sunt indicații disponibile.",
-    loadFailed: "Indicațiile nu au putut fi încărcate.",
-    working: "Calculez traseul…",
     leaveBy: (time: string) => `Pleacă până la ${time}.`,
-    leaveByOnTime: (time: string) => `Pleacă până la ${time} ca să ajungi la timp.`,
-    openMap: "Deschide harta",
     approximate: "Poziția clădirii e aproximativă.",
   },
   directions: {

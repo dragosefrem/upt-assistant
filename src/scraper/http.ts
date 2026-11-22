@@ -38,13 +38,13 @@ function storeCookies(jar: Map<string, string>, res: Response) {
 
 export async function fetchUrl(
   url: string,
-  opts: { timeoutMs?: number; maxRedirects?: number; retries?: number } = {},
+  opts: { timeoutMs?: number; maxRedirects?: number; retries?: number; cache?: RequestCache } = {},
 ): Promise<Fetched> {
   const { timeoutMs = 45_000, maxRedirects = 8, retries = 1 } = opts;
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await fetchOnce(url, timeoutMs, maxRedirects);
+      return await fetchOnce(url, timeoutMs, maxRedirects, opts.cache);
     } catch (err) {
       lastError = err;
       // 4xx responses will not improve on retry.
@@ -55,7 +55,7 @@ export async function fetchUrl(
   throw lastError;
 }
 
-async function fetchOnce(url: string, timeoutMs: number, maxRedirects: number): Promise<Fetched> {
+async function fetchOnce(url: string, timeoutMs: number, maxRedirects: number, cache?: RequestCache): Promise<Fetched> {
   // One host can serve cookies for another during an SSO-style hop, so the jar is
   // keyed by host and only ever sent back to the host that set it.
   const jars = new Map<string, Map<string, string>>();
@@ -71,6 +71,7 @@ async function fetchOnce(url: string, timeoutMs: number, maxRedirects: number): 
     let res: Response;
     try {
       res = await fetch(current, {
+        cache,
         redirect: "manual",
         signal: deadline,
         headers: {

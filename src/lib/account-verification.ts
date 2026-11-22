@@ -7,7 +7,7 @@ import { registrationLinks, users } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { auth } from "@/i18n/messages/auth";
 import { createUser, normalizeEmail } from "./auth";
-import { accountMailConfigured, sendAccountMail } from "./mail";
+import { mailConfigured, sendMail } from "./mail";
 
 const HOUR = 60 * 60_000;
 const emailAddress = z.email().max(254);
@@ -20,7 +20,7 @@ export async function requestRegistrationLink(input: {
   if (!emailAddress.safeParse(email).success) return "badEmail";
   const db = getDb();
   if (db.select({ id: users.id }).from(users).where(eq(users.email, email)).get()) return "exists";
-  if (!input.baseUrl || !accountMailConfigured()) return "verificationUnavailable";
+  if (!input.baseUrl || !mailConfigured("account")) return "verificationUnavailable";
 
   const now = Date.now();
   const token = randomBytes(32).toString("base64url");
@@ -42,7 +42,7 @@ export async function requestRegistrationLink(input: {
   const t = auth[input.locale].verification.mail;
   const link = `${input.baseUrl}/verify/${token}`;
   try {
-    await sendAccountMail({ to: email, subject: t.subject, text: [t.intro, link, t.expires, t.ignore, "Poli"].join("\n\n") }, `registration/${id}`);
+    await sendMail("account", { to: email, subject: t.subject, text: [t.intro, link, t.expires, t.ignore, "Poli"].join("\n\n") }, `registration/${id}`);
   } catch (error) {
     db.delete(registrationLinks).where(eq(registrationLinks.id, id)).run();
     console.error("Registration e-mail delivery failed", error instanceof Error ? error.name : "transport error");

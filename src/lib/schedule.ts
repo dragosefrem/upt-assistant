@@ -17,6 +17,8 @@ import {
   personalEvents,
   semesters,
   specializations,
+  sponsoredEvents,
+  sponsoredResponses,
   userCourses,
   userOverrides,
   type AttendanceStatus,
@@ -25,6 +27,7 @@ import {
 import type { Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import { calendar as calendarMessages } from "@/i18n/messages/calendar";
+import { sponsoredNote } from "@/i18n/messages/sponsored";
 import type { User } from "./auth";
 import { campusRoomCode } from "./campuspath/known-room";
 import { sharedEventsFor } from "./group-events";
@@ -36,8 +39,8 @@ import { addDays, dayName, daysBetween, describeWeeks, formatMinutes, isDatedMee
 /** Everything the calendar, the assistant and the exports need to know about one event. */
 export interface CalEvent {
   id: string;
-  type: "class" | "exam" | "personal" | "shared";
-  kind: EntryKind | "exam" | "personal" | "shared";
+  type: "class" | "exam" | "personal" | "shared" | "sponsored" | "upt";
+  kind: EntryKind | "exam" | "personal" | "shared" | "sponsored" | "upt";
   title: string;
   abbr: string | null;
   date: string;
@@ -57,6 +60,8 @@ export interface CalEvent {
   personalEditor?: { title: string; location: string; weekly: boolean; pattern: boolean;
     interval?: { date: string; endDate: string; startMin: number; endMin: number; allDay: boolean } };
   groupEventId?: string;
+  sponsoredEventId?: string;
+  sourceUrl?: string;
   campusRoom?: string;
   moved?: boolean;
   /** For a class moved for one week only: the date it would normally be on. */
@@ -384,6 +389,18 @@ export function examsForUser(user: Pick<User, "specializationId" | "year">, from
 
 /* ───────────────────────────── Calendar events ───────────────────────────── */
 
+/** Only events the student explicitly added belong in their timetable and exports. */
+export function savedSponsoredEvents(userId: string, { from, to, id }: { from?: string; to?: string; id?: string } = {}) {
+  return getDb().select({
+    id: sponsoredEvents.id, title: sponsoredEvents.title, sponsor: sponsoredEvents.sponsor,
+    date: sponsoredEvents.date, startMin: sponsoredEvents.startMin, endMin: sponsoredEvents.endMin,
+    location: sponsoredEvents.location, description: sponsoredEvents.description,
+  }).from(sponsoredResponses).innerJoin(sponsoredEvents, eq(sponsoredEvents.id, sponsoredResponses.eventId))
+    .where(and(eq(sponsoredResponses.userId, userId), eq(sponsoredResponses.response, "saved"), eq(sponsoredEvents.cancelled, false),
+      from ? gte(sponsoredEvents.date, from) : undefined, to ? lte(sponsoredEvents.date, to) : undefined,
+      id ? eq(sponsoredEvents.id, id) : undefined)).all();
+}
+
 /**
  * Expands the student's effective schedule into dated events. `locale` is the language
  * of the short notes on each event ("odd weeks", "moved by you"); data for the assistant
@@ -532,10 +549,20 @@ function originalEvents(
 
   for (const e of sharedEventsFor(user.id, from, to)) {
     events.push({
-      id: `g:${e.id}`, groupEventId: e.id, campusRoom: campusRoomCode(e.location), type: "shared", kind: "shared", title: e.title,
+      id: `g:${e.id}`, groupEventId: e.id, type: "shared", kind: "shared", title: e.title,
       date: e.date, startMin: e.startMin, endMin: e.endMin, room: e.location,
       abbr: null, teacher: null, note: null, place: null,
       seriesKey: `g:${e.id}`, courseKey: `g:${e.id}`, attendance: null,
+    });
+  }
+
+  for (const e of savedSponsoredEvents(user.id, { from, to })) {
+    const key = `s:${e.id}`;
+    events.push({
+      id: key, seriesKey: key, courseKey: key, sponsoredEventId: e.id, type: "sponsored", kind: "sponsored",
+      title: e.title, date: e.date, startMin: e.startMin, endMin: e.endMin, room: e.location || null,
+      note: sponsoredNote(e, locale),
+      abbr: null, teacher: null, place: null, attendance: null,
     });
   }
 
@@ -551,6 +578,7 @@ export function eventsBetween(
   const byDay = new Map<string, CalEvent[]>();
   for (const e of events) {
     e.title ||= calendarMessages[locale].personal.untitled;
+    if (!e.place) e.campusRoom = campusRoomCode(e.room);
     const key = `${e.seriesKey}|${e.date}`;
     const day = byDay.get(key);
     if (day) day.push(e);

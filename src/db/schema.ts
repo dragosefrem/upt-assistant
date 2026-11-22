@@ -406,6 +406,15 @@ export const occurrenceOverrides = sqliteTable(
   (t) => [uniqueIndex("occurrence_unique").on(t.userId, t.entryId, t.date)],
 );
 
+/** Published iCalendar revisions survive edits, hides and subscription link rotation. */
+export const calendarFeedRevisions = sqliteTable("calendar_feed_revisions", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  uid: text("uid").notNull(),
+  fingerprint: text("fingerprint"),
+  sequence: integer("sequence").notNull(),
+  modifiedAt: integer("modified_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.uid] })]);
+
 export const googleSyncState = sqliteTable("google_sync_state", {
   userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   mode: text("mode").$type<GoogleSyncMode>().notNull().default("one_way"),
@@ -459,6 +468,44 @@ export const personalEvents = sqliteTable(
   },
   (t) => [index("personal_user").on(t.userId)],
 );
+
+/** An empty faculty or year selection includes every value in that dimension. */
+export const sponsoredEvents = sqliteTable("sponsored_events", {
+  id: text("id").primaryKey(),
+  creatorId: text("creator_id").references(() => users.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  sponsor: text("sponsor").notNull(),
+  location: text("location").notNull(),
+  description: text("description").notNull(),
+  date: text("date").notNull(),
+  startMin: integer("start_min").notNull(),
+  endMin: integer("end_min").notNull(),
+  facultyIds: text("faculty_ids", { mode: "json" }).$type<number[]>().notNull(),
+  years: text("years", { mode: "json" }).$type<number[]>().notNull(),
+  cancelled: integer("cancelled", { mode: "boolean" }).notNull().default(false),
+}, (t) => [index("sponsored_date").on(t.date, t.startMin)]);
+
+export const sponsoredResponses = sqliteTable("sponsored_responses", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  eventId: text("event_id").notNull().references(() => sponsoredEvents.id, { onDelete: "cascade" }),
+  response: text("response").$type<"saved" | "hidden">().notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.eventId] })]);
+
+/** Public university sessions are shared by subscribers. Their personal calendars are resolved at read time. */
+export const uptEventOccurrences = sqliteTable("upt_event_occurrences", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  date: text("date").notNull(),
+  startMin: integer("start_min").notNull(),
+  endMin: integer("end_min").notNull(),
+  location: text("location"),
+  access: text("access"),
+  sourceUrl: text("source_url").notNull(),
+}, (t) => [index("upt_event_date").on(t.date, t.startMin)]);
+
+export const uptEventSubscriptions = sqliteTable("upt_event_subscriptions", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+});
 
 export type AttendanceStatus = "attended" | "missed";
 

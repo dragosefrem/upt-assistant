@@ -3,59 +3,53 @@
 import { useLocale, useT } from "@/i18n/client";
 import { routeEntrance, routeGoal, type CampusLink } from "@/lib/campuspath/links";
 import type { Route } from "@/lib/campuspath/types";
+import type { Place } from "@/lib/schedule";
 import { formatDate } from "@/lib/time";
 import { routeFloor } from "./format";
 import { GetThere } from "./GetThere";
-import { RouteView, type RouteKind } from "./RouteView";
+
+export type JourneyContext = Pick<CampusLink, "building" | "at" | "date" | "course"> & {
+  requestedRoom?: string;
+  timetablePlace?: Place | null;
+};
 
 /**
  * A walk shown as one trip: who it is for, then leg 1 (to the building entrance, on a map)
- * and leg 2 (inside, on the walkthrough). The example and walks that start indoors are leg 2 alone.
+ * and leg 2 (inside, on the walkthrough). A timetable building can be used before or without a walkthrough.
  */
 export function Journey({
   route,
-  kind,
   context,
   mapsKey,
-  onRetry,
-  onShare,
-  onCopy,
-  copied,
   onStartElsewhere,
+  children,
 }: {
-  route: Route;
-  kind: RouteKind;
-  context: Pick<CampusLink, "building" | "at" | "date" | "course">;
+  route: Route | null;
+  context: JourneyContext;
   mapsKey: string | null;
-  onRetry: () => void;
-  onShare: () => void;
-  onCopy: () => void;
-  copied: boolean;
   onStartElsewhere: () => void;
+  children: React.ReactNode;
 }) {
   const t = useT().campus;
   const locale = useLocale();
-  const entrance = kind === "yours" ? routeEntrance(route) : null;
-  const room = route.destination;
-  const goal = routeGoal(route);
-  const floor = routeFloor(route, t);
-  const building = room?.area ?? context.building ?? null;
-
-  const view = (
-    <RouteView
-      route={route}
-      kind={kind}
-      inJourney={kind === "yours"}
-      onRetry={onRetry}
-      onShare={onShare}
-      onCopy={onCopy}
-      copied={copied}
-    />
-  );
-  if (kind === "example") return view;
-
-  const startName = (route.origin ?? route.steps[0])?.name;
-  const legs = entrance ? [t.journey.step1(entrance.name), t.journey.step2(goal)] : [];
+  const { requestedRoom, timetablePlace } = context;
+  if (!route && !requestedRoom) return children;
+  const entrance = route && routeEntrance(route);
+  const room = route?.destination;
+  const goal = route ? routeGoal(route) : requestedRoom;
+  const floor = route && routeFloor(route, t);
+  const building = room?.area ?? (timetablePlace?.guessed ? t.rooms.approximate(timetablePlace.name) : context.building);
+  const buildingPin = !route?.steps.length || route.automatic ? timetablePlace : null;
+  const place = entrance ? {
+    name: entrance.name,
+    address: [entrance.pin.name, entrance.area].find((name) => name && name !== entrance.name) ?? null,
+    lat: entrance.pin.lat,
+    lng: entrance.pin.lon,
+    approximate: false,
+  } : buildingPin;
+  const startName = (route?.origin ?? route?.steps[0])?.name;
+  const unmapped = route?.coverage === "unmapped";
+  const legs = place && goal ? [t.journey.step1(place.name), unmapped ? t.journey.roomDetails : t.journey.step2(goal)] : [];
 
   return (
     <div className="space-y-4">
@@ -89,34 +83,34 @@ export function Journey({
         )}
       </section>
 
-      {entrance && (
+      {place && (
         <section className="card p-4 sm:p-5" aria-labelledby="campus-leg1">
           <h3 id="campus-leg1" tabIndex={-1} className="mb-3 flex scroll-mt-20 items-center gap-2 text-lg font-semibold text-slate-900">
             <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">1</span>
             {t.journey.leg1}
           </h3>
-          <GetThere entrance={entrance} at={context.at ?? null} mapsKey={mapsKey} />
+          <GetThere place={place} startsWalkthrough={!!entrance} at={context.at ?? null} mapsKey={mapsKey} />
         </section>
       )}
 
       <section aria-labelledby="campus-leg2" className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <h3 id="campus-leg2" tabIndex={-1} className="flex scroll-mt-20 items-center gap-2 text-lg font-semibold text-slate-900">
-            {entrance && (
+            {place && (
               <span aria-hidden className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">2</span>
             )}
-            {t.journey.leg2}
+            {unmapped ? t.journey.roomDetails : t.journey.leg2}
           </h3>
-          {route.steps.length > 0 && (
+          {!!route?.steps.length && (
             <button type="button" className="text-sm font-medium text-brand-700 hover:underline" onClick={onStartElsewhere} aria-haspopup="dialog">
               {t.journey.startElsewhere}
             </button>
           )}
         </div>
-        {startName && route.steps.length > 1 && (
+        {startName && route && route.steps.length > 1 && (
           <p className="px-1 text-sm text-slate-600">{route.automatic ? t.journey.autoStart(startName) : t.journey.chosenStart(startName)}</p>
         )}
-        {view}
+        {children}
       </section>
 
     </div>

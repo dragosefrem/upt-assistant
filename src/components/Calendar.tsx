@@ -9,10 +9,13 @@ import type { Locale } from "@/i18n/config";
 import type { Messages } from "@/i18n/messages";
 import type { PublicHoliday } from "@/lib/holidays";
 import type { CalEvent } from "@/lib/schedule";
+import type { SponsoredOffer } from "@/lib/sponsored-events";
 import { addDays, capitalize, dayName, formatDate, formatMinutes, formatTimeSlot, mondayOf, nowLocal, weekday } from "@/lib/time";
 import { kindLabel, kindStyle } from "@/lib/kinds";
 import { EventDialog } from "./EventDialog";
 import { PersonalEventDialog } from "./PersonalEventDialog";
+import { SponsoredSuggestions } from "./SponsoredSuggestions";
+import { UptCalendarSubscription } from "./UptCalendarSubscription";
 
 export { kindStyle };
 
@@ -82,6 +85,8 @@ function layoutDay(events: CalEvent[]) {
 export function Calendar({
   initialEvents,
   initialSelection,
+  initialOffers = [],
+  initialUptSubscribed = false,
   initialHolidays,
   initialFrom,
   initialTo,
@@ -93,6 +98,8 @@ export function Calendar({
 }: {
   initialEvents: CalEvent[];
   initialSelection?: CalEvent;
+  initialOffers?: SponsoredOffer[];
+  initialUptSubscribed?: boolean;
   initialHolidays: PublicHoliday[];
   initialFrom: string;
   initialTo: string;
@@ -109,10 +116,12 @@ export function Calendar({
   const [view, setView] = useState<View>("week");
   const [anchor, setAnchor] = useState(initialSelection?.date ?? today);
   const [events, setEvents] = useState<CalEvent[]>(initialEvents);
+  const [offers, setOffers] = useState(initialOffers);
+  const [uptSubscribed, setUptSubscribed] = useState(initialUptSubscribed);
   const [holidays, setHolidays] = useState(initialHolidays);
   const holidayNames = new Map(holidays.map((holiday) => [holiday.date, holiday.name]));
   // Event notes come in the interface language, so a language switch also reloads.
-  const [loaded, setLoaded] = useState({ from: initialFrom, to: initialTo, locale });
+  const [loaded, setLoaded] = useState({ from: initialFrom, to: initialTo, locale, uptSubscribed: initialUptSubscribed });
   const [teachingWeek, setTeachingWeek] = useState<number | null>(initialWeek);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -131,14 +140,16 @@ export function Calendar({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/events?from=${from}&to=${to}`, { cache: "no-store" });
+      const res = await fetch(`/api/events?from=${from}&to=${to}&offers=1`, { cache: "no-store" });
       if (!res.ok) throw new Error(res.status === 401 ? t.grid.sessionExpired : t.grid.loadFailed);
-      const data = (await res.json()) as { events: CalEvent[]; holidays: PublicHoliday[]; teachingWeek: number | null };
+      const data = (await res.json()) as { events: CalEvent[]; offers: SponsoredOffer[]; uptSubscribed: boolean; holidays: PublicHoliday[]; teachingWeek: number | null };
       if (id !== requestId.current) return;
       setEvents(data.events);
+      setOffers(data.offers);
+      setUptSubscribed(data.uptSubscribed);
       setHolidays(data.holidays);
       setTeachingWeek(data.teachingWeek);
-      setLoaded({ from, to, locale });
+      setLoaded({ from, to, locale, uptSubscribed: data.uptSubscribed });
     } catch (err) {
       if (id === requestId.current) setError((err as Error).message);
     } finally {
@@ -153,13 +164,14 @@ export function Calendar({
 
   useEffect(() => {
     const refresh = () => void load(range.from, range.to);
+    const scheduleChanged = () => { setOffers([]); refresh(); };
     const refreshVisible = () => { if (document.visibilityState === "visible") refresh(); };
     const timer = setInterval(refreshVisible, 60_000);
-    window.addEventListener(SCHEDULE_CHANGED, refresh);
+    window.addEventListener(SCHEDULE_CHANGED, scheduleChanged);
     document.addEventListener("visibilitychange", refreshVisible);
     return () => {
       clearInterval(timer);
-      window.removeEventListener(SCHEDULE_CHANGED, refresh);
+      window.removeEventListener(SCHEDULE_CHANGED, scheduleChanged);
       document.removeEventListener("visibilitychange", refreshVisible);
     };
   }, [load, range]);
@@ -204,6 +216,8 @@ export function Calendar({
   );
 
   const visible = events.filter((e) => e.date >= range.from && e.date <= range.to);
+  const matches = !error && loaded.from === range.from && loaded.to === range.to && loaded.uptSubscribed === uptSubscribed
+    ? visible.filter((e) => e.type === "upt").length : null;
 
   // Grid days: the whole week, so students can plan weekends too.
   const days = useMemo(() => (view === "day" ? [anchor] : Array.from({ length: 7 }, (_, i) => addDays(range.from, i))), [view, anchor, range.from]);
@@ -276,6 +290,12 @@ export function Calendar({
           <Plus size={16} aria-hidden />{t.grid.addEvent}
         </button>
       </header>
+      <UptCalendarSubscription subscribed={uptSubscribed} matches={matches}
+        onChange={(subscribed) => {
+          setUptSubscribed(subscribed);
+          if (!subscribed) setEvents((current) => current.filter((e) => e.type !== "upt"));
+          window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+        }} />
       {loading && <p role="status" className="px-4 pt-2 text-xs text-slate-600">{messages.common.status.loading}</p>}
 
       {error && <p role="alert" className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
@@ -288,6 +308,13 @@ export function Calendar({
           <button type="button" className="btn-ghost px-2" aria-label={messages.common.actions.close} onClick={() => setHiddenClass(null)}>✕</button>
         </div>
       )}
+
+      <SponsoredSuggestions
+        offers={!error && loaded.from === range.from && loaded.to === range.to && loaded.locale === locale ? offers : []}
+        homeWeek={view === "week" && range.from === mondayOf(now.date)}
+        onChange={() => window.dispatchEvent(new Event(SCHEDULE_CHANGED))}
+        onPickDay={pickDay}
+      />
 
       {!hasGroup ? (
         <aside className="space-y-2 border-b border-slate-200 bg-brand-50/50 px-4 py-3 text-sm">

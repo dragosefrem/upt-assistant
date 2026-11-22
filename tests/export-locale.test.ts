@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 import { getDb } from "@/db";
@@ -9,7 +9,10 @@ import { syncToGoogle } from "@/lib/google";
 import { calendarEmail, emailCalendar } from "@/lib/export-email";
 import { renewCalendarLink } from "@/app/(app)/settings/actions";
 import { GET as calendarFeed } from "@/app/api/ics/[token]/route";
-import { requireOnboardedUser } from "@/lib/auth";
+import { POST as changeSchedule } from "@/app/api/schedule/route";
+import { POST as emailExport } from "@/app/api/export/email/route";
+import { getUser, requireOnboardedUser } from "@/lib/auth";
+import { mailConfigured } from "@/lib/mail";
 import { messages } from "@/i18n/messages";
 
 vi.mock("@/lib/auth", { spy: true });
@@ -20,6 +23,21 @@ vi.mock("@/i18n/server", () => ({ getT: () => messages.en }));
 process.env.DATABASE_PATH = ":memory:";
 
 let user: User;
+
+async function subscribedEvents() {
+  const token = user.feedToken + ".ics";
+  const response = await calendarFeed(new Request("https://poli.example.org/api/ics/" + token), { params: Promise.resolve({ token }) });
+  expect(response.status).toBe(200);
+  const body = (await response.text()).replace(/\r\n /g, "");
+  const parts = body.split("BEGIN:VEVENT\r\n").slice(1);
+  const events = new Map(parts.map(part => {
+    const event = part.split("END:VEVENT")[0];
+    const uid = /^UID:(.+?)\r$/m.exec(event)![1];
+    return [uid, event] as const;
+  }));
+  expect(events.size).toBe(parts.length);
+  return events;
+}
 
 beforeAll(() => {
   const db = getDb();
@@ -50,6 +68,131 @@ beforeAll(() => {
     .values({ id: "u1", email: "s@example.com", name: "S", passwordHash: "x", feedToken: "t", facultyId: faculty.id, specializationId: spec.id, year: 1, groupId })
     .returning()
     .get();
+});
+
+describe("URL subscriptions", () => {
+  const sequence = (event: string) => Number(/^SEQUENCE:(\d+)\r$/m.exec(event)?.[1] ?? 0);
+  const change = (body: Record<string, unknown>) => changeSchedule(new Request("https://poli.example.org/api/schedule", {
+    method: "POST", body: JSON.stringify(body),
+  }));
+  beforeEach(() => { vi.mocked(getUser).mockResolvedValue(user); });
+  afterEach(() => { vi.mocked(getUser).mockReset(); });
+
+  it("publishes a weekly class on its new weekday and marks the same event as revised for subscribers", async () => {
+    const entry = getDb().select().from(entries).where(eq(entries.key, "ac-mate-curs")).get()!;
+    const uid = `entry-${entry.id}@upt-orar`;
+    const original = await subscribedEvents();
+    const before = original.get(uid)!;
+    expect(before).toContain("DTSTART;TZID=Europe/Bucharest:20260928T080000");
+    expect(before).toMatch(/^RRULE:FREQ=WEEKLY;.*BYDAY=MO\r$/m);
+    expect(sequence(before)).toBeGreaterThan(0);
+    try {
+      expect((await change({ action: "move", entryId: entry.id, day: 4, startMin: 600, endMin: 720 })).ok).toBe(true);
+      const moved = await subscribedEvents();
+      const series = moved.get(uid)!;
+      expect(series).toContain("DTSTART;TZID=Europe/Bucharest:20261001T100000");
+      expect(series).toMatch(/^RRULE:FREQ=WEEKLY;.*BYDAY=TH\r$/m);
+      expect(series).not.toContain("20260928T080000");
+      expect(moved.size).toBe(original.size);
+      expect(sequence(series)).toBeGreaterThan(sequence(before));
+      expect(series).toMatch(/^LAST-MODIFIED:\d{8}T\d{6}Z\r$/m);
+      for (const [key, text] of original) if (key !== uid) expect(moved.get(key)).toBe(text);
+
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(Date.now() + 120_000);
+      expect(await subscribedEvents()).toEqual(moved);
+      expect((await change({ action: "reset", entryId: entry.id })).ok).toBe(true);
+      const restored = (await subscribedEvents()).get(uid)!;
+      expect(restored).toContain("DTSTART;TZID=Europe/Bucharest:20260928T080000");
+      expect(sequence(restored)).toBeGreaterThan(sequence(series));
+    } finally {
+      vi.useRealTimers();
+      await change({ action: "reset", entryId: entry.id });
+    }
+  });
+
+  it("revises a restored class even when it returns with identical hours", async () => {
+    const entry = getDb().select().from(entries).where(eq(entries.key, "ac-mate-lab")).get()!;
+    const uid = `entry-${entry.id}@upt-orar`;
+    const before = (await subscribedEvents()).get(uid)!;
+    try {
+      expect((await change({ action: "hide", entryId: entry.id })).ok).toBe(true);
+      expect((await subscribedEvents()).has(uid)).toBe(false);
+    } finally {
+      expect((await change({ action: "reset", entryId: entry.id })).ok).toBe(true);
+    }
+    const after = (await subscribedEvents()).get(uid)!;
+    expect(after).toContain("DTSTART;TZID=Europe/Bucharest:20260928T080000");
+    expect(sequence(after)).toBe(sequence(before) + 1);
+  });
+});
+
+describe("calendar email delivery", () => {
+  const deliver = vi.fn<typeof fetch>();
+  let account: User;
+
+  beforeEach(() => {
+    vi.stubEnv("SMTP_HOST", "");
+    vi.stubEnv("RESEND_API_KEY", "test-sending-key");
+    vi.stubEnv("VERIFICATION_EMAIL_FROM", "Poli <sender@example.org>");
+    vi.stubEnv("APP_URL", "https://poli.example.org");
+    vi.stubGlobal("fetch", deliver.mockReset().mockResolvedValue(Response.json({ id: "test-message" })));
+    account = getDb().update(users).set({ locale: "ro", exportEmail: null, calendarEmailedAt: null })
+      .where(eq(users.id, user.id)).returning().get();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("enables the settings form and delivers its Romanian calendar attachment with only Resend configured", async () => {
+    expect(mailConfigured("calendar")).toBe(true);
+    vi.mocked(getUser).mockResolvedValueOnce(account);
+    const response = await emailExport(new Request("https://poli.example.org/api/export/email", {
+      method: "POST", body: JSON.stringify({ email: "friend@example.org" }),
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ sentTo: "friend@example.org" });
+    const [url, request] = deliver.mock.calls[0];
+    expect(url).toBe("https://api.resend.com/emails");
+    expect(request?.headers).toMatchObject({ Authorization: "Bearer test-sending-key", "Idempotency-Key": expect.stringMatching(/^calendar\//) });
+    const message = JSON.parse(String(request?.body));
+    expect(message).toMatchObject({ from: "Poli <sender@example.org>", to: "friend@example.org", subject: messages.ro.settings.mail.subject });
+    expect(message.text).not.toContain("/api/ics/");
+    expect(message.attachments).toHaveLength(1);
+    expect(message.attachments[0]).toMatchObject({ filename: "poli.ics", content_type: "text/calendar" });
+    const ics = Buffer.from(message.attachments[0].content, "base64").toString("utf8");
+    expect(ics).toContain("BEGIN:VCALENDAR\r\n");
+    expect(ics).toContain("Matematică (Curs)");
+    expect(ics).toContain("END:VCALENDAR");
+    expect(await emailCalendar(account)).toMatchObject({ ok: false, status: 429 });
+    expect(deliver).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases a failed HTTPS send and includes the private link on a successful retry to the owner", async () => {
+    deliver.mockResolvedValueOnce(new Response(null, { status: 503 }));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await emailCalendar(account, "friend@example.org")).toMatchObject({ ok: false, status: 502 });
+    expect(getDb().select().from(users).where(eq(users.id, account.id)).get())
+      .toMatchObject({ exportEmail: null, calendarEmailedAt: null });
+    expect(await emailCalendar(account)).toEqual({ ok: true, sentTo: account.email });
+    const message = JSON.parse(String(deliver.mock.calls[1][1]?.body));
+    expect(message.text).toContain("https://poli.example.org/api/ics/" + account.feedToken + ".ics");
+  });
+
+  it("keeps an explicitly configured SMTP calendar sender when both providers are available", async () => {
+    vi.stubEnv("SMTP_HOST", "smtp.example.org");
+    vi.stubEnv("SMTP_USER", "calendar@example.org");
+    vi.stubEnv("SMTP_PASS", "test-password");
+    const transport = nodemailer.createTransport({ jsonTransport: true });
+    const send = vi.spyOn(transport, "sendMail");
+    vi.spyOn(nodemailer, "createTransport").mockReturnValue(transport);
+    expect(await emailCalendar(account)).toEqual({ ok: true, sentTo: account.email });
+    expect(send).toHaveBeenCalledOnce();
+    expect(deliver).not.toHaveBeenCalled();
+  });
 });
 
 describe("calendar export language", () => {

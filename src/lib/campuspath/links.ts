@@ -4,7 +4,9 @@
  * API routes, the assistant and the tests all share them.
  */
 import { isLocale, type Locale } from "@/i18n/config";
-import { localInstant } from "@/lib/time";
+import type { CalEvent } from "@/lib/schedule";
+import { formatMinutes, localInstant } from "@/lib/time";
+import { mapsDirectionsUrl } from "./maps";
 import type { CampusPlace, Checkpoint, Classroom, Route, VideoState } from "./types";
 
 /* ───────────── Addresses ───────────── */
@@ -62,6 +64,16 @@ export function campusHref(link: CampusLink): string {
  */
 export function campusJourneyHref(input: { to: string; building?: string | null; at?: string | null; date?: string; course?: string | null }): string {
   return campusHref({ to: input.to, building: input.building ?? undefined, at: input.at ?? undefined, date: input.date, course: input.course ?? undefined });
+}
+
+/** Open the event's whole journey, or its building pin if there is no room to walk to. */
+export function eventDirectionsHref(event: CalEvent): string | null {
+  const room = event.campusRoom ?? (event.place ? event.room : null);
+  if (!room) return event.place ? mapsDirectionsUrl({ destination: event.place }) : null;
+  return campusJourneyHref({
+    to: room, building: event.place?.name, course: event.title, date: event.date,
+    at: event.allDay ? null : formatMinutes(event.startMin),
+  });
 }
 
 /** The address a QR code or a copied link carries: only the fields the service accepts. */

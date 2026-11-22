@@ -1,4 +1,9 @@
+import { load } from "cheerio";
+import { jsx } from "react/jsx-runtime";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Journey } from "@/components/campus/Journey";
+import { LocaleProvider } from "@/i18n/client";
 import { campusRequest, planCampusRoute, toCampusAnswer } from "@/lib/campuspath/assistant";
 import { planOutcome, planRoute } from "@/lib/campuspath/client";
 import {
@@ -129,6 +134,26 @@ describe("campus addresses", () => {
   it("finds the entrance a journey starts at", () => {
     expect(routeEntrance(route)?.pin).toEqual(AC_PIN);
     expect(routeEntrance({ ...route, steps: route.steps.slice(1) })).toBeNull();
+  });
+
+  it("keeps building directions available while the indoor route is loading or unmapped, and uses the verified entrance once found", () => {
+    const place = { name: "Timetable building", address: "Bd. Vasile Pârvan 2", lat: 45.747, lng: 21.226, approximate: true };
+    const unmapped: Route = { steps: [], duration: 0, lang: "en", coverage: "unmapped", destination: room(), video: null };
+    const render = (walk: Route | null) => load(renderToStaticMarkup(jsx(LocaleProvider, { locale: "en", children: jsx(Journey, {
+      route: walk, context: { requestedRoom: "B527", timetablePlace: place, building: place.name, course: "Physics", at: "10:00" },
+      mapsKey: null, onStartElsewhere: vi.fn(), children: "Indoor route status",
+    }) })));
+    for (const walk of [null, unmapped, route]) {
+      const page = render(walk);
+      const maps = page("a[href*='google.com/maps/dir/']");
+      expect(maps).toHaveLength(1);
+      const params = new URL(maps.attr("href")!).searchParams;
+      expect(params.get("destination")).toBe(walk === route ? "45.747438,21.226181" : "45.747000,21.226000");
+      expect(params.has("origin")).toBe(false);
+      expect(page("section[aria-labelledby='campus-leg2']").text()).toContain("Indoor route status");
+      if (walk === unmapped) expect(page("#campus-leg2").text()).toContain("Room details");
+    }
+    expect(render({ ...route, steps: route.steps.slice(1) })("iframe")).toHaveLength(0);
   });
 });
 

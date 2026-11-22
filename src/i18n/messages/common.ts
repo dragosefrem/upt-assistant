@@ -39,6 +39,8 @@ const en = {
     exam: "Exam",
     personal: "Personal",
     shared: "Shared event",
+    sponsored: "Sponsored event",
+    upt: "Evenimente UPT",
   },
   actions: {
     save: "Save",
@@ -132,6 +134,8 @@ const ro: typeof en = {
     exam: "Examen",
     personal: "Personal",
     shared: "Eveniment comun",
+    sponsored: "Eveniment sponsorizat",
+    upt: "Evenimente UPT",
   },
   actions: {
     save: "Salvează",

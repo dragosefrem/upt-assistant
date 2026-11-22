@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { AskPoli } from "@/components/AskPoli";
 import { GlossarySearch } from "@/components/GlossarySearch";
 import { GuideChecklist } from "@/components/GuideChecklist";
 import { getLocale, getT } from "@/i18n/server";
@@ -27,8 +26,6 @@ export default async function GuidePage() {
   // A distance-learning exam is published as three sittings: one exam, not three.
   const published = new Set(examsForUser(user, today).map((x) => x.courseName)).size;
   const date = (d: string, year = false) => formatDate(d, { day: "numeric", month: "long", ...(year ? { year: "numeric" } : {}) }, locale);
-  // Which of the four levels the student's own group label fills in.
-  const mine = group ? [messages.common.time.year(group.group.year), group.group.series, group.group.name.split(".")[0], group.group.name.includes(".") ? group.group.name : ""] : [];
 
   // The semester as one bar: classes, holidays and the session, in proportion.
   const segments = overview
@@ -49,16 +46,14 @@ export default async function GuidePage() {
   const sections = [
     ["first-week", t.nav.firstWeek],
     ["semester", t.nav.semester],
-    ["timetable", t.nav.timetable],
-    ["glossary", t.nav.glossary],
-    ["buildings", t.nav.buildings],
+    ["buildings", t.buildings.title],
+    ["glossary", t.glossary.title],
   ] as const;
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
       <header className="page-heading">
         <h1>{t.heading}</h1>
-        <p className="mt-2 max-w-2xl text-slate-600">{t.intro}</p>
         <nav aria-label={t.title} className="mt-4 flex flex-wrap gap-2">
           {sections.map(([id, label]) => (
             <a key={id} href={`#${id}`} className="btn-secondary text-xs">
@@ -141,76 +136,11 @@ export default async function GuidePage() {
         )}
       </section>
 
-      <section id="timetable" className="card scroll-mt-20 p-5 sm:p-6">
-        <h2 className="text-lg font-semibold text-slate-900">🔎 {t.timetable.title}</h2>
-        <p className="mt-1 text-sm leading-relaxed text-slate-600">{t.timetable.intro}</p>
-        <p className="mt-3 rounded-2xl bg-brand-50 px-3 py-2 text-sm font-medium text-brand-900">
-          {group ? t.timetable.yourPlace(group.spec.name, group.group.year, group.label) : t.timetable.noGroup}
-        </p>
-
-        <ol className="mt-4 space-y-2">
-          {t.timetable.levels.map((level, i) => (
-            <li key={level.name} className="flex items-stretch gap-3" style={{ paddingLeft: `${i * 0.9}rem` }}>
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-                <p className="text-sm font-semibold text-slate-900" lang="ro">{level.name}</p>
-                {mine[i] && (
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-900">{t.timetable.you}: {mine[i]}</span>
-                )}
-                <p className="w-full text-sm text-slate-600">{level.who} — <span className="font-medium text-slate-800">{level.what}</span></p>
-              </div>
-            </li>
-          ))}
-        </ol>
-
-        <h3 className="mt-6 text-sm font-semibold text-slate-900">{t.timetable.kindsTitle}</h3>
-        <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-          {t.timetable.kinds.map((k, i) => (
-            <li key={k.code} className="flex gap-3 rounded-2xl border border-slate-200 p-3">
-              <span aria-hidden className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${["bg-brand-50 text-brand-700", "bg-emerald-50 text-emerald-700", "bg-amber-50 text-amber-800", "bg-fuchsia-50 text-fuchsia-700"][i]}`}>{k.code}</span>
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{k.name}</p>
-                <p className="text-sm text-slate-600">{k.what}</p>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">{t.timetable.weeksTitle}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">{t.timetable.weeks}</p>
-            {overview?.week != null && (
-              <p className="mt-2 text-sm font-medium text-brand-800">{t.timetable.weeksNow(overview.week, overview.parity === "odd" ? t.semester.odd : t.semester.even)}</p>
-            )}
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900">{t.timetable.roomsTitle}</h3>
-            <p className="mt-1 text-sm leading-relaxed text-slate-600">{t.timetable.rooms}</p>
-          </div>
-        </div>
-
-        <div className="mt-6 rounded-2xl bg-slate-50 p-3">
-          <p className="text-sm font-semibold text-slate-900">{t.timetable.askTitle}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {t.timetable.questions.map((q) => (
-              <AskPoli key={q} question={q} className="btn-secondary bg-white px-3 py-1.5 text-xs" />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="glossary" className="card scroll-mt-20 p-5 sm:p-6">
-        <h2 className="text-lg font-semibold text-slate-900">{t.glossary.title}</h2>
-        <p className="mb-4 mt-1 text-sm text-slate-600">{t.glossary.intro}</p>
-        <GlossarySearch />
-      </section>
-
       <section id="buildings" className="card scroll-mt-20 p-5 sm:p-6">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-lg font-semibold text-slate-900">{t.buildings.title}</h2>
           <Link href="/campus" className="btn-secondary ml-auto px-3 py-1.5 text-xs">{t.buildings.open}</Link>
         </div>
-        <p className="mt-1 text-sm text-slate-600">{t.buildings.intro}</p>
         {buildings.length ? (
           <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {buildings.map((b) => (
@@ -234,6 +164,16 @@ export default async function GuidePage() {
         ) : (
           <p className="mt-3 text-sm text-slate-600">{t.buildings.none}</p>
         )}
+      </section>
+
+      <section id="glossary" className="card scroll-mt-20 p-5 sm:p-6">
+        <h2 id="timetable" className="scroll-mt-20 text-lg font-semibold text-slate-900">{t.glossary.title}</h2>
+        <p className="mb-4 mt-1 text-sm text-slate-600">
+          {group
+            ? t.glossary.yourPlace(group.spec.name, group.group.year, group.label)
+            : <Link href="/settings" className="font-medium text-brand-700 hover:underline">{t.glossary.noGroup}</Link>}
+        </p>
+        <GlossarySearch />
       </section>
     </div>
   );

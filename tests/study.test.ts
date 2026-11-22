@@ -91,6 +91,13 @@ describe("searchGlossary", () => {
     expect(find("restanta")[0]).toBe("restanta");
     expect(find("odd", "en")[0]).toBe("paritate");
   });
+  it.each(["ro", "en"] as const)("finds consolidated timetable codes in %s", (locale) => {
+    for (const code of ["C", "S", "L", "P"]) {
+      expect(find(code, locale)[0]).toBe("activitati");
+    }
+    expect(find("8-14", locale)[0]).toBe("paritate");
+    expect(find("B413", locale)[0]).toBe("sala");
+  });
   it("returns everything for an empty query and nothing for nonsense", () => {
     expect(find("")).toHaveLength(guide.ro.entries.length);
     expect(find("zzzqqq")).toEqual([]);
@@ -589,6 +596,11 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     seed(db);
     expect(rule()).toBe("^E\\d+$");
     db.update(buildings).set({ roomPattern: current }).where(eq(buildings.code, "ELECTRO")).run();
+  });
+
+  it.each([["en", "year"], ["en", "semester"], ["ro", "semestru"]] as const)("keeps %s mentions of %s searchable without giving an unrelated definition", (locale, term) => {
+    expect(searchGlossary(guide[locale].entries, term).length).toBeGreaterThan(0);
+    expect(runTool("explain_term", { term }, { ...ctx, locale })).toMatchObject({ not_in_glossary: term });
   });
 
   it("explains terms and opens pages", () => {

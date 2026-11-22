@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
-import { attendance, chatMessages, courses, entries, entryGroups, faculties, googleEventLinks, googleSyncState, groups, personalEvents, specializations, users } from "@/db/schema";
+import { attendance, chatMessages, courses, entries, entryGroups, faculties, googleEventLinks, googleSyncState, groups, personalEvents, specializations, uptEventOccurrences, users } from "@/db/schema";
 import { messages } from "@/i18n/messages";
 import { getUser, type User } from "@/lib/auth";
 import { acceptPreview } from "@/lib/assistant/accept";
@@ -356,6 +356,25 @@ function choose(mode: unknown) {
 }
 
 describe("Google Calendar sync direction", () => {
+  it("keeps opt-in UPT sessions free in Google and reuses previously published events", async () => {
+    db.insert(uptEventOccurrences).values({ id: "42:opening", title: "Open campus", date, startMin: 720, endMin: 780,
+      sourceUrl: "https://www.upt.ro/evenimente/open-campus" }).run();
+    expect((await change("uptSubscription", { subscribed: true })).ok).toBe(true);
+    google.put({ ...atGoogle("legacy-upt", "Open campus"), extendedProperties: { private: { uptOrar: "upt:42:opening" } } });
+    await sync();
+    expect(google.live()).toEqual([expect.objectContaining({ id: "legacy-upt", transparency: "transparent" })]);
+    google.put({ ...google.live()[0], transparency: "opaque" });
+    await sync();
+    expect(google.live()[0].transparency).toBe("transparent");
+    setGoogleSyncMode(user.id, "two_way");
+    await change("uptSubscription", { subscribed: false });
+    await sync();
+    expect(google.live()).toEqual([]);
+    await change("uptSubscription", { subscribed: true });
+    await sync();
+    expect(google.live()).toEqual([expect.objectContaining({ summary: "Open campus", transparency: "transparent" })]);
+  });
+
   it("migrates existing two-way accounts without opting legacy exporters or new accounts into imports", () => {
     const old = new Database(":memory:");
     try {

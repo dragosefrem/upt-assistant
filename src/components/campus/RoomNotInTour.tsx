@@ -1,32 +1,24 @@
 "use client";
 
 import { useT } from "@/i18n/client";
+import type { Place } from "@/lib/schedule";
 import { Mascot } from "../Mascot";
 import { GetThere } from "./GetThere";
-
-/** Where the timetable places a room the tour does not know. */
-export interface KnownPlace {
-  name: string;
-  address: string | null;
-  lat: number;
-  lng: number;
-  /** The position on the map is approximate. */
-  approximate: boolean;
-  /** The building is a guess: the student's own faculty. */
-  guessed?: boolean;
-}
 
 /**
  * A room from the student's timetable that the tour has no record of. Instead of a dead end,
  * say so plainly and lead to the building the timetable places it in, without pretending to
  * know where the room is inside.
  */
-export function RoomNotInTour({ room, place, at, mapsKey }: {
+export function RoomNotInTour({ room, place, at, mapsKey, map = true }: {
   room: string;
-  place: KnownPlace | null;
+  /** Where the timetable places the room; null when no building is known. */
+  place: Place | null;
   /** Start of the class, "HH:MM", to say when to leave. */
   at: string | null;
   mapsKey: string | null;
+  /** False when the journey around this card already shows the building on a map. */
+  map?: boolean;
 }) {
   const t = useT().campus.lost;
   return (
@@ -38,17 +30,11 @@ export function RoomNotInTour({ room, place, at, mapsKey }: {
           <p className="mt-1 text-sm leading-relaxed text-slate-700">
             {!place ? t.nowhere : place.guessed ? t.guessed(place.name) : t.known(place.name, place.address)}
           </p>
-          {place?.approximate && !place.guessed && <p className="mt-1 text-xs text-slate-500">{t.approximate}</p>}
         </div>
       </div>
-      {place && (
+      {place && map && (
         <div className="mt-4">
-          <GetThere
-            entrance={{ name: place.name, pin: { lat: place.lat, lon: place.lng, name: place.address ?? "" } }}
-            at={at}
-            mapsKey={mapsKey}
-            building
-          />
+          <GetThere place={place} startsWalkthrough={false} at={at} mapsKey={mapsKey} />
         </div>
       )}
     </section>

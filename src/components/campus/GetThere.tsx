@@ -2,18 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
-import { planTrip, type TravelOption } from "@/lib/directions";
-import { metresBetween } from "@/lib/campuspath/links";
+import { haversineMeters, planTrip, type TravelOption } from "@/lib/directions";
 import { leaveBy, mapsDirectionsUrl, mapsEmbedUrl, TRAVEL_MODES, type TravelMode } from "@/lib/campuspath/maps";
-import type { Pin } from "@/lib/campuspath/types";
+import type { Place } from "@/lib/schedule";
 import { useLocation } from "../LocationProvider";
-
-/** A building entrance of the tour, or a whole building when the tour does not know the room. */
-interface Entrance {
-  name: string;
-  area?: string;
-  pin: Pin;
-}
+import { distanceLabel } from "./format";
 
 /** Within this many metres of the pin the student is at the entrance already. */
 const HERE_METRES = 60;
@@ -24,75 +17,61 @@ const TRIP_MODE: Record<TravelMode, TravelOption["mode"]> = { walking: "walk", b
  * Google map, with travel times and when to leave. The position is used only once shared.
  */
 export function GetThere({
-  entrance,
+  place,
+  startsWalkthrough,
   at,
   mapsKey,
-  building = false,
 }: {
-  entrance: Entrance;
+  place: Place;
+  /** True when the map pin is the first stop of the indoor route; false when it is a building as a whole. */
+  startsWalkthrough: boolean;
   /** Start of the class, "HH:MM", to say when to leave. */
   at: string | null;
   mapsKey: string | null;
-  /** The map leads to a building as a whole: there is no walk inside to follow afterwards. */
-  building?: boolean;
 }) {
   const messages = useT();
   const t = messages.campus.journey;
   const locale = useLocale();
   const { position, status, enable } = useLocation();
   const [mode, setMode] = useState<TravelMode>("walking");
-  const target = { lat: entrance.pin.lat, lng: entrance.pin.lon };
   // Rounded to ~100 m, so the map does not reload on every GPS jitter.
   const lat = position ? Math.round(position.lat * 1000) / 1000 : null;
   const lng = position ? Math.round(position.lng * 1000) / 1000 : null;
   const origin = useMemo(() => (lat !== null && lng !== null ? { lat, lng } : null), [lat, lng]);
-  const distance = position ? metresBetween({ lat: position.lat, lon: position.lng }, entrance.pin) : null;
-  const here = distance !== null && distance < HERE_METRES;
+  const here = startsWalkthrough && position && haversineMeters(position, place) < HERE_METRES;
   const trip = useMemo(
-    () => (origin ? planTrip(origin, { name: entrance.name, address: null, lat: target.lat, lng: target.lng, approximate: false }, locale, true) : null),
-    [origin, entrance.name, target.lat, target.lng, locale],
+    () => (origin ? planTrip(origin, place, locale, true) : null),
+    [origin, place, locale],
   );
   const minutesFor = (m: TravelMode) => trip?.options.find((o) => o.mode === TRIP_MODE[m])?.minutes ?? null;
   const minutes = minutesFor(mode);
   const leave = at && minutes !== null ? leaveBy(at, minutes + 5) : null;
-  const mapsLink = mapsDirectionsUrl({ origin, destination: target, mode });
-  // The building's name on the campus map, else the tour's area; not when it repeats the entrance's name.
-  const where = [entrance.pin.name, entrance.area].find((v) => v && v !== entrance.name) ?? "";
+  const mapsLink = mapsDirectionsUrl({ origin, destination: place, mode });
 
   if (here) {
     return (
       <p className="flex flex-wrap items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900 ring-1 ring-emerald-200">
         <span aria-hidden>✅</span>
-        <span className="min-w-0 flex-1">{building ? messages.campus.lost.here(entrance.name) : t.youAreAt(entrance.name)}</span>
-        {!building && (
-          <a href="#campus-leg2" className="font-medium text-emerald-800 underline-offset-2 hover:underline">
-            {t.nextInside} ↓
-          </a>
-        )}
+        <span className="min-w-0 flex-1">{t.youAreAt(place.name)}</span>
+        <a href="#campus-leg2" className="font-medium text-emerald-800 underline-offset-2 hover:underline">
+          {t.nextInside} ↓
+        </a>
       </p>
     );
   }
 
   return (
     <div className="grid gap-4 md:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
-      <iframe
-        key={`${origin ? `${origin.lat},${origin.lng}` : "place"}-${mode}`}
-        title={origin ? t.mapTitle(entrance.name) : t.placeTitle(entrance.name)}
-        src={mapsEmbedUrl({ destination: target, origin, mode, key: mapsKey, locale })}
-        loading="lazy"
-        referrerPolicy="no-referrer-when-downgrade"
-        allowFullScreen
-        className="aspect-[4/3] w-full rounded-2xl border border-slate-200 bg-slate-100 md:aspect-auto md:min-h-[18rem]"
-      />
-      <div className="min-w-0 space-y-3">
+      <div className="min-w-0 space-y-3 md:col-start-2 md:row-start-1">
         <div>
-          <p className="font-semibold text-slate-900">{t.entrance(entrance.name)}</p>
-          {where && <p className="text-sm text-slate-600">{where}</p>}
-          <p className="mt-1 text-xs text-slate-500">{building ? messages.campus.lost.mapHint : t.entranceHint}</p>
+          <p className="font-semibold text-slate-900">{startsWalkthrough ? t.entrance(place.name) : place.name}</p>
+          {place.address && <p className="text-sm text-slate-600">{place.address}</p>}
+          <p className="mt-1 text-xs text-slate-500">{startsWalkthrough ? t.entranceHint : messages.campus.lost.mapHint}</p>
+          {place.approximate && <p className="mt-1 text-xs text-slate-600">{messages.calendar.trip.approximate}</p>}
         </div>
         {origin ? (
           <>
-            {trip && <p className="text-sm text-slate-700">{trip.summary}</p>}
+            {trip && <p className="text-sm text-slate-700">{t.distanceFromYou(distanceLabel(trip.distanceMeters, locale))}</p>}
             <fieldset>
               <legend className="mb-1.5 text-xs font-medium text-slate-600">{t.mode}</legend>
               <div className="grid grid-cols-2 gap-1.5">
@@ -140,6 +119,15 @@ export function GetThere({
           <span aria-hidden>🗺️</span> {t.openInMaps} ↗
         </a>
       </div>
+      <iframe
+        key={`${origin ? `${origin.lat},${origin.lng}` : "place"}-${mode}`}
+        title={origin ? t.mapTitle(place.name) : t.placeTitle(place.name)}
+        src={mapsEmbedUrl({ destination: place, origin, mode, key: mapsKey, locale })}
+        loading="lazy"
+        referrerPolicy="no-referrer-when-downgrade"
+        allowFullScreen
+        className="aspect-[4/3] w-full rounded-2xl border border-slate-200 bg-slate-100 md:col-start-1 md:row-start-1 md:aspect-auto md:min-h-[18rem]"
+      />
     </div>
   );
 }
