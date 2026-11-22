@@ -31,6 +31,7 @@ export async function ExamCard({ exam, compact = false, tips = true }: { exam: E
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="break-words font-semibold text-slate-900">{exam.course}</h3>
+            {exam.audience && <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">{exam.audience}</span>}
             <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STAGE_STYLE[exam.stage]}`}>{exam.countdown}</span>
           </div>
           <p className="text-sm text-slate-600">

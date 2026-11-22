@@ -21,6 +21,8 @@ const en = {
   card: {
     room: (room: string) => `Room ${room}`,
     roomUnknown: "Room not published yet",
+    /** One of the sittings (prezentări) of the same exam in a session. */
+    sitting: (n: number) => `Sitting ${n} of the exam`,
     approximate: "(approximate)",
     openMap: "Open map ↗",
   },
@@ -98,6 +100,7 @@ const ro: typeof en = {
   card: {
     room: (room: string) => `Sala ${room}`,
     roomUnknown: "Sala nu a fost publicată încă",
+    sitting: (n: number) => `Prezentarea ${n}`,
     approximate: "(aproximativ)",
     openMap: "Deschide harta ↗",
   },

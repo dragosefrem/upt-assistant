@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { examAudience, examSitting } from "@/lib/exam-audience";
 import { exams } from "@/i18n/messages/exams";
 import { planTrip } from "@/lib/directions";
 import { countdown, everydayTip, EVERYDAY_TIPS, examHeadline, examStage, examTips, whereTo } from "@/lib/examTips";
@@ -117,3 +118,23 @@ describe("exam alarms in the .ics export", () => {
     expect(ics).not.toContain("VALARM");
   });
 });
+
+describe("who an exam is for", () => {
+  it("says which sitting a distance-learning exam is instead of showing its calendar label", () => {
+    // Campus Virtual, TST ID year 1: the same exam on three dates.
+    expect(examAudience("Examen_ALGAD_TST ID_Anul l_Prezentarea 1", "ro")).toBe("Prezentarea 1");
+    expect(examAudience("Examen_ALGAD_TST ID_Anul l_Prezentarea 3", "en")).toBe("Sitting 3 of the exam");
+    expect(examSitting("Examen_AM_TST ID_Anul l_Prezentarea 2")).toBe(2);
+    // TCM, reduced attendance, shortens it: "ED_MN_P1".
+    expect(examAudience("ED_MN_P1", "ro")).toBe("Prezentarea 1");
+    // Two labels published for one sitting are named once each.
+    expect(examAudience("Examen_BE_TST ID_Anul ll_Prezentarea 3 / Examen_BE_TST ID_Anul ll_Prezentarea 3", "ro")).toBe("Prezentarea 3");
+    // A faculty's own exam list names groups: shown as written.
+    expect(examAudience("3.1, 3.2", "ro")).toBe("3.1, 3.2");
+    expect(examSitting("C 1")).toBeNull();
+    expect(examAudience(null, "ro")).toBeNull();
+    // A label with nothing a student can use is left out, not shown raw.
+    expect(examAudience("Examen_X_TST ID", "ro")).toBeNull();
+  });
+});
+

@@ -24,7 +24,8 @@ export default async function GuidePage() {
   const overview = semester ? semesterOverview(semester, today) : null;
   const group = describeGroup(user.groupId, locale);
   const buildings = studentBuildings(user);
-  const published = examsForUser(user, today).length;
+  // A distance-learning exam is published as three sittings: one exam, not three.
+  const published = new Set(examsForUser(user, today).map((x) => x.courseName)).size;
   const date = (d: string, year = false) => formatDate(d, { day: "numeric", month: "long", ...(year ? { year: "numeric" } : {}) }, locale);
   // Which of the four levels the student's own group label fills in.
   const mine = group ? [messages.common.time.year(group.group.year), group.group.series, group.group.name.split(".")[0], group.group.name.includes(".") ? group.group.name : ""] : [];

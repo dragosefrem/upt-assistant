@@ -1,4 +1,5 @@
 import "server-only";
+import { examAudience } from "./exam-audience";
 import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
@@ -450,7 +451,7 @@ function originalEvents(
       endMin: x.endMin,
       room: x.room,
       teacher: x.teacher,
-      note: [x.audience, x.endMin === x.startMin ? t.endTimeUnpublished : null].filter(Boolean).join(" · ") || null,
+      note: [examAudience(x.audience, locale), x.endMin === x.startMin ? t.endTimeUnpublished : null].filter(Boolean).join(" · ") || null,
       place: place(x.room),
       examId: x.id,
       seriesKey: `x:${x.key}`,

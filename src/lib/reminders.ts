@@ -1,4 +1,5 @@
 import "server-only";
+import { examAudience } from "./exam-audience";
 import type { Locale } from "@/i18n/config";
 import type { User } from "./auth";
 import { countdown, examHeadline, examStage, examTips, type ExamStage } from "./examTips";
@@ -18,6 +19,8 @@ export interface ExamReminder {
   startMin: number;
   endMin: number;
   room: string | null;
+  /** Who it is for or which sitting it is ("Prezentarea 2"), when the exam list says. */
+  audience: string | null;
   place: Place | null;
   /** Google Maps link to the building, when it is known. */
   mapsUrl: string | null;
@@ -64,6 +67,7 @@ export function examReminders(user: User, at: Date = new Date(), days = REMINDER
         startMin: x.startMin,
         endMin: x.endMin,
         room: x.room,
+        audience: examAudience(x.audience, locale),
         place: p,
         mapsUrl: p ? `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}` : null,
         daysLeft,

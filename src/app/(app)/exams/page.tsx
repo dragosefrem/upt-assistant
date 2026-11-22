@@ -9,6 +9,7 @@ import { StudyPlanCard } from "@/components/StudyPlanCard";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
 import { facultyOf } from "@/lib/catalog";
+import { examAudience, examSitting } from "@/lib/exam-audience";
 import { examReminders } from "@/lib/reminders";
 import { placeResolver } from "@/lib/schedule";
 import { studyBlocks, upcomingExams } from "@/lib/study-plan";
@@ -74,7 +75,12 @@ export default async function ExamsPage({ searchParams }: PageProps<"/exams">) {
                   <span className="font-medium">{x.room ?? "—"}</span>
                   {p && <span className="block text-xs text-slate-500">{p.name}</span>}
                 </td>
-                <td className="px-4 py-2.5 text-xs text-slate-600">{x.audience}</td>
+                <td className="px-4 py-2.5 text-xs text-slate-600">
+                  {/* A distance-learning exam is published per programme and year, in three sittings. */}
+                  {examSitting(x.audience)
+                    ? [x.session?.split(" · ")[0], x.year ? messages.common.time.year(x.year) : null, examAudience(x.audience, locale)].filter(Boolean).join(" · ")
+                    : examAudience(x.audience, locale)}
+                </td>
               </tr>
             );
           })}

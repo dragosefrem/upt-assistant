@@ -1,4 +1,5 @@
 import "server-only";
+import { examAudience } from "./exam-audience";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { googleEventLinks, googleExceptions, personalEvents } from "@/db/schema";
@@ -116,7 +117,7 @@ export function sourceItems(user: User, locale: Locale = user.locale ?? "en"): E
     items.push({
       uid: `exam-${x.id}`,
       title: t.exam(`${x.courseName}${x.room ? ` · ${x.room}` : ""}`),
-      description: [x.room ? t.room(x.room) : null, x.teacher, x.audience, x.endMin === x.startMin ? time.endTimeUnpublished : null, t.goodLuck]
+      description: [x.room ? t.room(x.room) : null, x.teacher, examAudience(x.audience, locale), x.endMin === x.startMin ? time.endTimeUnpublished : null, t.goodLuck]
         .filter(Boolean)
         .join(" · "),
       location: where(x.room),
