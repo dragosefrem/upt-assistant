@@ -406,6 +406,15 @@ export const occurrenceOverrides = sqliteTable(
   (t) => [uniqueIndex("occurrence_unique").on(t.userId, t.entryId, t.date)],
 );
 
+/** Published iCalendar revisions survive edits, hides and subscription link rotation. */
+export const calendarFeedRevisions = sqliteTable("calendar_feed_revisions", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  uid: text("uid").notNull(),
+  fingerprint: text("fingerprint"),
+  sequence: integer("sequence").notNull(),
+  modifiedAt: integer("modified_at").notNull(),
+}, (t) => [primaryKey({ columns: [t.userId, t.uid] })]);
+
 export const googleSyncState = sqliteTable("google_sync_state", {
   userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   mode: text("mode").$type<GoogleSyncMode>().notNull().default("one_way"),

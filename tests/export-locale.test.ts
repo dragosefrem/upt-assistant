@@ -9,6 +9,7 @@ import { syncToGoogle } from "@/lib/google";
 import { calendarEmail, emailCalendar } from "@/lib/export-email";
 import { renewCalendarLink } from "@/app/(app)/settings/actions";
 import { GET as calendarFeed } from "@/app/api/ics/[token]/route";
+import { POST as changeSchedule } from "@/app/api/schedule/route";
 import { POST as emailExport } from "@/app/api/export/email/route";
 import { getUser, requireOnboardedUser } from "@/lib/auth";
 import { mailConfigured } from "@/lib/mail";
@@ -22,6 +23,21 @@ vi.mock("@/i18n/server", () => ({ getT: () => messages.en }));
 process.env.DATABASE_PATH = ":memory:";
 
 let user: User;
+
+async function subscribedEvents() {
+  const token = user.feedToken + ".ics";
+  const response = await calendarFeed(new Request("https://poli.example.org/api/ics/" + token), { params: Promise.resolve({ token }) });
+  expect(response.status).toBe(200);
+  const body = (await response.text()).replace(/\r\n /g, "");
+  const parts = body.split("BEGIN:VEVENT\r\n").slice(1);
+  const events = new Map(parts.map(part => {
+    const event = part.split("END:VEVENT")[0];
+    const uid = /^UID:(.+?)\r$/m.exec(event)![1];
+    return [uid, event] as const;
+  }));
+  expect(events.size).toBe(parts.length);
+  return events;
+}
 
 beforeAll(() => {
   const db = getDb();
@@ -52,6 +68,63 @@ beforeAll(() => {
     .values({ id: "u1", email: "s@example.com", name: "S", passwordHash: "x", feedToken: "t", facultyId: faculty.id, specializationId: spec.id, year: 1, groupId })
     .returning()
     .get();
+});
+
+describe("URL subscriptions", () => {
+  const sequence = (event: string) => Number(/^SEQUENCE:(\d+)\r$/m.exec(event)?.[1] ?? 0);
+  const change = (body: Record<string, unknown>) => changeSchedule(new Request("https://poli.example.org/api/schedule", {
+    method: "POST", body: JSON.stringify(body),
+  }));
+  beforeEach(() => { vi.mocked(getUser).mockResolvedValue(user); });
+  afterEach(() => { vi.mocked(getUser).mockReset(); });
+
+  it("publishes a weekly class on its new weekday and marks the same event as revised for subscribers", async () => {
+    const entry = getDb().select().from(entries).where(eq(entries.key, "ac-mate-curs")).get()!;
+    const uid = `entry-${entry.id}@upt-orar`;
+    const original = await subscribedEvents();
+    const before = original.get(uid)!;
+    expect(before).toContain("DTSTART;TZID=Europe/Bucharest:20260928T080000");
+    expect(before).toMatch(/^RRULE:FREQ=WEEKLY;.*BYDAY=MO\r$/m);
+    expect(sequence(before)).toBeGreaterThan(0);
+    try {
+      expect((await change({ action: "move", entryId: entry.id, day: 4, startMin: 600, endMin: 720 })).ok).toBe(true);
+      const moved = await subscribedEvents();
+      const series = moved.get(uid)!;
+      expect(series).toContain("DTSTART;TZID=Europe/Bucharest:20261001T100000");
+      expect(series).toMatch(/^RRULE:FREQ=WEEKLY;.*BYDAY=TH\r$/m);
+      expect(series).not.toContain("20260928T080000");
+      expect(moved.size).toBe(original.size);
+      expect(sequence(series)).toBeGreaterThan(sequence(before));
+      expect(series).toMatch(/^LAST-MODIFIED:\d{8}T\d{6}Z\r$/m);
+      for (const [key, text] of original) if (key !== uid) expect(moved.get(key)).toBe(text);
+
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(Date.now() + 120_000);
+      expect(await subscribedEvents()).toEqual(moved);
+      expect((await change({ action: "reset", entryId: entry.id })).ok).toBe(true);
+      const restored = (await subscribedEvents()).get(uid)!;
+      expect(restored).toContain("DTSTART;TZID=Europe/Bucharest:20260928T080000");
+      expect(sequence(restored)).toBeGreaterThan(sequence(series));
+    } finally {
+      vi.useRealTimers();
+      await change({ action: "reset", entryId: entry.id });
+    }
+  });
+
+  it("revises a restored class even when it returns with identical hours", async () => {
+    const entry = getDb().select().from(entries).where(eq(entries.key, "ac-mate-lab")).get()!;
+    const uid = `entry-${entry.id}@upt-orar`;
+    const before = (await subscribedEvents()).get(uid)!;
+    try {
+      expect((await change({ action: "hide", entryId: entry.id })).ok).toBe(true);
+      expect((await subscribedEvents()).has(uid)).toBe(false);
+    } finally {
+      expect((await change({ action: "reset", entryId: entry.id })).ok).toBe(true);
+    }
+    const after = (await subscribedEvents()).get(uid)!;
+    expect(after).toContain("DTSTART;TZID=Europe/Bucharest:20260928T080000");
+    expect(sequence(after)).toBe(sequence(before) + 1);
+  });
 });
 
 describe("calendar email delivery", () => {

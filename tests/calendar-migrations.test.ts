@@ -14,6 +14,7 @@ it.each([
   { version: "previous integration", applied: [6, 7, 8, 9, 11] },
   { version: "contact discovery integration", applied: [6, 7, 8, 9, 10, 11] },
   { version: "contact status", applied: [6, 12] },
+  { version: "contact status integration", applied: [6, 7, 8, 9, 10, 11, 12] },
 ])("upgrades a database from $version in place", ({ applied }) => {
   const sqlite = new Database(":memory:");
   try {
@@ -49,6 +50,7 @@ it.each([
     expect(verified).toBe(applied.includes(6) ? "2026-11-21" : null);
     expect(sqlite.prepare("SELECT share_activity_details FROM users").pluck().get()).toBe(applied.includes(12) ? 0 : 1);
     expect(sqlite.prepare("SELECT count(*) FROM registration_links").pluck().get()).toBe(0);
+    expect(sqlite.prepare("SELECT count(*) FROM calendar_feed_revisions").pluck().get()).toBe(0);
     sqlite.exec("INSERT OR IGNORE INTO google_sync_state(user_id) VALUES ('student')");
     expect(sqlite.prepare("SELECT mode FROM google_sync_state").pluck().get()).toBe(applied.includes(7) && !applied.includes(8) ? "two_way" : "one_way");
     expect(sqlite.prepare("SELECT cursor FROM google_sync_state").pluck().get())
