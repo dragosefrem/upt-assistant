@@ -542,6 +542,38 @@ describe("printed and interactive timetables", () => {
     ]);
   });
 
+  it("puts a class back together when its teacher or room comes in a box of its own", () => {
+    // Mecanică, year 2 (coordinates as read from the published PDF). "MN (L) Cristian Pop
+    // Orologerie 408 (etaj IV)" is one blue cell over the odd and the even column; it is
+    // printed whole for one group, cut between the columns for another and cut between two
+    // hours for a third. The room was shown as a class of its own, in even weeks.
+    const cells: Box[] = [
+      [76.93, 61.5, 116.83, 63.3, "sgr. 1"], [116.83, 61.5, 156.64, 63.3, "sgr. 2"], [156.64, 61.5, 196.49, 63.3, "sgr. 3"],
+      [76.93, 63.3, 96.3, 65.09, "săpt. impară"], [96.3, 63.3, 116.83, 65.09, "săpt. pară"],
+      [116.83, 63.3, 136.14, 65.09, "săpt. impară"], [136.14, 63.3, 156.64, 65.09, "săpt. pară"],
+      [156.64, 63.3, 175.98, 65.09, "săpt. impară"], [175.98, 63.3, 196.49, 65.09, "săpt. pară"],
+      [64.38, 101.09, 76.93, 102.9, "16:00 - 17:00"], [64.38, 102.9, 76.93, 104.71, "17:00 - 18:00"],
+      [64.38, 104.71, 76.93, 106.5, "18:00 - 19:00"], [64.38, 106.5, 76.93, 108.29, "19:00 - 20:00"],
+      [76.93, 101.09, 116.83, 104.71, "MN (L)\nCristian Pop Orologerie 408 (etaj IV)"],
+      [116.83, 104.71, 156.64, 106.5, "MN (L)"], [116.83, 106.5, 156.64, 108.29, "Cristian Pop Orologerie 408 (etaj IV)"],
+      [156.64, 104.71, 175.98, 108.29, "MN (L)\nCristian Pop"], [175.98, 104.71, 196.49, 108.29, "Orologerie 408 (etaj IV)"],
+      // A lecturer alone under the lab, a stray mark, and a lab whose bracket fell into the next cell.
+      [76.93, 104.71, 96.3, 106.5, "DA (L) Lab AR"], [76.93, 106.5, 96.3, 108.29, "D Ostoia"],
+      [96.3, 104.71, 116.83, 106.5, "`"], [96.3, 106.5, 116.83, 108.29, "Fizica (L"],
+    ];
+    const table = readPrintedTable(cells, "Anul II", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Inginerie mecanică", degree: "bachelor" }, year: 2, series: "", name: labels[0],
+    })));
+    const seen = table.entries.map((e) => `${table.groups[e.groups[0]].name} ${e.startMin / 60}-${e.endMin / 60} ${e.weeks} ${e.kind} ${e.courseName} @${e.room ?? "-"} ${e.teacher ?? "-"}`).sort();
+    expect(seen).toEqual([
+      "sgr. 1 16-18 all lab MN @Orologerie 408 Cristian Pop",
+      "sgr. 1 18-20 odd lab DA @- Lab AR D Ostoia",
+      "sgr. 1 19-20 even lab Fizica @- -",
+      "sgr. 2 18-20 all lab MN @Orologerie 408 Cristian Pop",
+      "sgr. 3 18-20 all lab MN @Orologerie 408 Cristian Pop",
+    ]);
+  });
+
   it("gives a class written in half of its row the whole row", () => {
     // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
     // box covers the lower half of the row only (coordinates as read from the published PDF).

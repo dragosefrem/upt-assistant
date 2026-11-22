@@ -13,6 +13,18 @@ export interface PrintedColumn {
 
 const roomOnly = /^(?:sal[aă]\s+[\p{L}\d .-]{1,14}|(?:[A-Z]{1,3}\s?-?\d{2,4}[a-z]?|\d{2,4}[A-Z]{1,3}|Ca\d+|NM|PN|V[Vv]))$/u;
 const staffTitle = /(?:\b(?:asist|prof|conf|lect)\s*\.|[sșş](?:ef\s+lucr|\s*\.\s*l)\.)/i;
+/** A lecturer alone on a line, as an initial and a surname: "C Turc", "D. Ostoia". */
+const teacherLine = /^\p{Lu}\.?\s+\p{Lu}\p{Ll}+(?:[-\s]\p{Lu}\p{Ll}+)?$/u;
+
+/**
+ * What is typed in a box, without the marks that spill over from the neighbouring cell of a
+ * diagonal split: a lone ")" or "`" on its own line, and "Fizica (L" that lost its bracket.
+ */
+function boxText(text: string): string {
+  const lines = text.split("\n").filter((line) => /[\p{L}\d]/u.test(line));
+  return lines.join("\n").replace(/\(\s*([CSLP])\s*$/i, "($1)");
+}
+
 const continuation = /^(?:(?:\([CSLP]\)\s*)?(?:s[aă]pt\w*\.?\s*(?:\d+\s*[-–]\s*\d+|imp\w*|par\w*)|\([CSLP]\))\s*$|(?:asist|prof|conf|lect)\.|[sșş]ef\s+lucr)/i;
 
 /**
@@ -154,28 +166,50 @@ export function readPrintedTable(
     return { ...c, id: groupIds.get(key)! };
   });
   const dayAt = (y: number) => clocks[0].find((r) => r.box[1] <= y && y < r.box[3])?.day;
+  /** Every box as it is printed in one piece somewhere on the page. */
+  const whole = new Set(cells.map((c) => squash(boxText(c[4]))));
   const aligned = new Map<string, Box>();
   const blocks: Box[] = [];
+  /** Where the first box of a class ended, before the lines below were joined to it. */
+  const heads = new Map<Box, number>();
   const detailCell = (text: string) => roomOnly.test(text) || !!options.isDetail?.(text);
   for (const b of cells.filter((b) => b[1] >= first && indexed.some((c) => c.left < b[2] && c.right > b[0]))
     .sort((a, b) => a[1] - b[1])) {
     const key = b[0] + "|" + b[2];
     const above = aligned.get(key);
+    b[4] = boxText(b[4]);
     const raw = squash(b[4]);
+    if (!raw) continue;
+    // A class cut in two by a line the printout does not have: "DA (L) Lab AR" over
+    // "D Ostoia" where the next group's cell reads "DA (L) Lab AR / D Ostoia" in one piece.
+    const restOfAbove = !!above && !hasKindMarker(raw) && hasKindMarker(above[4]) &&
+      (whole.has(squash(above[4] + " " + raw)) || teacherLine.test(raw));
     // The room of a lecture for the whole series is boxed at the end of its row, in the last
     // group's column. It belongs to that lecture, not to the class above it in the column.
     const besideLecture = detailCell(raw) && cells.some((left) => Math.abs(left[2] - b[0]) < 0.05 &&
       Math.abs(left[1] - b[1]) < 0.05 && Math.abs(left[3] - b[3]) < 0.05 && left[2] - left[0] > (b[2] - b[0]) * 1.5 &&
       !detailCell(squash(left[4])) && !parseTimeRange(left[4]) && !dayOf(left[4]));
-    if (above && !besideLecture && (continuation.test(raw) || detailCell(raw)) && Math.abs(above[3] - b[1]) < 0.05
+    if (above && !besideLecture && (continuation.test(raw) || detailCell(raw) || restOfAbove) && Math.abs(above[3] - b[1]) < 0.05
       && dayAt((above[1] + above[3]) / 2) === dayAt((b[1] + b[3]) / 2)
       && !parseTimeRange(above[4]) && !dayOf(above[4]) && !detailCell(squash(above[4]))) {
+      if (!heads.has(above)) heads.set(above, above[3]);
       above[4] += "\n" + b[4];
       above[3] = b[3];
     } else {
       const copy: Box = [...b];
       blocks.push(copy);
       aligned.set(key, copy);
+    }
+  }
+  // The same from left to right: a class held every week is one cell over the odd and the even
+  // column, and its text comes back cut at the line between them ("MN (L) Cristian Pop" and
+  // "Orologerie 408 (etaj IV)"). Read apart, the room became a class of the even weeks.
+  for (const b of [...blocks]) {
+    const right = blocks.find((r) => r !== b && Math.abs(r[0] - b[2]) < 0.05 && Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
+    if (right && hasKindMarker(b[4]) && !hasKindMarker(right[4]) && whole.has(squash(b[4] + " " + right[4]))) {
+      b[2] = right[2];
+      b[4] += "\n" + right[4];
+      blocks.splice(blocks.indexOf(right), 1);
     }
   }
   // MEC prints two hours per clock label. A change between two full-cohort
@@ -201,7 +235,7 @@ export function readPrintedTable(
   }
   for (const b of blocks) {
     const raw = squash(b[4]);
-    if (parseTimeRange(raw) || dayOf(raw) || /^[-–—.\s]+$/.test(raw) || detailCell(raw) || continuation.test(raw)) continue;
+    if (parseTimeRange(raw) || dayOf(raw) || !/\p{L}/u.test(raw) || detailCell(raw) || continuation.test(raw)) continue;
     const adjoiningRoom = cells.find((r) => roomOnly.test(squash(r[4])) && Math.abs(r[0] - b[2]) < 0.05 &&
       Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
     const covered = indexed.filter((c) => Math.min(c.right, adjoiningRoom?.[2] ?? b[2]) - Math.max(c.left, b[0]) > 0.1);
@@ -226,9 +260,15 @@ export function readPrintedTable(
     // That holds for a class that runs from one row into another. A box that lies inside a
     // single row is the written half of a cell split by a diagonal: the class lasts the whole row.
     const inOneRow = clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && b[3] <= box[3] + 0.05);
+    // Mecanică's rows are not drawn to scale: there, a class put together from two boxes whose
+    // first line sat inside one row starts with that row ("GDDT (L) Farkas A." written
+    // half-way down 18-20, with its room in 20-21). Construcții does draw to scale: a title in
+    // the lower half of 14-16 with its room in the upper half of 16-18 is a class from 15 to 17.
+    const head = options.splitSharedHours ? heads.get(b) : undefined;
+    const headInRow = head !== undefined && clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && head <= box[3] + 0.05);
     const slot = inOneRow
       ? { startMin: start.time.startMin, endMin: end.time.endMin }
-      : { startMin: hourAt(b[1], start.time.startMin), endMin: hourAt(b[3], end.time.endMin) };
+      : { startMin: headInRow ? start.time.startMin : hourAt(b[1], start.time.startMin), endMin: hourAt(b[3], end.time.endMin) };
     if (slot.endMin <= slot.startMin) { slot.startMin = start.time.startMin; slot.endMin = end.time.endMin; }
     const roomCell = adjoiningRoom ?? cells.find((other) => roomOnly.test(squash(other[4])) &&
       Math.abs(other[1] - b[3]) < 0.05 && Math.abs(other[0] - b[0]) < 0.05 &&
