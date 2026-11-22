@@ -132,8 +132,8 @@ Registration and password resets share an e-mail sender. See `.env.example` for 
 | --- | --- |
 | `GEMINI_API_KEY`, `GEMINI_MODEL` | Connects the assistant to Gemini (default model `gemini-4-hydrogen`). Takes precedence over Claude. |
 | `ANTHROPIC_API_KEY` | Connects the assistant to Claude instead. Without either key a built-in keyword assistant answers the common questions. |
-| `RESEND_API_KEY`, `VERIFICATION_EMAIL_FROM` | Sends registration and password-reset links over HTTPS. Use a send-only key and a sender on its verified domain. |
-| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Sends calendar exports. Also sends account links when the Resend key is unset. |
+| `RESEND_API_KEY`, `VERIFICATION_EMAIL_FROM` | Sends registration links, password resets, and calendar attachments over HTTPS. Use a send-only key and a sender on its verified domain. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` | Optional SMTP mailbox. Calendar exports prefer it when fully configured. Account links use it when the Resend key is unset. |
 | `APP_URL` | Public address for e-mailed links. Railway defaults to its assigned HTTPS domain. Other production hosts must set this explicitly for account links. |
 | `CAMPUSPATH_URL`, `CAMPUSPATH_PORT`, `CAMPUSPATH_PYTHON` | Campus walkthroughs. By default the app starts `services/campuspath` itself on port 8765 with `services/campuspath/.venv`; set `CAMPUSPATH_URL` to use a service you run yourself. |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google Calendar OAuth web client. Enable the Google Calendar API and register `<APP_URL>/api/google/callback` as an authorized redirect URI. |
@@ -143,7 +143,7 @@ Registration and password resets share an e-mail sender. See `.env.example` for 
 | `DATABASE_PATH` | Where the SQLite file lives (default `data/upt.db`). |
 | `TIMETABLE_PYTHON` | Python executable with pdfplumber installed. Defaults to the project's virtual environment, then to `python3`. |
 
-**E-mail.** Any mailbox that allows SMTP works. With Gmail: turn on 2-Step
+**E-mail.** A configured Resend sender can deliver all three types of message. To use Gmail for SMTP, turn on 2-Step
 Verification, create an app password at <https://myaccount.google.com/apppasswords>,
 then set `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=587`, `SMTP_USER` to the address and
 `SMTP_PASS` to the app password. Each account can send its calendar once a minute and

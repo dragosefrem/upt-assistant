@@ -106,7 +106,7 @@ export default async function SettingsPage({ searchParams }: PageProps<"/setting
       <section id="export" className="card scroll-mt-20 p-6">
         <h2 className="mb-4 text-base font-semibold">{s.export.title}</h2>
         <ExportPanel
-          mailConfigured={mailConfigured()}
+          mailConfigured={mailConfigured("calendar")}
           defaultEmail={user.exportEmail ?? user.email}
           googleConfigured={googleConfigured()}
           connected={!!user.googleRefreshToken}

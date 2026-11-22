@@ -31,6 +31,6 @@ Set `GEMINI_API_KEY` on `web` to enable Gemini. After deployment, a signed-in `G
 
 ## Registration and password-reset e-mails
 
-Set `RESEND_API_KEY` to a sending-only key and `VERIFICATION_EMAIL_FROM` to a sender on its verified domain, such as `Poli <verify@mail.example.org>`. Poli uses that sender for registration and password resets over HTTPS. On Railway plans that support SMTP, an SMTP mailbox can send account links when `RESEND_API_KEY` is unset. Calendar exports use SMTP. [Railway outbound networking](https://docs.railway.com/networking/outbound-networking#email-delivery)
+Set `RESEND_API_KEY` to a sending-only key and `VERIFICATION_EMAIL_FROM` to a sender on its verified domain, such as `Poli <verify@mail.example.org>`. Poli uses that sender for registration, password resets, and calendar attachments over HTTPS. On Railway plans that support SMTP, a fully configured SMTP mailbox takes priority for calendar exports and sends account links when `RESEND_API_KEY` is unset. [Railway outbound networking](https://docs.railway.com/networking/outbound-networking#email-delivery)
 
 Verification links use `APP_URL` or Railway’s public HTTPS domain. Their token hashes are stored in SQLite on the existing `/data` volume, so a link can be opened after a restart. Check delivery with a mailbox you control. Opening the link should show the account form. Submitting it should open onboarding, and reopening the same link should offer a new one.

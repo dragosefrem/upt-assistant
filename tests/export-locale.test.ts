@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
 import nodemailer from "nodemailer";
 import { getDb } from "@/db";
@@ -9,7 +9,9 @@ import { syncToGoogle } from "@/lib/google";
 import { calendarEmail, emailCalendar } from "@/lib/export-email";
 import { renewCalendarLink } from "@/app/(app)/settings/actions";
 import { GET as calendarFeed } from "@/app/api/ics/[token]/route";
-import { requireOnboardedUser } from "@/lib/auth";
+import { POST as emailExport } from "@/app/api/export/email/route";
+import { getUser, requireOnboardedUser } from "@/lib/auth";
+import { mailConfigured } from "@/lib/mail";
 import { messages } from "@/i18n/messages";
 
 vi.mock("@/lib/auth", { spy: true });
@@ -50,6 +52,74 @@ beforeAll(() => {
     .values({ id: "u1", email: "s@example.com", name: "S", passwordHash: "x", feedToken: "t", facultyId: faculty.id, specializationId: spec.id, year: 1, groupId })
     .returning()
     .get();
+});
+
+describe("calendar email delivery", () => {
+  const deliver = vi.fn<typeof fetch>();
+  let account: User;
+
+  beforeEach(() => {
+    vi.stubEnv("SMTP_HOST", "");
+    vi.stubEnv("RESEND_API_KEY", "test-sending-key");
+    vi.stubEnv("VERIFICATION_EMAIL_FROM", "Poli <sender@example.org>");
+    vi.stubEnv("APP_URL", "https://poli.example.org");
+    vi.stubGlobal("fetch", deliver.mockReset().mockResolvedValue(Response.json({ id: "test-message" })));
+    account = getDb().update(users).set({ locale: "ro", exportEmail: null, calendarEmailedAt: null })
+      .where(eq(users.id, user.id)).returning().get();
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it("enables the settings form and delivers its Romanian calendar attachment with only Resend configured", async () => {
+    expect(mailConfigured("calendar")).toBe(true);
+    vi.mocked(getUser).mockResolvedValueOnce(account);
+    const response = await emailExport(new Request("https://poli.example.org/api/export/email", {
+      method: "POST", body: JSON.stringify({ email: "friend@example.org" }),
+    }));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ sentTo: "friend@example.org" });
+    const [url, request] = deliver.mock.calls[0];
+    expect(url).toBe("https://api.resend.com/emails");
+    expect(request?.headers).toMatchObject({ Authorization: "Bearer test-sending-key", "Idempotency-Key": expect.stringMatching(/^calendar\//) });
+    const message = JSON.parse(String(request?.body));
+    expect(message).toMatchObject({ from: "Poli <sender@example.org>", to: "friend@example.org", subject: messages.ro.settings.mail.subject });
+    expect(message.text).not.toContain("/api/ics/");
+    expect(message.attachments).toHaveLength(1);
+    expect(message.attachments[0]).toMatchObject({ filename: "poli.ics", content_type: "text/calendar" });
+    const ics = Buffer.from(message.attachments[0].content, "base64").toString("utf8");
+    expect(ics).toContain("BEGIN:VCALENDAR\r\n");
+    expect(ics).toContain("Matematică (Curs)");
+    expect(ics).toContain("END:VCALENDAR");
+    expect(await emailCalendar(account)).toMatchObject({ ok: false, status: 429 });
+    expect(deliver).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases a failed HTTPS send and includes the private link on a successful retry to the owner", async () => {
+    deliver.mockResolvedValueOnce(new Response(null, { status: 503 }));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(await emailCalendar(account, "friend@example.org")).toMatchObject({ ok: false, status: 502 });
+    expect(getDb().select().from(users).where(eq(users.id, account.id)).get())
+      .toMatchObject({ exportEmail: null, calendarEmailedAt: null });
+    expect(await emailCalendar(account)).toEqual({ ok: true, sentTo: account.email });
+    const message = JSON.parse(String(deliver.mock.calls[1][1]?.body));
+    expect(message.text).toContain("https://poli.example.org/api/ics/" + account.feedToken + ".ics");
+  });
+
+  it("keeps an explicitly configured SMTP calendar sender when both providers are available", async () => {
+    vi.stubEnv("SMTP_HOST", "smtp.example.org");
+    vi.stubEnv("SMTP_USER", "calendar@example.org");
+    vi.stubEnv("SMTP_PASS", "test-password");
+    const transport = nodemailer.createTransport({ jsonTransport: true });
+    const send = vi.spyOn(transport, "sendMail");
+    vi.spyOn(nodemailer, "createTransport").mockReturnValue(transport);
+    expect(await emailCalendar(account)).toEqual({ ok: true, sentTo: account.email });
+    expect(send).toHaveBeenCalledOnce();
+    expect(deliver).not.toHaveBeenCalled();
+  });
 });
 
 describe("calendar export language", () => {

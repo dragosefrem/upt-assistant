@@ -1,14 +1,26 @@
 import "server-only";
-import nodemailer, { type SendMailOptions, type Transporter } from "nodemailer";
+import nodemailer, { type Transporter } from "nodemailer";
 
-/**
- * Outgoing e-mail over SMTP. Any mailbox that allows SMTP works: a Gmail or Outlook
- * account with an app password, or a sending service. Configured with SMTP_HOST,
- * SMTP_PORT, SMTP_USER, SMTP_PASS and optionally MAIL_FROM.
- */
+type MailPurpose = "account" | "calendar";
 
-export function mailConfigured(): boolean {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+interface MailMessage {
+  to: string;
+  subject: string;
+  text: string;
+  html?: string;
+  attachments?: { filename: string; content: string; contentType: string }[];
+}
+
+function mailProvider(purpose: MailPurpose) {
+  const smtpReady = Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  // Installations with a dedicated SMTP calendar sender keep using it.
+  if (purpose === "calendar" && smtpReady) return "smtp";
+  if (process.env.RESEND_API_KEY) return process.env.VERIFICATION_EMAIL_FROM?.trim() ? "resend" : null;
+  return smtpReady ? "smtp" : null;
+}
+
+export function mailConfigured(purpose: MailPurpose): boolean {
+  return mailProvider(purpose) !== null;
 }
 
 /** In production, links only use the operator's URL or Railway's assigned public domain. */
@@ -31,29 +43,35 @@ export function accountEmailBaseUrl(headers: Pick<Headers, "get">): string | nul
   return null;
 }
 
-/** Registration and password resets share one sender. */
-export function accountMailConfigured(): boolean {
-  return process.env.RESEND_API_KEY ? Boolean(process.env.VERIFICATION_EMAIL_FROM?.trim()) : mailConfigured();
-}
-
-export async function sendAccountMail(
-  message: { to: string; subject: string; text: string; html?: string },
+export async function sendMail(
+  purpose: MailPurpose,
+  message: MailMessage,
   idempotencyKey: string,
   transport?: Transporter,
 ) {
-  const key = process.env.RESEND_API_KEY;
-  if (transport || !key) {
-    await sendMail(message, transport);
+  const provider = mailProvider(purpose);
+  if (transport || provider === "smtp") {
+    await (transport ?? smtpTransport()).sendMail({ from: mailFrom(), ...message });
     return;
   }
+  if (provider !== "resend") throw new Error("E-mail delivery is not configured");
+  const { attachments, ...body } = message;
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${key}`,
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
       "Idempotency-Key": idempotencyKey,
     },
-    body: JSON.stringify({ from: process.env.VERIFICATION_EMAIL_FROM, ...message }),
+    body: JSON.stringify({
+      from: process.env.VERIFICATION_EMAIL_FROM?.trim(),
+      ...body,
+      attachments: attachments?.map(({ filename, content, contentType }) => ({
+        filename,
+        content: Buffer.from(content, "utf8").toString("base64"),
+        content_type: contentType.split(";", 1)[0],
+      })),
+    }),
     redirect: "error",
     signal: AbortSignal.timeout(12_000),
   });
@@ -79,12 +97,7 @@ function smtpTransport(): Transporter {
   return smtp;
 }
 
-export function mailFrom(): string {
+function mailFrom(): string {
   if (process.env.MAIL_FROM) return process.env.MAIL_FROM;
   return process.env.SMTP_USER ? `Poli <${process.env.SMTP_USER}>` : "Poli <no-reply@localhost>";
-}
-
-/** Sends one message; `transport` replaces SMTP in tests. */
-export async function sendMail(message: SendMailOptions, transport: Transporter = smtpTransport()) {
-  return transport.sendMail({ from: mailFrom(), ...message });
 }

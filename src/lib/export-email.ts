@@ -67,7 +67,7 @@ export async function emailCalendar(
   { rememberAddress = true }: { rememberAddress?: boolean } = {},
 ): Promise<EmailCalendarResult> {
   const t = settings[locale].export.errors;
-  if (!transport && !mailConfigured()) {
+  if (!transport && !mailConfigured("calendar")) {
     return { ok: false, status: 503, error: t.mailNotConfigured };
   }
   const address = (to ?? user.exportEmail ?? user.email).trim();
@@ -101,7 +101,7 @@ export async function emailCalendar(
     locale,
   });
   try {
-    await sendMail({ to: address, ...message }, transport);
+    await sendMail("calendar", { to: address, ...message }, `calendar/${user.id}/${claimedAt}`, transport);
   } catch (err) {
     // Give the slot back, so the student can retry once the problem is fixed.
     db.update(users).set({ calendarEmailedAt: previous }).where(and(eq(users.id, user.id), eq(users.calendarEmailedAt, claimedAt))).run();
