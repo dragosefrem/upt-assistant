@@ -171,6 +171,7 @@ const en = {
     map: "Map",
     walkthrough: "Show me the way",
     approximate: "position approximate",
+    guessed: "The timetable does not say which building these rooms are in. Your faculty’s building is a guess: check before you go.",
   },
   entries: [
     { id: "an", term: "An", short: "Year of study.", body: "Engineering bachelor's programmes at UPT last four years. Your year decides which timetable is yours; first-year students are “anul 1”.", also: ["anul", "year", "an de studiu"] },
@@ -345,6 +346,7 @@ const ro: typeof en = {
     map: "Hartă",
     walkthrough: "Arată-mi drumul",
     approximate: "poziție aproximativă",
+    guessed: "Orarul nu spune în ce clădire sunt sălile acestea. Clădirea facultății tale e o presupunere: verifică înainte să pleci.",
   },
   entries: [
     { id: "an", term: "An", short: "Anul de studiu.", body: "Programele de licență în inginerie de la UPT durează patru ani. Anul tău stabilește care orar e al tău; bobocii sunt „anul 1”.", also: ["anul", "year", "an de studiu"] },

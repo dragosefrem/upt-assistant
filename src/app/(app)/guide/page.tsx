@@ -214,9 +214,10 @@ export default async function GuidePage() {
         {buildings.length ? (
           <ul className="mt-4 grid gap-3 md:grid-cols-2">
             {buildings.map((b) => (
-              <li key={b.name} className="rounded-2xl border border-slate-200 p-4">
-                <p className="text-sm font-semibold text-slate-900">{b.name}</p>
-                {b.address && <p className="text-sm text-slate-600">{b.address}{b.approximate ? ` · ${t.buildings.approximate}` : ""}</p>}
+              <li key={`${b.name}|${b.guessed}`} className="rounded-2xl border border-slate-200 p-4">
+                <p className="text-sm font-semibold text-slate-900">{b.guessed ? messages.campus.rooms.approximate(b.name) : b.name}</p>
+                {b.address && <p className="text-sm text-slate-600">{b.address}{b.approximate && !b.guessed ? ` · ${t.buildings.approximate}` : ""}</p>}
+                {b.guessed && <p className="mt-1 text-xs text-slate-500">{t.buildings.guessed}</p>}
                 <p className="mt-2 text-xs text-slate-500">{b.courses.join(" · ")}</p>
                 <p className="mt-2 flex flex-wrap gap-1.5">
                   {b.rooms.map((room) => (
