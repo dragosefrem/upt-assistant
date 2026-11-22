@@ -1,12 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { entries, entryGroups, occurrenceOverrides, personalEvents, userOverrides } from "@/db/schema";
+import { occurrenceOverrides, personalEvents, userOverrides } from "@/db/schema";
 import { getT } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
 import { queueGoogleSync } from "@/lib/google-worker";
 import { resetGoogleClass } from "@/lib/google-schedule";
 import { editedInterval, personalTimes } from "@/lib/calendar-timing";
+import { studentOwnsEntry } from "@/lib/schedule";
 import { respondToSponsoredEvent } from "@/lib/sponsored-events";
 import { setUptSubscription } from "@/lib/upt-events";
 
@@ -51,15 +52,8 @@ export async function POST(request: Request) {
   const body = parsed.data;
   const db = getDb();
 
-  // Overrides may only target entries of the student's own group.
-  const ownsEntry = (entryId: number) =>
-    !!user.groupId &&
-    !!db
-      .select({ id: entries.id })
-      .from(entryGroups)
-      .innerJoin(entries, eq(entries.id, entryGroups.entryId))
-      .where(and(eq(entryGroups.entryId, entryId), eq(entryGroups.groupId, user.groupId)))
-      .get();
+  // Overrides may only target entries of the student's own group or of a course they added.
+  const ownsEntry = (entryId: number) => studentOwnsEntry(user, entryId);
 
   switch (body.action) {
     case "uptSubscription":

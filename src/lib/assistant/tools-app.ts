@@ -32,8 +32,11 @@ export const PAGES: Record<string, string> = {
   campus: "/campus",
   guide: "/guide",
   settings: "/settings",
-  course_choices: "/settings#courses",
-  calendar_export: "/settings#export",
+  timetable_settings: "/timetable-settings",
+  course_choices: "/timetable-settings#courses",
+  extra_course: "/timetable-settings#extra",
+  calendar_export: "/timetable-settings#export",
+  calendar_sharing: "/timetable-settings#privacy",
 };
 
 export const APP_TOOLS: AssistantTool[] = [
@@ -221,7 +224,7 @@ export const APP_TOOLS: AssistantTool[] = [
   {
     name: "open_page",
     description:
-      "Opens a page of the app for the student when they ask to go somewhere (\"open my attendance\", \"take me to settings\"): calendar, exams, attendance, contacts, plan_group_event (find a common free time and book it), campus (walkthroughs to rooms), guide (first-week guide and glossary), settings, course_choices, calendar_export.",
+      "Opens a page of the app for the student when they ask to go somewhere (\"open my attendance\", \"take me to settings\"): calendar, exams, attendance, contacts, plan_group_event (find a common free time and book it), campus (walkthroughs to rooms), guide (first-week guide and glossary), settings (profile and language), timetable_settings (check the courses, seminars and labs in the timetable), course_choices, extra_course (add a course taught to another group, such as a retake), calendar_export (Google Calendar sync and calendar file), calendar_sharing (what contacts see of the student's calendar).",
     input_schema: { type: "object", properties: { page: { type: "string", enum: Object.keys(PAGES) } }, required: ["page"] },
     run(input, ctx) {
       const href = typeof input.page === "string" ? PAGES[input.page] : undefined;
@@ -359,7 +362,7 @@ export const APP_TOOLS: AssistantTool[] = [
       if (input.confirmed !== true) return { needs_confirmation: "Replace the private feed address and invalidate the old subscriptions?" };
       rotateCalendarFeed(ctx.user.id);
       ctx.changed = true;
-      addLink(ctx, settings[ctx.locale ?? "en"].export.file.title, "/settings#export");
+      addLink(ctx, settings[ctx.locale ?? "en"].export.file.title, "/timetable-settings#export");
       return { renewed: true, note: "The new link is ready in Settings." };
     },
   },
@@ -374,9 +377,9 @@ export const APP_TOOLS: AssistantTool[] = [
       const configured = googleConfigured();
       const connected = !!user.googleRefreshToken;
       const t = settings[ctx.locale ?? user.locale ?? "en"].export.google;
-      if (input.action === "status") return { configured, connected, direction: googleSyncMode(user.id), last_sync: user.googleSyncedAt, settings: "/settings#export" };
+      if (input.action === "status") return { configured, connected, direction: googleSyncMode(user.id), last_sync: user.googleSyncedAt, settings: "/timetable-settings#export" };
       if (input.action === "connect" && configured) {
-        addLink(ctx, t.connect, "/settings#export");
+        addLink(ctx, t.connect, "/timetable-settings#export");
         return { note: "Choose one-way or two-way sync in Settings, then connect Google Calendar." };
       }
       if (!connected) return { error: configured ? t.notConnected : "Google Calendar is not configured." };
@@ -406,7 +409,7 @@ export const APP_TOOLS: AssistantTool[] = [
       addLink(ctx, t.download, `${path}?download`);
       return base
         ? { subscription_link: `${base}${path}`, how: "Google Calendar: Other calendars → From URL. Apple Calendar: File → New Calendar Subscription. Outlook: Add calendar → Subscribe from web." }
-        : { note: "This server has no public address, so a subscription link would not work from outside. The student can download the file or copy the link under Settings → Calendar sync and export.", page: "calendar_export" };
+        : { note: "This server has no public address, so a subscription link would not work from outside. The student can download the file or copy the link under Timetable settings → Calendar sync and export.", page: "calendar_export" };
     },
   },
 ];

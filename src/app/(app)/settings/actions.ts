@@ -12,15 +12,30 @@ export async function setContactSharing(form: FormData) {
   const mode = form.get("sharing");
   if (mode !== "details" && mode !== "availability") return;
   getDb().update(users).set({ shareActivityDetails: mode === "details" }).where(eq(users.id, user.id)).run();
+  revalidateSharing(user.id);
+}
+
+/** Whether contacts see the titles of personal events ("details") or only that the student is busy. */
+export async function setPrivateSharing(form: FormData) {
+  const user = await requireOnboardedUser();
+  const mode = form.get("private");
+  if (mode !== "details" && mode !== "busy") return;
+  getDb().update(users).set({ sharePrivateDetails: mode === "details" }).where(eq(users.id, user.id)).run();
+  revalidateSharing(user.id);
+}
+
+function revalidateSharing(userId: string) {
   revalidatePath("/settings");
+  revalidatePath("/timetable-settings");
   revalidatePath("/contacts");
-  revalidatePath(`/contacts/${user.id}/schedule`);
+  revalidatePath(`/contacts/${userId}/schedule`);
 }
 
 export async function renewCalendarLink() {
   const user = await requireOnboardedUser();
   rotateCalendarFeed(user.id);
   revalidatePath("/settings");
+  revalidatePath("/timetable-settings");
   return true;
 }
 
@@ -29,4 +44,5 @@ export async function restoreHiddenClass(entryId: number) {
   unhideClass(user.id, entryId);
   revalidatePath("/");
   revalidatePath("/settings");
+  revalidatePath("/timetable-settings");
 }

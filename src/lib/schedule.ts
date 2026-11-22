@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import {
   attendance,
@@ -18,11 +18,13 @@ import {
   sponsoredEvents,
   sponsoredResponses,
   userCourses,
+  userExtraCourses,
   userOverrides,
   type AttendanceStatus,
   type EntryKind,
 } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
+import { stripDiacritics } from "@/scraper/text";
 import { common } from "@/i18n/messages/common";
 import { calendar as calendarMessages } from "@/i18n/messages/calendar";
 import { sponsoredNote } from "@/i18n/messages/sponsored";
@@ -186,10 +188,16 @@ export interface CourseChoice {
   slots: Array<{ entryId: number; kind: EntryKind; day: number; startMin: number; endMin: number; room: string | null }>;
   chosenSlotId: number | null;
   fixedCount: number;
+  /** Set for a course the student added from another group's timetable: the group they follow. */
+  extraGroupId: number | null;
 }
 
+type GroupRow = { entry: typeof entries.$inferSelect; course: typeof courses.$inferSelect };
+/** A timetable row the student follows; `extraGroupId` marks a course added from another group. */
+type StudentRow = GroupRow & { extraGroupId?: number };
+
 interface GroupData {
-  rows: Array<{ entry: typeof entries.$inferSelect; course: typeof courses.$inferSelect }>;
+  rows: GroupRow[];
 }
 
 function loadGroup(groupId: number, semesterId: number): GroupData {
@@ -201,6 +209,45 @@ function loadGroup(groupId: number, semesterId: number): GroupData {
     .where(and(eq(entryGroups.groupId, groupId), eq(entries.semesterId, semesterId)))
     .all();
   return { rows };
+}
+
+/** Sessions of the courses a student added from other groups, in the group they chose to follow. */
+function loadExtras(userId: string, semesterId: number): StudentRow[] {
+  return getDb()
+    .select({ entry: entries, course: courses, extraGroupId: userExtraCourses.groupId })
+    .from(userExtraCourses)
+    .innerJoin(entryGroups, eq(entryGroups.groupId, userExtraCourses.groupId))
+    .innerJoin(entries, and(eq(entries.id, entryGroups.entryId), eq(entries.courseId, userExtraCourses.courseId)))
+    .innerJoin(courses, eq(courses.id, entries.courseId))
+    .where(and(eq(userExtraCourses.userId, userId), eq(entries.semesterId, semesterId)))
+    .all();
+}
+
+/** The group's timetable plus the student's extra courses. A course already in the group's timetable is not added twice. */
+function loadStudent(user: Pick<User, "id" | "groupId">, semesterId: number): StudentRow[] {
+  if (!user.groupId) return [];
+  const own: StudentRow[] = loadGroup(user.groupId, semesterId).rows;
+  const ownCourses = new Set(own.map((r) => r.course.id));
+  const seen = new Set<number>();
+  const extras = loadExtras(user.id, semesterId).filter((r) => {
+    if (ownCourses.has(r.course.id) || seen.has(r.entry.id)) return false;
+    seen.add(r.entry.id);
+    return true;
+  });
+  return [...own, ...extras];
+}
+
+/** Whether a timetable entry belongs to the student's group or to one of their extra courses. */
+export function studentOwnsEntry(user: Pick<User, "id" | "groupId">, entryId: number): boolean {
+  if (!user.groupId) return false;
+  const db = getDb();
+  const own = db.select({ id: entryGroups.entryId }).from(entryGroups)
+    .where(and(eq(entryGroups.entryId, entryId), eq(entryGroups.groupId, user.groupId))).get();
+  if (own) return true;
+  return !!db.select({ id: entries.id }).from(userExtraCourses)
+    .innerJoin(entryGroups, eq(entryGroups.groupId, userExtraCourses.groupId))
+    .innerJoin(entries, and(eq(entries.id, entryGroups.entryId), eq(entries.courseId, userExtraCourses.courseId)))
+    .where(and(eq(userExtraCourses.userId, user.id), eq(entries.id, entryId))).get();
 }
 
 /** Electives start in year 3 of a bachelor's programme (and run through master's). */
@@ -215,27 +262,29 @@ const ELECTIVES_FROM_YEAR = 3;
  */
 export function courseChoices(user: Pick<User, "id" | "groupId" | "year">, semester: Semester): CourseChoice[] {
   if (!user.groupId) return [];
-  const { rows } = loadGroup(user.groupId, semester.id);
+  const rows = loadStudent(user, semester.id);
   const picks = new Map(
     getDb().select().from(userCourses).where(eq(userCourses.userId, user.id)).all().map((p) => [p.courseId, p]),
   );
   const byCourse = new Map<number, CourseChoice>();
-  const required = new Set(rows.filter((r) => !r.entry.publishedOptional).map((r) => r.course.id));
-  for (const { entry, course } of rows) {
+  const required = new Set(rows.filter((r) => !r.extraGroupId && !r.entry.publishedOptional).map((r) => r.course.id));
+  for (const { entry, course, extraGroupId } of rows) {
     let c = byCourse.get(course.id);
     if (!c) {
       const pick = picks.get(course.id);
-      const optional = course.isOptional || !required.has(course.id);
+      // The student added an extra course on purpose: it counts as followed until they untick it.
+      const optional = !extraGroupId && (course.isOptional || !required.has(course.id));
       c = {
         courseId: course.id,
         name: course.name,
         abbr: course.abbreviation,
         isOptional: optional,
-        selectable: optional || (user.year ?? 0) >= ELECTIVES_FROM_YEAR,
+        selectable: optional || !!extraGroupId || (user.year ?? 0) >= ELECTIVES_FROM_YEAR,
         enrolled: pick ? pick.enrolled : !optional,
         slots: [],
         chosenSlotId: pick?.slotEntryId ?? null,
         fixedCount: 0,
+        extraGroupId: extraGroupId ?? null,
       };
       byCourse.set(course.id, c);
     }
@@ -253,7 +302,7 @@ export function courseChoices(user: Pick<User, "id" | "groupId" | "year">, semes
 /** The student's effective weekly timetable after choices and personal overrides. */
 export function studentWeek(user: Pick<User, "id" | "groupId" | "year">, semester: Semester): WeekEntry[] {
   if (!user.groupId) return [];
-  const { rows } = loadGroup(user.groupId, semester.id);
+  const rows = loadStudent(user, semester.id);
   const choices = new Map(courseChoices(user, semester).map((c) => [c.courseId, c]));
   const overrides = new Map(
     getDb().select().from(userOverrides).where(eq(userOverrides.userId, user.id)).all().map((o) => [o.entryId, o]),
@@ -748,4 +797,182 @@ export function unhideClass(userId: string, entryId: number) {
   const ownClass = and(eq(userOverrides.userId, userId), eq(userOverrides.entryId, entryId), eq(userOverrides.hidden, true));
   const restored = resetGoogleClass(userId, entryId, true);
   return getDb().update(userOverrides).set({ hidden: false, updatedAt: new Date().toISOString() }).where(ownClass).run().changes > 0 || restored;
+}
+
+/* ───────────────────────────── Timetable review ───────────────────────────── */
+
+export interface ReviewActivity {
+  entryId: number;
+  kind: EntryKind;
+  day: number;
+  startMin: number;
+  endMin: number;
+  weeks: string;
+  room: string | null;
+  teacher: string | null;
+  /** The student took it out of their timetable (here, in the calendar, or by deleting it in Google). */
+  hidden: boolean;
+  /** Where the student moved it every week, when they did. */
+  moved: { day: number; startMin: number; endMin: number; room: string | null } | null;
+}
+
+export type ReviewCourse = CourseChoice & {
+  /** The sessions every student of the group attends (alternative slots are in `slots`). */
+  activities: ReviewActivity[];
+  /** For an extra course: the group whose sessions the student follows. */
+  extraGroup: { groupId: number; label: string; specialization: string; year: number } | null;
+};
+
+/** Every course in the student's timetable with all its sessions, for the student to check and correct. */
+export function timetableReview(user: Pick<User, "id" | "groupId" | "year">, semester: Semester, locale: Locale = "en"): ReviewCourse[] {
+  if (!user.groupId) return [];
+  const rows = loadStudent(user, semester.id);
+  const overrides = new Map(
+    getDb().select().from(userOverrides).where(eq(userOverrides.userId, user.id)).all().map((o) => [o.entryId, o]),
+  );
+  const remoteHidden = new Set(googleHiddenClasses(user.id));
+  const activities = new Map<number, ReviewActivity[]>();
+  for (const { entry } of rows) {
+    if (entry.isSlotOption) continue;
+    const o = overrides.get(entry.id);
+    const moved = o && (o.day != null || o.startMin != null || o.room != null)
+      ? { day: o.day ?? entry.day, startMin: o.startMin ?? entry.startMin, endMin: o.endMin ?? entry.endMin, room: o.room ?? entry.room }
+      : null;
+    const list = activities.get(entry.courseId) ?? [];
+    list.push({
+      entryId: entry.id, kind: entry.kind, day: entry.day, startMin: entry.startMin, endMin: entry.endMin,
+      weeks: entry.weeks, room: entry.room, teacher: entry.teacher,
+      hidden: !!o?.hidden || remoteHidden.has(entry.id), moved,
+    });
+    activities.set(entry.courseId, list);
+  }
+  const choices = courseChoices(user, semester);
+  const extraGroups = new Map<number, ReviewCourse["extraGroup"]>();
+  for (const c of choices) {
+    if (!c.extraGroupId || extraGroups.has(c.extraGroupId)) continue;
+    const g = describeGroup(c.extraGroupId, locale);
+    if (g) extraGroups.set(c.extraGroupId, { groupId: c.extraGroupId, label: g.label, specialization: g.spec.code ?? g.spec.name, year: g.group.year });
+  }
+  const order = (a: ReviewActivity) => kindRank(a.kind) * 10_000 + a.day * 1_440 + a.startMin;
+  return choices
+    .map((c) => ({
+      ...c,
+      activities: (activities.get(c.courseId) ?? []).sort((a, b) => order(a) - order(b)),
+      extraGroup: c.extraGroupId ? extraGroups.get(c.extraGroupId) ?? null : null,
+    }))
+    // The group's own courses first, then the ones the student added.
+    .sort((a, b) => Number(!!a.extraGroupId) - Number(!!b.extraGroupId) || a.name.localeCompare(b.name));
+}
+
+const KIND_RANK: EntryKind[] = ["course", "seminar", "lab", "project", "other"];
+function kindRank(kind: EntryKind) {
+  const i = KIND_RANK.indexOf(kind);
+  return i === -1 ? KIND_RANK.length : i;
+}
+
+export interface ExtraCourseOption {
+  courseId: number;
+  name: string;
+  abbr: string | null;
+  year: number | null;
+  groups: Array<{
+    groupId: number;
+    specialization: string;
+    year: number;
+    label: string;
+    sessions: Array<{ kind: EntryKind; day: number; startMin: number; endMin: number }>;
+  }>;
+}
+
+/**
+ * Courses of the current semester the student could add from another group: a retake, or an
+ * elective taught elsewhere. Searches the student's faculty by course name or abbreviation.
+ */
+export function extraCourseOptions(
+  user: Pick<User, "id" | "groupId" | "facultyId">, semester: Semester, query: string, locale: Locale = "en", limit = 12,
+): ExtraCourseOption[] {
+  const q = stripDiacritics(query.trim()).toLowerCase();
+  if (q.length < 2 || !user.groupId) return [];
+  const db = getDb();
+  const taken = new Set(loadStudent(user, semester.id).map((r) => r.course.id));
+  const pattern = `%${q.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+  const found = db.select().from(courses)
+    .where(and(
+      eq(courses.semesterId, semester.id),
+      user.facultyId ? eq(courses.facultyId, user.facultyId) : undefined,
+      or(
+        sql`fold_name(${courses.name}) LIKE ${pattern} ESCAPE '\\'`,
+        sql`fold_name(coalesce(${courses.abbreviation}, '')) LIKE ${pattern} ESCAPE '\\'`,
+      ),
+    ))
+    .orderBy(asc(courses.name)).limit(60).all()
+    .filter((c) => !taken.has(c.id));
+  if (!found.length) return [];
+  const rows = db.select({ entry: entries, group: groups, spec: specializations })
+    .from(entries)
+    .innerJoin(entryGroups, eq(entryGroups.entryId, entries.id))
+    .innerJoin(groups, eq(groups.id, entryGroups.groupId))
+    .innerJoin(specializations, eq(specializations.id, groups.specializationId))
+    .where(and(eq(entries.semesterId, semester.id), inArray(entries.courseId, found.map((c) => c.id))))
+    .all();
+  const wholeYear = common[locale].time.wholeYear;
+  return found
+    .map((course) => {
+      const byGroup = new Map<number, ExtraCourseOption["groups"][number]>();
+      for (const { entry, group, spec } of rows) {
+        if (entry.courseId !== course.id || group.id === user.groupId) continue;
+        let g = byGroup.get(group.id);
+        if (!g) {
+          g = { groupId: group.id, specialization: spec.code ?? spec.name, year: group.year,
+            label: [group.series, group.name].filter(Boolean).join(" · ") || wholeYear, sessions: [] };
+          byGroup.set(group.id, g);
+        }
+        if (!g.sessions.some((s) => s.kind === entry.kind && s.day === entry.day && s.startMin === entry.startMin)) {
+          g.sessions.push({ kind: entry.kind, day: entry.day, startMin: entry.startMin, endMin: entry.endMin });
+        }
+      }
+      const options = [...byGroup.values()]
+        .map((g) => ({ ...g, sessions: g.sessions.sort((a, b) => kindRank(a.kind) - kindRank(b.kind) || a.day - b.day || a.startMin - b.startMin) }))
+        .sort((a, b) => a.specialization.localeCompare(b.specialization) || a.year - b.year || a.label.localeCompare(b.label, undefined, { numeric: true }));
+      return { courseId: course.id, name: course.name, abbr: course.abbreviation, year: course.year, groups: options };
+    })
+    .filter((c) => c.groups.length > 0)
+    .slice(0, limit);
+}
+
+/** Adds a course from another group to the student's timetable. False when the group has no sessions of it this semester. */
+export function addExtraCourse(user: Pick<User, "id" | "groupId">, courseId: number, groupId: number): boolean {
+  const semester = currentSemester();
+  if (!semester || !user.groupId || groupId === user.groupId) return false;
+  const db = getDb();
+  const taught = db.select({ id: entries.id }).from(entries)
+    .innerJoin(entryGroups, eq(entryGroups.entryId, entries.id))
+    .where(and(eq(entries.courseId, courseId), eq(entries.semesterId, semester.id), eq(entryGroups.groupId, groupId))).get();
+  if (!taught) return false;
+  if (loadGroup(user.groupId, semester.id).rows.some((r) => r.course.id === courseId)) return false;
+  db.transaction((tx) => {
+    tx.insert(userExtraCourses).values({ userId: user.id, courseId, groupId })
+      .onConflictDoUpdate({ target: [userExtraCourses.userId, userExtraCourses.courseId], set: { groupId } }).run();
+    // A fresh start: followed, with no lab slot picked yet.
+    tx.insert(userCourses).values({ userId: user.id, courseId, enrolled: true, slotEntryId: null })
+      .onConflictDoUpdate({ target: [userCourses.userId, userCourses.courseId], set: { enrolled: true, slotEntryId: null } }).run();
+  });
+  return true;
+}
+
+/** Takes an added course out of the student's timetable again, with the changes they made to it. */
+export function removeExtraCourse(userId: string, courseId: number): boolean {
+  const db = getDb();
+  return db.transaction((tx) => {
+    const removed = tx.delete(userExtraCourses)
+      .where(and(eq(userExtraCourses.userId, userId), eq(userExtraCourses.courseId, courseId))).run().changes > 0;
+    if (!removed) return false;
+    tx.delete(userCourses).where(and(eq(userCourses.userId, userId), eq(userCourses.courseId, courseId))).run();
+    const ids = tx.select({ id: entries.id }).from(entries).where(eq(entries.courseId, courseId)).all().map((e) => e.id);
+    if (ids.length) {
+      tx.delete(userOverrides).where(and(eq(userOverrides.userId, userId), inArray(userOverrides.entryId, ids))).run();
+      tx.delete(occurrenceOverrides).where(and(eq(occurrenceOverrides.userId, userId), inArray(occurrenceOverrides.entryId, ids))).run();
+    }
+    return true;
+  });
 }

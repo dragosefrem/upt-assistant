@@ -205,7 +205,7 @@ export function AttendanceGoals({ goals, available }: AttendanceGoalOverview) {
           <Target size={24} aria-hidden className="mb-3 text-brand-700" />
           <h2 ref={heading} tabIndex={-1} className="font-semibold">{t.noClasses}</h2>
           <p className="mb-3 mt-1 text-sm text-slate-600">{t.noClassesHint}</p>
-          <Link href="/settings#courses" className="font-semibold text-brand-700 underline">{t.settings}</Link>
+          <Link href="/timetable-settings#courses" className="font-semibold text-brand-700 underline">{t.settings}</Link>
         </section>
       )}
       <p role="status" className="sr-only">{notice}</p>

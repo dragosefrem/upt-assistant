@@ -14,7 +14,7 @@ export function YourRooms({ rooms, hasSemester, onGo }: {
   if (!rooms.length) return (
     <div className="rounded-xl bg-slate-50 p-4 text-sm text-slate-600">
       <p>{hasSemester ? t.empty : t.emptyNoSemester}</p>
-      {hasSemester && <Link href="/settings#courses" className="mt-2 inline-block font-semibold text-brand-700 underline">{t.emptyAction}</Link>}
+      {hasSemester && <Link href="/timetable-settings#courses" className="mt-2 inline-block font-semibold text-brand-700 underline">{t.emptyAction}</Link>}
     </div>
   );
 

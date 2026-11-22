@@ -31,6 +31,8 @@ export function applyStudyProfile(user: User, profile: StudyProfile) {
       tx.delete(userOverrides).where(eq(userOverrides.userId, user.id)).run();
       tx.delete(occurrenceOverrides).where(eq(occurrenceOverrides.userId, user.id)).run();
     }
-    tx.update(users).set(profile).where(eq(users.id, user.id)).run();
+    // A new group means a new timetable for the student to check.
+    const reset = current?.groupId !== profile.groupId ? { timetableConfirmedAt: null } : {};
+    tx.update(users).set({ ...profile, ...reset }).where(eq(users.id, user.id)).run();
   });
 }

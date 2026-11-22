@@ -112,7 +112,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
       <header className="page-heading flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1>{page.title}</h1>
-          <p className="mt-1 text-sm text-slate-600">{user.shareActivityDetails ? page.sharingDetails : page.sharingAvailability}</p>
+          <p className="mt-1 text-sm text-slate-600">{page.sharingSummary(user.shareActivityDetails, user.sharePrivateDetails)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {hasInbox && <a className="btn-secondary" href="#directory-heading">{page.find.heading}</a>}
@@ -139,7 +139,7 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
           <section className="card p-5" aria-labelledby="your-contacts">
             <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
               <h2 id="your-contacts" className="text-lg font-semibold">{page.list.heading}</h2>
-              <Link href="/settings#contact-privacy" className="inline-flex min-h-8 items-center gap-1.5 rounded text-sm font-medium text-brand-700 hover:underline">
+              <Link href="/timetable-settings#privacy" className="inline-flex min-h-8 items-center gap-1.5 rounded text-sm font-medium text-brand-700 hover:underline">
                 <SlidersHorizontal aria-hidden="true" size={15} />{page.list.sharing}
               </Link>
             </div>

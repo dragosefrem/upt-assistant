@@ -5,8 +5,11 @@ const en = {
   /** /contacts */
   page: {
     title: "Contacts",
-    sharingDetails: "Accepted contacts can see your classes, exams and rooms. Personal events appear as Busy.",
-    sharingAvailability: "Your accepted contacts see only when you’re busy or free.",
+    sharingSummary: (timetable: boolean, personal: boolean): string =>
+      timetable && personal ? "Accepted contacts can see your classes, exams, rooms and the titles of your personal events."
+        : timetable ? "Accepted contacts can see your classes, exams and rooms. Personal events appear as Busy."
+          : personal ? "Accepted contacts can see your personal events. Classes and exams appear as Busy."
+            : "Your accepted contacts see only when you’re busy or free.",
     planEvent: "Plan a group event",
     find: {
       heading: "Find classmates",
@@ -249,8 +252,11 @@ const en = {
 const ro: typeof en = {
   page: {
     title: "Contacte",
-    sharingDetails: "Contactele acceptate îți văd cursurile, examenele și sălile. Activitățile personale apar ca „Ocupat”.",
-    sharingAvailability: "Contactele acceptate văd doar când ești ocupat sau liber.",
+    sharingSummary: (timetable: boolean, personal: boolean): string =>
+      timetable && personal ? "Contactele acceptate îți văd cursurile, examenele, sălile și titlurile evenimentelor personale."
+        : timetable ? "Contactele acceptate îți văd cursurile, examenele și sălile. Activitățile personale apar ca „Ocupat”."
+          : personal ? "Contactele acceptate îți văd evenimentele personale. Cursurile și examenele apar ca „Ocupat”."
+            : "Contactele acceptate văd doar când ești ocupat sau liber.",
     planEvent: "Plănuiește o întâlnire",
     find: {
       heading: "Găsește colegi",

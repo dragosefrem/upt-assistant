@@ -22,14 +22,24 @@ function sharedEventIds(viewerId: string, from: string, to: string) {
   return new Set(sharedEventsFor(viewerId, from, to).map((event) => event.id));
 }
 
+/**
+ * Whether a contact may see what an event is. The university timetable (classes, exams and
+ * events attended together) and the private calendar (own events, Google edits, saved events)
+ * each follow their own sharing choice.
+ */
+function showsDetails(contact: Pick<ScheduleContact, "shareActivityDetails" | "sharePrivateDetails">, event: CalEvent, shared: boolean) {
+  const timetable = !event.privateCalendarEdit && (event.type === "class" || event.type === "exam" || shared);
+  return timetable ? contact.shareActivityDetails : contact.sharePrivateDetails;
+}
+
 /** Return only the event details an accepted contact is allowed to see. */
 export function contactEvents(
   contact: ScheduleContact, from: string, to: string, locale: Locale = "en", sharedWithViewer?: ReadonlySet<string>,
 ): ContactEvent[] {
   const busy = contacts[locale].schedule.busy;
   const events = eventsBetween(contact, from, to, locale).map((event) => {
-    const shared = event.groupEventId && sharedWithViewer?.has(event.groupEventId);
-    if (contact.shareActivityDetails && !event.privateCalendarEdit && (event.type === "class" || event.type === "exam" || shared)) {
+    const shared = !!event.groupEventId && !!sharedWithViewer?.has(event.groupEventId);
+    if (showsDetails(contact, event, shared)) {
       const { date, startMin, endMin, title, kind, room } = event;
       return { date, startMin, endMin, title, kind, room };
     }
@@ -39,11 +49,11 @@ export function contactEvents(
   events.sort((a, b) => a.date.localeCompare(b.date) || a.startMin - b.startMin || a.endMin - b.endMin);
   if (contact.shareActivityDetails) return events;
 
-  // Two adjacent or overlapping commitments disclose only one continuous busy interval.
+  // Two adjacent or overlapping busy commitments disclose only one continuous busy interval.
   const blocks: ContactEvent[] = [];
   for (const event of events) {
     const last = blocks.at(-1);
-    if (last && last.date === event.date && event.startMin <= last.endMin) {
+    if (last && last.kind === "busy" && event.kind === "busy" && last.date === event.date && event.startMin <= last.endMin) {
       last.endMin = Math.max(last.endMin, event.endMin);
     } else {
       blocks.push(event);
@@ -89,7 +99,7 @@ function weekStart(date?: string) {
   return mondayOf(nowLocal().date);
 }
 
-/** One week of an accepted contact's calendar; private commitments become "Busy" in `locale`. */
+/** One week of an accepted contact's calendar; what they keep private becomes "Busy" in `locale`. */
 export function contactWeek(viewerId: string, contactId: string, date?: string, locale: Locale = "en") {
   const [contact] = acceptedScheduleContacts(viewerId, [contactId]);
   if (!contact) return null;

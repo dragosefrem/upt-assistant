@@ -303,7 +303,7 @@ export function Calendar({
         <div className="flex items-center gap-3 border-b border-brand-100 bg-brand-50 px-4 py-2 text-sm text-slate-800">
           <p role="status" className="min-w-0 flex-1">
             {t.grid.hidden(hiddenClass)}{" "}
-            <Link className="font-medium text-brand-700 underline" href="/settings#hidden-classes">{t.grid.manageHidden}</Link>
+            <Link className="font-medium text-brand-700 underline" href="/timetable-settings#courses">{t.grid.manageHidden}</Link>
           </p>
           <button type="button" className="btn-ghost px-2" aria-label={messages.common.actions.close} onClick={() => setHiddenClass(null)}>✕</button>
         </div>

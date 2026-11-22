@@ -280,6 +280,10 @@ export const users = sqliteTable("users", {
   groupId: integer("group_id").references(() => groups.id, { onDelete: "set null" }),
   onboardedAt: text("onboarded_at"),
   shareActivityDetails: integer("share_activity_details", { mode: "boolean" }).notNull().default(true),
+  /** Whether accepted contacts see the titles of personal events (own, Google and saved events) instead of Busy. */
+  sharePrivateDetails: integer("share_private_details", { mode: "boolean" }).notNull().default(false),
+  /** When the student last confirmed that the courses, seminars and labs in their timetable are right. */
+  timetableConfirmedAt: text("timetable_confirmed_at"),
   googleRefreshToken: text("google_refresh_token"),
   googleCalendarId: text("google_calendar_id"),
   googleSyncedAt: text("google_synced_at"),
@@ -355,6 +359,25 @@ export const userCourses = sqliteTable(
       .references(() => courses.id, { onDelete: "cascade" }),
     enrolled: integer("enrolled", { mode: "boolean" }).notNull().default(true),
     slotEntryId: integer("slot_entry_id").references(() => entries.id, { onDelete: "set null" }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.courseId] })],
+);
+
+/** A course from another group's timetable that the student also attends (a retake, an extra elective). */
+export const userExtraCourses = sqliteTable(
+  "user_extra_courses",
+  {
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseId: integer("course_id")
+      .notNull()
+      .references(() => courses.id, { onDelete: "cascade" }),
+    /** The group whose sessions of the course the student follows. */
+    groupId: integer("group_id")
+      .notNull()
+      .references(() => groups.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
   },
   (t) => [primaryKey({ columns: [t.userId, t.courseId] })],
 );
