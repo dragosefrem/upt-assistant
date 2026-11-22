@@ -54,8 +54,8 @@ works in Romanian and English.
   Calendar exports include the 15-minute reminders and alerts one day and two hours before exams.
 - **Contacts and group events.** Find classmates by name or browse your group to send a contact request.
   By default, accepted contacts can see your current class, exam, or group event you both attend, including its room.
-  Choose **Busy or free only** in **Settings → Contact privacy** to hide activity titles and rooms.
-  Personal events and private Google Calendar edits always appear as busy. You can also save a friend by name and group.
+  In **Timetable settings**, choose what contacts see for the university timetable and private calendar separately.
+  Personal events and private Google Calendar edits show as busy by default. Select **Title and place** to share their details. You can also save a friend by name and group.
   See shared free time over custom dates, book a group event, collect
   answers, and invite people without an account through a guest link.
 - **Poli, the assistant.** Chat or talk in Romanian or English. Poli looks everything up
@@ -117,7 +117,7 @@ The production setup and first-release steps are in [Deploying UPT to Railway](d
 
 ### Google Calendar sync
 
-Under **Settings → Calendar sync and export**, choose a direction for the **Poli** calendar
+Under **Timetable settings → Calendar sync and export**, choose a direction for the **Poli** calendar
 and select **Connect Google Calendar**. You can change direction later on the same calendar.
 
 - **One-way** publishes your Poli timetable to Google. Changing or deleting a published
@@ -175,8 +175,8 @@ link. Sign-in allows five wrong passwords per address and thirty per client in f
 minutes; the counters live in the server process, so they reset when it restarts.
 
 **The calendar link.** The `.ics` subscription link is a secret: anyone who has it can
-read the timetable. Students can replace it under Settings → Calendar sync and export ("Get a new link");
-the old one stops working at once.
+read the timetable. Students can replace it under Timetable settings → Calendar sync and export ("Get a new link").
+The old one stops working at once.
 
 ## Languages
 
@@ -245,7 +245,8 @@ supplies dated classes and assessments for Informatică, TST and CRP distance le
 and TCM reduced-attendance programmes. These events show the published start time.
 
 - **Optional courses.** Published elective sections and courses marked optional by an
-  administrator start unticked. From year 3, students can also choose their other courses.
+  administrator start unticked. In Timetable settings, students in any year can hide a course or a session
+  from their personal timetable, choose lab times and add a course they attend with another group.
 - **Where rooms are.** Faculty buildings come from upt.ro with coordinates. Room codes
   are mapped to buildings by patterns seeded in `src/db/seed.ts`, taken from AC's room
   legend. Three of those (ASPC, SPM, Hidrotehnică) were placed from their street address

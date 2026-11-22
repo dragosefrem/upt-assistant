@@ -1,3 +1,4 @@
+import { SlidersHorizontal } from "lucide-react";
 import Link from "next/link";
 import { Calendar } from "@/components/Calendar";
 import { NextUp } from "@/components/NextUp";
@@ -34,16 +35,20 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const to = addDays(from, 6);
   const semester = currentSemester();
   const group = describeGroup(user.groupId, locale);
-  const pending = semester
-    ? courseChoices(user, semester).filter(needsSlot)
-    : [];
+  const choices = semester ? courseChoices(user, semester) : [];
+  const pending = choices.filter(needsSlot);
 
   return (
     <div className="space-y-5">
       <header className="page-heading">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h1>{t.calendar.page.heading}</h1>
-          {!user.welcomeSeenAt && <WelcomeTour name={user.name} />}
+          <div className="flex flex-wrap items-center gap-2">
+            {!user.welcomeSeenAt && <WelcomeTour name={user.name} />}
+            <Link href="/timetable-settings" className="btn-secondary text-sm">
+              <SlidersHorizontal size={15} aria-hidden />{t.timetableSettings.page.open}
+            </Link>
+          </div>
         </div>
         {group && (
           <p className="mt-1.5 text-sm text-slate-600">
@@ -52,10 +57,15 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
           </p>
         )}
       </header>
-      {pending.length > 0 && (
+      {pending.length > 0 ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
           {t.calendar.page.pendingSlots(pending.length, pending[0].name)}{" "}
-          <Link href="/settings#courses" className="font-semibold underline">{t.calendar.page.chooseSlots}</Link>
+          <Link href={`/timetable-settings#course-${pending[0].courseId}`} className="font-semibold underline">{t.calendar.page.chooseSlots}</Link>
+        </p>
+      ) : choices.length > 0 && !user.timetableConfirmedAt && (
+        <p className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-slate-800">
+          {t.timetableSettings.banner.unconfirmed}{" "}
+          <Link href="/timetable-settings#courses" className="font-semibold text-brand-700 underline">{t.timetableSettings.banner.review}</Link>
         </p>
       )}
       <div className="schedule-layout">

@@ -53,9 +53,16 @@ const describePerson = (p: Person) => ({
   availability_from: p.kind === "account" ? "their own calendar (linked account)" : "their group's published timetable",
 });
 
-const sharingNotice = (ctx: ToolContext) => ctx.user.shareActivityDetails
-  ? "The other person will see the student's classes, exams, rooms and busy times."
-  : "The other person will see only when the student is busy or free.";
+const sharingNotice = ({ user }: ToolContext) => {
+  if (user.shareActivityDetails && user.sharePrivateDetails) {
+    return "The other person will see the student's classes, exams, rooms and the titles and places of their personal events.";
+  }
+  if (user.shareActivityDetails) return "The other person will see the student's classes, exams, rooms and busy times.";
+  if (user.sharePrivateDetails) {
+    return "The other person will see the titles and places of the student's personal events; classes and exams appear only as busy.";
+  }
+  return "The other person will see only when the student is busy or free.";
+};
 
 function failure(error: unknown) {
   if (error instanceof InvitationError) return { error: error.message };

@@ -7,7 +7,7 @@ import { appUrl, connectGoogle, exchangeCode, syncToGoogle } from "@/lib/google"
 /** Google redirects here after consent; store the grant and run the first sync. */
 export async function GET(request: Request) {
   const base = appUrl(request);
-  const back = (result: string) => NextResponse.redirect(`${base}/settings?google=${result}#export`);
+  const back = (result: string) => NextResponse.redirect(`${base}/timetable-settings?google=${result}#export`);
   const user = await getUser();
   if (!user) return NextResponse.redirect(`${base}/login`);
 

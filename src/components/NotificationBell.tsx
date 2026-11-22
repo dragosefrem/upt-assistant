@@ -306,7 +306,7 @@ export function NotificationBell({ userId, invitationCount }: { userId: string; 
                 </>
               )}
               {deviceError && <p role="status">{t.deviceFailed}</p>}
-              <Link href="/settings#export" onClick={close} className="inline-flex items-center gap-1.5 font-medium text-brand-700 hover:underline">
+              <Link href="/timetable-settings#export" onClick={close} className="inline-flex items-center gap-1.5 font-medium text-brand-700 hover:underline">
                 <CalendarDays size={14} aria-hidden />{t.export}
               </Link>
             </footer>

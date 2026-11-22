@@ -32,8 +32,11 @@ export const PAGES: Record<string, string> = {
   campus: "/campus",
   guide: "/guide",
   settings: "/settings",
-  course_choices: "/settings#courses",
-  calendar_export: "/settings#export",
+  timetable_settings: "/timetable-settings",
+  course_choices: "/timetable-settings#courses",
+  extra_course: "/timetable-settings#extra",
+  calendar_export: "/timetable-settings#export",
+  calendar_sharing: "/timetable-settings#privacy",
 };
 
 export const APP_TOOLS: AssistantTool[] = [
@@ -119,18 +122,18 @@ export const APP_TOOLS: AssistantTool[] = [
   {
     name: "list_course_choices",
     description:
-      "The choices the student has in their timetable: optional courses they may follow or drop, and courses whose lab runs in several slots of which they attend one. Shows what is chosen now. Use it before set_course_choice, and when a lab is missing from their calendar.",
+      "Courses and lab times in the student's personal timetable, including courses followed with another group. Use before set_course_choice. needs_a_slot marks a missing class. Supplementary slots are optional.",
     input_schema: { type: "object", properties: {} },
     run(_input, { user }) {
       const semester = currentSemester();
       if (!semester) return { error: "No semester configured." };
-      const choices = courseChoices(user, semester).filter((c) => c.selectable || c.slots.length > 0);
+      const choices = courseChoices(user, semester);
       return {
         courses: choices.map((c) => ({
           course: c.name,
           acronym: c.abbr,
           optional: c.isOptional,
-          can_be_dropped: c.selectable,
+          can_be_dropped: true,
           following: c.enrolled,
           lab_slots: c.slots.length
             ? c.slots.map((s, i) => ({ slot: i + 1, kind: s.kind, when: `${DAY_NAMES[s.day]} ${span(s.startMin, s.endMin)}`, room: s.room, chosen: s.entryId === c.chosenSlotId }))
@@ -139,14 +142,14 @@ export const APP_TOOLS: AssistantTool[] = [
           // The class is already in the timetable at a fixed time; these slots are extra sessions.
           slots_are_supplementary: c.slotsAreExtra ? true : undefined,
         })),
-        note: choices.length ? undefined : "This student's timetable has no optional courses and no labs with several slots.",
+        note: choices.length ? undefined : "No courses are published for this student's timetable.",
       };
     },
   },
   {
     name: "set_course_choice",
     description:
-      "Follow or drop an optional course, or choose which lab slot the student attends for a course whose lab runs in several slots. Only affects this student's timetable. See list_course_choices for the courses and slot numbers.",
+      "Show or hide a course in the student's personal timetable, or choose a lab time. This edits their calendar only. See list_course_choices for courses and slot numbers.",
     input_schema: {
       type: "object",
       properties: {
@@ -163,21 +166,18 @@ export const APP_TOOLS: AssistantTool[] = [
       if (!semester) return { error: "No semester configured." };
       const q = fold(str(input.course) ?? "");
       if (!q) return { error: "Say which course." };
-      const hits = courseChoices(ctx.user, semester).filter(
-        (c) => (c.selectable || c.slots.length > 0) && [fold(c.name), fold(c.abbr ?? "")].some((n) => n && (n === q || n.includes(q) || (q.length > 3 && q.includes(n) && n.length > 2))),
+      const hits = courseChoices(ctx.user, semester).filter((c) =>
+        [fold(c.name), fold(c.abbr ?? "")].some((n) => n && (n === q || n.includes(q) || (q.length > 3 && q.includes(n) && n.length > 2))),
       );
       if (!hits.length) return { error: "No course with a choice matches; see list_course_choices." };
       if (hits.length > 1) return { error: "Several courses match; ask which one.", candidates: hits.map((c) => c.name) };
       const [c] = hits;
-      let enrolled = c.enrolled;
-      if (typeof input.following === "boolean") {
-        if (!c.selectable && !input.following) return { error: `${c.name} is a required course and cannot be dropped.` };
-        enrolled = input.following;
-      }
+      let enrolled = typeof input.following === "boolean" ? input.following : c.enrolled;
       let slotEntryId = c.chosenSlotId;
       const slotNumber = num(input.slot);
       const day = num(input.slot_weekday);
       const start = parseClock(input.slot_start);
+      let selectedSlot: number | null = null;
       if (slotNumber === 0) {
         slotEntryId = null;
       } else if (slotNumber !== undefined || day !== undefined || start !== undefined) {
@@ -189,17 +189,21 @@ export const APP_TOOLS: AssistantTool[] = [
           };
         }
         slotEntryId = wanted[0].entryId;
+        selectedSlot = slotEntryId;
         enrolled = true;
       }
-      if (!enrolled) slotEntryId = null;
-      if (enrolled === c.enrolled && slotEntryId === c.chosenSlotId) return { error: "That is already the student's choice." };
-      getDb()
-        .insert(userCourses)
-        .values({ userId: ctx.user.id, courseId: c.courseId, enrolled, slotEntryId })
-        .onConflictDoUpdate({ target: [userCourses.userId, userCourses.courseId], set: { enrolled, slotEntryId } })
-        .run();
+      const changed = getDb().transaction((tx) => {
+        const restored = selectedSlot !== null && unhideClass(ctx.user.id, selectedSlot);
+        if (enrolled === c.enrolled && slotEntryId === c.chosenSlotId) return restored;
+        tx.insert(userCourses)
+          .values({ userId: ctx.user.id, courseId: c.courseId, enrolled, slotEntryId })
+          .onConflictDoUpdate({ target: [userCourses.userId, userCourses.courseId], set: { enrolled, slotEntryId } })
+          .run();
+        return true;
+      });
+      if (!changed) return { error: "That is already the student's choice." };
       ctx.changed = true;
-      const slot = c.slots.find((s) => s.entryId === slotEntryId);
+      const slot = enrolled ? c.slots.find((s) => s.entryId === slotEntryId) : undefined;
       return {
         course: c.name,
         following: enrolled,
@@ -223,7 +227,7 @@ export const APP_TOOLS: AssistantTool[] = [
   {
     name: "open_page",
     description:
-      "Opens a page of the app for the student when they ask to go somewhere (\"open my attendance\", \"take me to settings\"): calendar, exams, attendance, contacts, plan_group_event (find a common free time and book it), campus (walkthroughs to rooms), guide (first-week guide and glossary), settings, course_choices, calendar_export.",
+      "Opens a page of the app for the student when they ask to go somewhere (\"open my attendance\", \"take me to settings\"): calendar, exams, attendance, contacts, plan_group_event (find a common free time and book it), campus (walkthroughs to rooms), guide (first-week guide and glossary), settings (profile and language), timetable_settings (check the courses, seminars and labs in the timetable), course_choices, extra_course (add a course taught to another group, such as a retake), calendar_export (Google Calendar sync and calendar file), calendar_sharing (what contacts see of the student's calendar).",
     input_schema: { type: "object", properties: { page: { type: "string", enum: Object.keys(PAGES) } }, required: ["page"] },
     run(input, ctx) {
       const href = typeof input.page === "string" ? PAGES[input.page] : undefined;
@@ -335,7 +339,7 @@ export const APP_TOOLS: AssistantTool[] = [
   },
   {
     name: "list_hidden_classes",
-    description: "List individual hidden classes in Settings. Use the entry ID with show_hidden_class to restore visibility while keeping its time, room and one-off moves.",
+    description: "List individual hidden classes in Timetable settings. Use the entry ID with show_hidden_class to restore visibility while keeping its time, room and one-off moves.",
     input_schema: { type: "object", properties: {} },
     run(_input, { user }) {
       return { classes: hiddenClasses(user.id, currentSemester()?.id).map(e => ({
@@ -362,7 +366,7 @@ export const APP_TOOLS: AssistantTool[] = [
       if (input.confirmed !== true) return { needs_confirmation: "Replace the private feed address and invalidate the old subscriptions?" };
       rotateCalendarFeed(ctx.user.id);
       ctx.changed = true;
-      addLink(ctx, settings[ctx.locale ?? "en"].export.file.title, "/settings#export");
+      addLink(ctx, settings[ctx.locale ?? "en"].export.file.title, "/timetable-settings#export");
       return { renewed: true, note: "The new link is ready in Settings." };
     },
   },
@@ -377,9 +381,9 @@ export const APP_TOOLS: AssistantTool[] = [
       const configured = googleConfigured();
       const connected = !!user.googleRefreshToken;
       const t = settings[ctx.locale ?? user.locale ?? "en"].export.google;
-      if (input.action === "status") return { configured, connected, direction: googleSyncMode(user.id), last_sync: user.googleSyncedAt, settings: "/settings#export" };
+      if (input.action === "status") return { configured, connected, direction: googleSyncMode(user.id), last_sync: user.googleSyncedAt, settings: "/timetable-settings#export" };
       if (input.action === "connect" && configured) {
-        addLink(ctx, t.connect, "/settings#export");
+        addLink(ctx, t.connect, "/timetable-settings#export");
         return { note: "Choose one-way or two-way sync in Settings, then connect Google Calendar." };
       }
       if (!connected) return { error: configured ? t.notConnected : "Google Calendar is not configured." };
@@ -409,7 +413,7 @@ export const APP_TOOLS: AssistantTool[] = [
       addLink(ctx, t.download, `${path}?download`);
       return base
         ? { subscription_link: `${base}${path}`, how: "Google Calendar: Other calendars → From URL. Apple Calendar: File → New Calendar Subscription. Outlook: Add calendar → Subscribe from web." }
-        : { note: "This server has no public address, so a subscription link would not work from outside. The student can download the file or copy the link under Settings → Calendar sync and export.", page: "calendar_export" };
+        : { note: "This server has no public address, so a subscription link would not work from outside. The student can download the file or copy the link under Timetable settings → Calendar sync and export.", page: "calendar_export" };
     },
   },
 ];

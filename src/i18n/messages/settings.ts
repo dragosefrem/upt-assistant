@@ -14,7 +14,7 @@ const en = {
     hint: "Choose what accepted contacts see in your current status and weekly schedule.",
     details: {
       label: "Activity details",
-      hint: "Share classes, exams, rooms and events you attend together. Personal events appear as Busy.",
+      hint: "Share classes, exams, rooms and events you attend together.",
     },
     availability: {
       label: "Busy or free only",
@@ -24,6 +24,11 @@ const en = {
   study: {
     title: "Where you study",
     hint: "Changing your group resets your optional-course choices and the classes you hid or moved.",
+  },
+  timetable: {
+    title: "Timetable settings",
+    hint: "Your courses, seminars and labs, lab times, extra courses, Google Calendar sync and who sees your calendar.",
+    open: "Open timetable settings",
   },
   courses: {
     title: "Courses and lab slots",
@@ -178,7 +183,7 @@ const en = {
     apple: "- iPhone, iPad or Mac: open the attachment and choose Add All.",
     outlook: "- Outlook: open the attachment and add it to your calendar.",
     snapshot:
-      "The file is a snapshot of your calendar today. After you change your group, courses or events, send it again from Settings > Calendar sync and export.",
+      "The file is a snapshot of your calendar today. After you change your group, courses or events, send it again from Timetable settings > Calendar sync and export.",
     subscribe:
       "To stay in sync automatically instead, subscribe to this link (in Google Calendar: Other calendars > + > From URL). Anyone with the link can see your timetable, so keep it to yourself:",
     signature: "Poli",
@@ -200,7 +205,7 @@ const ro: typeof en = {
     hint: "Alege ce văd contactele acceptate în starea ta curentă și în orarul săptămânal.",
     details: {
       label: "Detalii despre activitate",
-      hint: "Arată cursurile, examenele, sălile și întâlnirile la care participați împreună. Evenimentele personale apar ca „Ocupat”.",
+      hint: "Arată cursurile, examenele, sălile și întâlnirile la care participați împreună.",
     },
     availability: {
       label: "Doar ocupat sau liber",
@@ -210,6 +215,11 @@ const ro: typeof en = {
   study: {
     title: "Unde studiezi",
     hint: "Dacă schimbi grupa, se resetează disciplinele opționale alese și orele pe care le-ai ascuns sau mutat.",
+  },
+  timetable: {
+    title: "Setări orar",
+    hint: "Cursurile, seminarele și laboratoarele tale, orele de laborator, materiile în plus, sincronizarea cu Google Calendar și cine îți vede calendarul.",
+    open: "Deschide setările orarului",
   },
   courses: {
     title: "Discipline și ore de laborator",
@@ -360,7 +370,7 @@ const ro: typeof en = {
     apple: "- iPhone, iPad sau Mac: deschide atașamentul și alege Adaugă tot.",
     outlook: "- Outlook: deschide atașamentul și adaugă-l în calendar.",
     snapshot:
-      "Fișierul surprinde calendarul tău de azi. După ce îți schimbi grupa, disciplinele sau evenimentele, trimite-l din nou din Setări > Sincronizare și export.",
+      "Fișierul surprinde calendarul tău de azi. După ce îți schimbi grupa, disciplinele sau evenimentele, trimite-l din nou din Setări orar > Sincronizare și export.",
     subscribe:
       "Dacă vrei să rămână la zi automat, abonează-te la linkul de mai jos (în Google Calendar: Alte calendare > + > Din adresa URL). Oricine are linkul îți poate vedea orarul, așa că păstrează-l doar pentru tine:",
     signature: "Poli",

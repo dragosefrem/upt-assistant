@@ -14,6 +14,7 @@ import { onboarding } from "./onboarding";
 import { settings } from "./settings";
 import { sponsored } from "./sponsored";
 import { study } from "./study";
+import { timetableSettings } from "./timetable-settings";
 
 /**
  * Every text the interface shows, in each language. One file per area of the app; the
@@ -41,6 +42,7 @@ export const messages = {
     settings: settings.en,
     sponsored: sponsored.en,
     study: study.en,
+    timetableSettings: timetableSettings.en,
   },
   ro: {
     admin: admin.ro,
@@ -59,6 +61,7 @@ export const messages = {
     settings: settings.ro,
     sponsored: sponsored.ro,
     study: study.ro,
+    timetableSettings: timetableSettings.ro,
   },
 };
 

@@ -24,7 +24,8 @@ export function StudentNav({ invites }: { invites: number }) {
   const morePages = destinations.slice(3);
 
   const navItem = ({ href, Icon, key }: typeof destinations[number]) => (
-    <Link key={href} href={href} className="nav-item" aria-current={active(href) ? "page" : undefined} onNavigate={() => setMore(false)}>
+    <Link key={href} href={href} className="nav-item" aria-current={active(href) ? "page" : undefined}
+      data-active={href === "/" && path === "/timetable-settings"} onNavigate={() => setMore(false)}>
       <span className="relative inline-flex">
         <Icon size={18} strokeWidth={1.8} aria-hidden />
         {key === "contacts" && invites > 0 && <span className="nav-badge"><span aria-hidden>{invites}</span><span className="sr-only">{t.nav.invitations(invites)}</span></span>}

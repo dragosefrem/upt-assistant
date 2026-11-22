@@ -75,6 +75,7 @@ export function acceptedScheduleContacts(viewerId: string, ids?: string[]) {
   return getDb().select({
     id: users.id, name: users.name, groupId: users.groupId, facultyId: users.facultyId,
     specializationId: users.specializationId, year: users.year, shareActivityDetails: users.shareActivityDetails,
+    sharePrivateDetails: users.sharePrivateDetails,
   }).from(contacts).innerJoin(users, otherUser(viewerId))
     .where(and(involving(viewerId), eq(contacts.accepted, true), ids ? inArray(users.id, ids) : undefined)).all();
 }
