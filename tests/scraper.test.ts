@@ -736,6 +736,22 @@ describe("printed and interactive timetables", () => {
       // Alone in the upper half of its row: one hour, as printed.
       "b 14-15 TUTORIERE @A111 -",
     ]);
+    // A series lecture's hall boxed beside it, in the last group's column: "LN Ca2", or "Ca2"
+    // after a box that only says "Sală". That group had a class called "LN" or "Sală" instead
+    // of the lecture (coordinates as read from the published PDFs).
+    const series: Box[] = [
+      [315.54, 60, 346.49, 70, "115 a"], [346.49, 60, 532.23, 70, "117 a"], [532.23, 60, 563.52, 70, "118 b"],
+      [40, 437.23, 68.04, 453.06, "14-16"], [40, 453.06, 68.04, 468.98, "16-18"], [40, 468.98, 68.04, 484.8, "18-20"],
+      [315.54, 453.06, 532.23, 468.98, "TOPOGRAFIE(TEH.MĂS.)\nSală"], [532.23, 453.06, 563.52, 468.98, "LN Ca2"],
+      [315.54, 468.98, 346.49, 484.8, "GEOMETRIE DESCRIPTIVĂ"], [346.49, 468.98, 532.23, 484.8, "Sală"], [532.23, 468.98, 563.52, 484.8, "Ca2"],
+    ];
+    const lectures = readPrintedTable(series, "Anul I", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 1, series: "", name: labels[0],
+    })), "all", civilCell, { isDetail: civilDetail });
+    expect(lectures.entries.map((e) => `${e.startMin / 60}-${e.endMin / 60} ${e.courseName} @${e.room} for ${e.groups.map((i) => lectures.groups[i].name).join(", ")}`)).toEqual([
+      "16-18 TOPOGRAFIE @LN Ca2 for 115 a, 117 a, 118 b",
+      "18-20 GEOMETRIE DESCRIPTIVĂ @Ca2 for 115 a, 117 a, 118 b",
+    ]);
     // The hall written after the lecturer, or between the title and the lecturer, is the room.
     expect(civilCell("Sală GEOLOGIE INGINEREASCA Ciopec NM")).toMatchObject({ name: "GEOLOGIE INGINEREASCA", room: "NM", teacher: "Ciopec" });
     expect(civilCell("AMENAJĂRI HIDROTEHNICE H1 Conf\n.dr.ing NICOARA SV")).toMatchObject({ name: "AMENAJĂRI HIDROTEHNICE", room: "H1" });

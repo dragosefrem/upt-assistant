@@ -279,9 +279,14 @@ export function readPrintedTable(
   }
   for (const b of blocks) {
     const raw = squash(b[4]);
-    if (parseTimeRange(raw) || dayOf(raw) || !/\p{L}/u.test(raw) || detailCell(raw) || continuation.test(raw) || weekHeading.test(raw)) continue;
-    const adjoiningRoom = cells.find((r) => roomOnly.test(squash(r[4])) && Math.abs(r[0] - b[2]) < 0.05 &&
-      Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
+    // "Sală" alone is the caption of a room box, never a class.
+    if (parseTimeRange(raw) || dayOf(raw) || !/\p{L}/u.test(raw) || detailCell(raw) || continuation.test(raw) || weekHeading.test(raw) || /^sal[aă]$/i.test(raw)) continue;
+    // The hall of a lecture for the whole series is boxed at the end of its row, in the last
+    // group's column: "VV", "MP", "LN Ca2", sometimes after a box that only says "Sală".
+    const beside = (edge: number, test: (text: string) => boolean) => cells.find((r) => test(squash(r[4])) &&
+      Math.abs(r[0] - edge) < 0.05 && Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
+    const caption = beside(b[2], (text) => /^sal[aă]$/i.test(text));
+    const adjoiningRoom = beside(caption?.[2] ?? b[2], (text) => roomOnly.test(text) || (detailCell(text) && text.length <= 12));
     const covered = indexed.filter((c) => Math.min(c.right, adjoiningRoom?.[2] ?? b[2]) - Math.max(c.left, b[0]) > 0.1);
     if (!covered.length) continue;
     // A narrow continuation line under a course often only supplies the room.
