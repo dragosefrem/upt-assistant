@@ -58,7 +58,10 @@ export function CourseChoicesForm({ choices, returnTo, submitLabel }: { choices:
       {slotOnly.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-slate-900">{m.slotsTitle}</h2>
-          <p className="mb-3 mt-1 text-sm text-slate-600">{m.slotsHint}</p>
+          {/* Said only where a slot has to be chosen: a class that is already in the timetable says so itself. */}
+          {slotOnly.some((c) => !c.slotsAreExtra)
+            ? <p className="mb-3 mt-1 text-sm text-slate-600">{m.slotsHint}</p>
+            : <div className="mb-3" />}
           <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
             {slotOnly.map((c) => (
               <li key={c.courseId} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
