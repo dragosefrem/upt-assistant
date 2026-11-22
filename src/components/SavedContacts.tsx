@@ -28,9 +28,9 @@ export function SavedContacts({ people }: { people: SavedContact[] }) {
       {people.length ? <ul className="mt-2 divide-y divide-slate-100">
         {people.map((person) => <li key={person.id} className="flex items-center justify-between gap-2 py-3">
           <div className="min-w-0">
-            <p className="break-words text-sm font-semibold">{person.name}</p>
+            <p className="text-sm font-semibold [overflow-wrap:anywhere]">{person.name}</p>
             {person.group ? <p className="text-xs text-slate-600">
-              <span className="break-words">{person.group.group}</span>
+              <span className="[overflow-wrap:anywhere]">{person.group.group}</span>
               <span className="ml-1.5 whitespace-nowrap rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-600">
                 {[person.group.code, person.group.faculty].filter(Boolean).join(" · ")}
               </span>

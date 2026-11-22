@@ -12,7 +12,7 @@ import { LanguageSwitch } from "@/components/LanguageSwitch";
 import { ShareInvitation } from "@/components/ShareInvitation";
 import { getT } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
-import { publicEvent } from "@/lib/group-events";
+import { eventIsOver, publicEvent } from "@/lib/group-events";
 import { publicRsvp } from "./actions";
 import { GUEST_COOKIE } from "./guest-cookie";
 
@@ -35,6 +35,8 @@ export default async function GuestPage({ params }: PageProps<"/join/[token]">) 
   if (!event) notFound();
   const messages = await getT();
   const t = messages.contacts.guest;
+  const errors = messages.contacts.errors;
+  const over = eventIsOver(event);
   // Bind one fresh key to this form so a retried first submission keeps the same seat.
   const firstGuestKey = !user && !guestKey ? randomBytes(32).toString("base64url") : "";
   return (
@@ -46,7 +48,8 @@ export default async function GuestPage({ params }: PageProps<"/join/[token]">) 
       <article className="card space-y-5 p-5 sm:p-7">
         <GroupEventSummary event={event} />
         <InvitationRefresh deadline={event.status === "pending" ? event.deadline : undefined} />
-        {event.status !== "expired" && <>
+        {over && <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">{errors.over}</p>}
+        {event.status !== "expired" && !over && <>
           <InvitationForm action={publicRsvp.bind(null, token, firstGuestKey)} className="flex flex-wrap items-center gap-3">
             {!user && event.response === null && <label className="w-full">
               <span className="label">{t.yourName}</span><input name="name" className="field" autoComplete="name" maxLength={100} required />

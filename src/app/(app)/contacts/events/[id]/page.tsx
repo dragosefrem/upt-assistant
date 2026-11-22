@@ -7,7 +7,7 @@ import { InvitationRefresh } from "@/components/InvitationRefresh";
 import { ShareInvitation } from "@/components/ShareInvitation";
 import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
-import { memberEvent } from "@/lib/group-events";
+import { eventIsOver, memberEvent } from "@/lib/group-events";
 import { rsvpAction } from "../../actions";
 
 const loadEvent = cache(async (id: string) => memberEvent((await requireOnboardedUser()).id, id));
@@ -21,17 +21,19 @@ export async function generateMetadata({ params }: PageProps<"/contacts/events/[
 export default async function GroupEventPage({ params }: PageProps<"/contacts/events/[id]">) {
   const event = await loadEvent((await params).id);
   if (!event) notFound();
-  const t = (await getT()).contacts.event;
+  const { event: t, errors } = (await getT()).contacts;
   const locale = await getLocale();
+  const over = eventIsOver(event);
   return (
     <div className="mx-auto w-full max-w-2xl space-y-4">
       <Link href="/contacts" className="text-sm font-medium text-brand-700 hover:underline">{t.back}</Link>
       <article className="card space-y-5 p-5 sm:p-7">
         <GroupEventSummary event={event} showDirections />
         <InvitationRefresh deadline={event.status === "pending" ? event.deadline : undefined} />
-        {event.status !== "expired" && <InvitationForm action={rsvpAction.bind(null, event.id)} className="flex flex-wrap gap-2">
-          <RsvpButtons response={event.response} />
-        </InvitationForm>}
+        {over ? <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-700">{errors.over}</p>
+          : event.status !== "expired" && <InvitationForm action={rsvpAction.bind(null, event.id)} className="flex flex-wrap gap-2">
+            <RsvpButtons response={event.response} />
+          </InvitationForm>}
         <section className="border-t border-slate-200 pt-4">
           <h2 className="font-semibold">{t.participants}</h2>
           <ul className="mt-1 divide-y divide-slate-100">
@@ -40,7 +42,7 @@ export default async function GroupEventPage({ params }: PageProps<"/contacts/ev
             </li>)}
           </ul>
         </section>
-        {event.shareToken && event.status !== "expired" && <ShareInvitation path={`/join/${event.shareToken}`} />}
+        {event.shareToken && event.status !== "expired" && !over && <ShareInvitation path={`/join/${event.shareToken}`} />}
       </article>
     </div>
   );

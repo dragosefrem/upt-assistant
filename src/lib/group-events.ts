@@ -87,6 +87,11 @@ export function tentativeTimesFor(userId: string, from: string, to: string) {
       eq(effectiveStatus(Date.now()), "pending"), gte(groupEvents.date, from), lte(groupEvents.date, to))).all();
 }
 
+/** Whether a meeting has ended: from then on it is a record of what happened, not an invitation. */
+export function eventIsOver(event: { date: string; endMin: number }, now: { date: string; minutes: number } = nowLocal()): boolean {
+  return event.date < now.date || (event.date === now.date && event.endMin <= now.minutes);
+}
+
 type Invite = { eventId: string } | { shareToken: string };
 type Respondent = { userId: string; guestKey?: string } | { userId?: undefined; guestKey: string; name: string };
 
@@ -94,9 +99,13 @@ export function respondToEvent(invite: Invite, who: Respondent, response: Exclud
   if (response !== "accepted" && response !== "declined") throw new InvitationError("chooseResponse");
   const publicLink = "shareToken" in invite;
   const saved = getDb().transaction((tx) => {
-    const event = tx.select({ id: groupEvents.id, status: groupEvents.status, outcome: effectiveStatus(Date.now()) }).from(groupEvents)
+    const event = tx.select({ id: groupEvents.id, status: groupEvents.status, outcome: effectiveStatus(Date.now()),
+      date: groupEvents.date, endMin: groupEvents.endMin }).from(groupEvents)
       .where(publicLink ? eq(groupEvents.shareToken, invite.shareToken) : eq(groupEvents.id, invite.eventId)).get();
     if (!event) throw new InvitationError("unavailable");
+    // Leaving a meeting after it took place would rewrite who was there, and take it out of
+    // everyone's calendar.
+    if (eventIsOver(event)) throw new InvitationError("over");
     const seat = (identity: SQL) => tx.select().from(eventParticipants)
       .where(and(eq(eventParticipants.eventId, event.id), identity)).get();
     const account = who.userId ? seat(eq(eventParticipants.userId, who.userId)) : undefined;

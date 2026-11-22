@@ -9,7 +9,7 @@ import * as i18nServer from "@/i18n/server";
 import { answerContact, cancelContactRequest, contactList, findPerson, incomingContactCount, invitationFailure, InvitationError, inviteContact, removeContact } from "@/lib/contacts";
 import { contactWeek, currentContactStatuses } from "@/lib/contact-schedule";
 import { exportItems, toICS } from "@/lib/export";
-import { groupInviteCount, memberEvent, myGroupEvents, publicEvent, respondToEvent, sharedEventsFor } from "@/lib/group-events";
+import { eventIsOver, groupInviteCount, memberEvent, myGroupEvents, publicEvent, respondToEvent, sharedEventsFor } from "@/lib/group-events";
 import { createGroupEvent, groupAvailability } from "@/lib/group-planning";
 import { planningRange } from "@/lib/planning-range";
 import { currentSemester, eventsBetween } from "@/lib/schedule";
@@ -227,6 +227,28 @@ describe("group RSVPs and calendars", () => {
     reply(id, "cam", "accepted");
     expect(calendar("bea")).toHaveLength(1);
     expect(calendar("alex")).toHaveLength(0);
+  });
+
+  it("keeps a meeting as it was once it has taken place", () => {
+    const id = plan();
+    reply(id, "bea", "accepted");
+    reply(id, "cam", "accepted");
+    expect(calendar("bea")).toHaveLength(1);
+    const meeting = memberEvent("bea", id)!;
+    const local = (minutes: number) => new Date(`${friday}T${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}:00+02:00`);
+    // Still under way: an answer can change.
+    vi.setSystemTime(local(meeting.endMin - 1));
+    expect(eventIsOver(meeting)).toBe(false);
+    reply(id, "cam", "declined");
+    reply(id, "cam", "accepted");
+    // A minute later it is over. Leaving now used to flip it to "one more answer needed" and
+    // remove it from the calendar of the people who had been there.
+    vi.setSystemTime(local(meeting.endMin));
+    expect(eventIsOver(meeting)).toBe(true);
+    expect(() => reply(id, "cam", "declined")).toThrow(/already taken place/);
+    expect(() => respondToEvent({ shareToken: meeting.shareToken ?? "none" }, { guestKey: "late", name: "Latecomer" }, "accepted")).toThrow();
+    expect(calendar("bea")).toHaveLength(1);
+    expect(memberEvent("cam", id)).toMatchObject({ response: "accepted", status: "confirmed" });
   });
 
   it("publishes only timely acceptances at the exact cutoff, even without another write", () => {

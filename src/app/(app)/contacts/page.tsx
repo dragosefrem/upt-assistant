@@ -12,7 +12,7 @@ import { requireOnboardedUser } from "@/lib/auth";
 import { contactDirectory } from "@/lib/contact-directory";
 import { currentContactStatuses, type ContactStatus } from "@/lib/contact-schedule";
 import { contactList } from "@/lib/contacts";
-import { myGroupEvents } from "@/lib/group-events";
+import { eventIsOver, myGroupEvents } from "@/lib/group-events";
 import { listSavedContacts } from "@/lib/saved-contacts";
 import { capitalize, formatDate, formatMinutes, nowLocal } from "@/lib/time";
 import { contactAction, rsvpAction } from "./actions";
@@ -97,14 +97,14 @@ export default async function ContactsPage({ searchParams }: PageProps<"/contact
   const sent = people.filter((p) => !p.accepted && p.requestedBy === user.id);
   const events = myGroupEvents(user.id);
   const now = nowLocal();
-  const today = now.date;
   const statuses = currentContactStatuses(user.id, locale, now);
-  const future = events.filter((e) => e.date >= today);
+  // A meeting that ended an hour ago is not an upcoming one.
+  const future = events.filter((e) => !eventIsOver(e, now));
   const needsReply = (event: (typeof events)[number]) => event.response === "pending" && event.status !== "expired";
   const invitations = future.filter(needsReply);
   const hasInbox = incoming.length > 0 || invitations.length > 0;
   const upcoming = future.filter((event) => !needsReply(event));
-  const past = events.filter((e) => e.date < today).reverse();
+  const past = events.filter((e) => eventIsOver(e, now)).reverse();
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
