@@ -1,3 +1,5 @@
+import type { Locale } from "@/i18n/config";
+import { holidaysBetween } from "./holidays";
 import type { Semester } from "./schedule";
 import { addDays, mondayOf } from "./time";
 
@@ -9,6 +11,8 @@ export interface SemesterOverview {
   teaching: Array<{ from: string; to: string; weeks: number }>;
   /** Breaks between two runs of teaching weeks. */
   holidays: Array<{ from: string; to: string }>;
+  /** Public holidays on a weekday of a teaching week: no classes that day. */
+  daysOff: Array<{ date: string; name: string }>;
   session: { from: string; to: string } | null;
   totalWeeks: number;
   /** 1-based teaching week of `today`, or null outside teaching. */
@@ -20,7 +24,7 @@ export interface SemesterOverview {
   resumes: string | null;
 }
 
-export function semesterOverview(semester: Semester, today: string): SemesterOverview {
+export function semesterOverview(semester: Semester, today: string, locale: Locale = "en"): SemesterOverview {
   const weeks = semester.weeks;
   const teaching: SemesterOverview["teaching"] = [];
   const holidays: SemesterOverview["holidays"] = [];
@@ -46,6 +50,7 @@ export function semesterOverview(semester: Semester, today: string): SemesterOve
     academicYear: semester.academicYear,
     teaching,
     holidays,
+    daysOff: weeks.flatMap((monday) => holidaysBetween(monday, addDays(monday, 4), locale)),
     session: semester.examStart && semester.examEnd ? { from: semester.examStart, to: semester.examEnd } : null,
     totalWeeks: weeks.length,
     week,

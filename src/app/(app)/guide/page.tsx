@@ -21,7 +21,7 @@ export default async function GuidePage() {
   const t = messages.guide;
   const today = nowLocal().date;
   const semester = currentSemester();
-  const overview = semester ? semesterOverview(semester, today) : null;
+  const overview = semester ? semesterOverview(semester, today, locale) : null;
   const group = describeGroup(user.groupId, locale);
   const buildings = studentBuildings(user);
   // A distance-learning exam is published as three sittings: one exam, not three.
@@ -119,6 +119,14 @@ export default async function GuidePage() {
                 {overview.holidays.length ? overview.holidays.map((h) => (
                   <dd key={h.from} className="mt-1 text-slate-600">{t.semester.holidayRange(date(h.from), date(h.to, true))}</dd>
                 )) : <dd className="mt-1 text-slate-600">—</dd>}
+                {/* A free Monday changes a first-year's week as much as a break does. */}
+                {overview.daysOff.filter((d) => d.date >= today).length > 0 && (
+                  <dd className="mt-2 border-t border-slate-100 pt-2 text-xs leading-relaxed text-slate-600">
+                    <span className="font-medium text-slate-800">{t.semester.daysOff}</span>{" "}
+                    {overview.daysOff.filter((d) => d.date >= today)
+                      .map((d) => `${formatDate(d.date, { weekday: "long", day: "numeric", month: "long" }, locale)} (${d.name})`).join("; ")}
+                  </dd>
+                )}
               </div>
               <div className="rounded-2xl border border-slate-200 p-3">
                 <dt className="flex items-center gap-2 font-semibold text-slate-900"><span aria-hidden className="h-2.5 w-2.5 rounded-full bg-red-400" />{t.semester.session}</dt>

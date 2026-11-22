@@ -364,6 +364,7 @@ export const STUDY_TOOLS: AssistantTool[] = [
         teaching_weeks_left_after_this_one: o.weeksLeft,
         classes: o.teaching.map((t) => `${t.from} to ${t.to} (${t.weeks} weeks)`),
         holidays: o.holidays.map((h) => `${h.from} to ${h.to}`),
+        public_holidays_without_classes: o.daysOff.map((d) => `${d.date} ${d.name}`),
         exam_session: o.session ? `${o.session.from} to ${o.session.to}` : "not set",
       };
     },

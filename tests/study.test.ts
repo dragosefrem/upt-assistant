@@ -176,6 +176,10 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     expect(weekInfo("2027-02-01", semester)).toMatchObject({ week: null, pause: "session" });
     expect(semesterOverview(semester, "2026-11-23")).toMatchObject({ week: 9, parity: "odd", state: "teaching", weeksLeft: 5, totalWeeks: 14 });
     expect(semesterOverview(semester, "2026-11-23").holidays).toEqual([{ from: "2026-12-21", to: "2027-01-10" }]);
+    // Public holidays inside teaching weeks: Monday 30 November and Tuesday 1 December 2026.
+    expect(semesterOverview(semester, "2026-11-23", "ro").daysOff).toEqual([
+      { date: "2026-11-30", name: "Sfântul Andrei" }, { date: "2026-12-01", name: "Ziua Națională a României" },
+    ]);
   });
 
   it("says which labs take place this week and when a skipped one comes next", () => {
