@@ -409,6 +409,19 @@ describe("Poli reply cards", () => {
     expect(card).toMatchObject({ type: "free", count: 4 });
   });
 
+  it("keeps the timetable card when the same question also asks for something without a card", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "test");
+    // "What do I have today, and what does semigrupă mean?": a timetable, then a supporting fact.
+    geminiTurn([{ functionCall: { name: "get_schedule", args: { from: day } } }]);
+    geminiTurn([{ functionCall: { name: "explain_term", args: { term: "semigrupă" } } }]);
+    geminiTurn([{ text: "You have three things today, listed below. A semigrupă is half of a group." }]);
+    const { card, text } = await ask("What do I have today, and what does semigrupă mean?");
+    expect(text).toContain("listed below");
+    // The reply points at the list: it has to be there.
+    if (card?.type !== "schedule") throw new Error("Expected the timetable card to survive the second lookup");
+    expect(card.events.map((e) => e.title)).toEqual(["Reading group", "Lunch", "Design review"]);
+  });
+
   it("discards a failed provider's lookup before using the built-in answer", async () => {
     vi.stubEnv("GEMINI_API_KEY", "test");
     geminiTurn([{ functionCall: { name: "find_exams", args: {} } }]);

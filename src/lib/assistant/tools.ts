@@ -1047,9 +1047,11 @@ export function runTool(name: string, input: unknown, ctx: ToolContext): unknown
   const args = (input && typeof input === "object" ? input : {}) as Record<string, unknown>;
   const supportsCard = tool && "show_card" in tool.input_schema.properties;
   const background = supportsCard && args.show_card === false;
-  // A correction, choice or change supersedes the previous result. Looking up
-  // a supporting fact in the background keeps the card the student asked for.
-  if (!background) ctx.card = undefined;
+  // A new lookup of the same kind supersedes the previous result. Looking up a supporting fact
+  // keeps the card the student asked for: in the background, or with a tool that shows no card
+  // of its own ("what do I have tomorrow, and how do I get to ASPC?"). A change or a choice in
+  // the same turn hides the card where the reply is put together.
+  if (supportsCard ? !background : !tool) ctx.card = undefined;
   if (!tool) return { error: `Unknown tool: ${name}` };
   try {
     for (const [key, schema] of Object.entries(tool.input_schema.properties)) {
