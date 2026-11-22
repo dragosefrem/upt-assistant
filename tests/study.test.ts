@@ -2,6 +2,8 @@ import { placeByName, placeResolver } from "@/lib/schedule";
 import { eq } from "drizzle-orm";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getDb } from "@/db";
+import { seed } from "@/db/seed";
+import { applyCatalog } from "@/scraper/apply";
 import { contacts, courses, entries, entryGroups, exams, examSpecializations, faculties, groups, occurrenceOverrides, personalEvents, savedContacts, semesters, specializations, users } from "@/db/schema";
 import { guide } from "@/i18n/messages/guide";
 import { askLocal } from "@/lib/assistant/local";
@@ -417,6 +419,20 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     } finally {
       db.update(faculties).set({ lat: null, lng: null, address: null }).where(eq(faculties.id, ana.facultyId!)).run();
     }
+  });
+
+  it("stores faculty names in one Unicode form, so a building is never listed twice", () => {
+    const db = getDb();
+    const typed = "Facultatea de Mecanică";
+    const served = "Facultatea de Mecanica\u0306"; // "ă" as "a" + breve, as upt.ro serves it
+    expect(served).not.toBe(typed);
+    applyCatalog(db, { faculties: [{ slug: "mec-served", name: served, shortName: "MECS", website: null, scheduleUrl: null, address: null, lat: null, lng: null, specializations: [] }], warnings: [] });
+    expect(db.select().from(faculties).where(eq(faculties.slug, "mec-served")).get()!.name).toBe(typed);
+    // A database filled before this is repaired when it is opened.
+    db.update(faculties).set({ name: served }).where(eq(faculties.slug, "mec-served")).run();
+    seed(db);
+    expect(db.select().from(faculties).where(eq(faculties.slug, "mec-served")).get()!.name).toBe(typed);
+    db.delete(faculties).where(eq(faculties.slug, "mec-served")).run();
   });
 
   it("explains terms and opens pages", () => {

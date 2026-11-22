@@ -36,7 +36,9 @@ export function applyCatalog(db: DB, catalog: Catalog) {
   db.transaction((tx) => {
     for (const f of catalog.faculties) {
       const values = {
-        name: f.name,
+        // upt.ro serves some names with the diacritics as separate marks ("a" + "˘"). Stored that
+        // way, "Facultatea de Mecanică" would not equal itself typed on a keyboard.
+        name: f.name.normalize("NFC"),
         shortName: f.shortName,
         website: f.website,
         scheduleUrl: f.scheduleUrl,
@@ -54,7 +56,7 @@ export function applyCatalog(db: DB, catalog: Catalog) {
       for (const s of f.specializations) {
         const slug = specSlug(s.name, s.language);
         const set = {
-          name: s.name,
+          name: s.name.normalize("NFC"),
           domain: s.domain,
           language: s.language,
           durationYears: s.durationYears,

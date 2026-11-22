@@ -1,6 +1,6 @@
 import { count, eq } from "drizzle-orm";
 import type { DB } from "./index";
-import { buildings, semesters } from "./schema";
+import { buildings, semesters, faculties } from "./schema";
 
 /**
  * Reference data the scraper cannot discover: the academic calendar (Senate decision
@@ -70,6 +70,11 @@ export function seed(db: DB) {
   const [{ n: buildingCount }] = db.select({ n: count() }).from(buildings).all();
   if (buildingCount === 0) {
     for (const b of BUILDINGS) db.insert(buildings).values(b).run();
+  }
+  // Names read from upt.ro before they were stored in one Unicode form.
+  for (const f of db.select({ id: faculties.id, name: faculties.name }).from(faculties).all()) {
+    const name = f.name.normalize("NFC");
+    if (name !== f.name) db.update(faculties).set({ name }).where(eq(faculties.id, f.id)).run();
   }
   // Exactly one semester is "current": the admin's explicit choice, else by date.
   const current = db.select().from(semesters).where(eq(semesters.isCurrent, true)).all();

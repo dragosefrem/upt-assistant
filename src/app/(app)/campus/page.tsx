@@ -21,6 +21,10 @@ export default async function CampusRoute({ searchParams }: PageProps<"/campus">
   const semester = currentSemester();
   const place = placeResolver(user.facultyId);
   const faculty = facultyOf(user.facultyId)?.name ?? null;
+  // The building a link names is the one this student's timetable gives the room, with what
+  // is known about it: whether a rule placed the room there or it is only a guess.
+  const own = link.to ? place(link.to) : null;
+  const initialPlace = !link.building ? null : own && own.name === link.building ? own : placeByName(link.building, user.facultyId);
   const rooms = semester ? groupRooms(studentWeek(user, semester), place, locale) : [];
   return (
     <CampusPage
@@ -29,7 +33,7 @@ export default async function CampusRoute({ searchParams }: PageProps<"/campus">
       initial={link}
       rooms={rooms}
       faculty={faculty}
-      initialPlace={link.building ? placeByName(link.building, user.facultyId) : null}
+      initialPlace={initialPlace}
       hasSemester={!!semester}
       admin={user.role === "admin"}
       mapsKey={process.env.GOOGLE_MAPS_EMBED_KEY?.trim() || null}
