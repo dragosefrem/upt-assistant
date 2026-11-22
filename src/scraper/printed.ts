@@ -1,4 +1,4 @@
-import { hasKindMarker, isFacultative, parseCellText } from "./cellText";
+import { hasKindMarker, hourLoads, isFacultative, parseCellText } from "./cellText";
 import { activityTime, norm, parseDayWord, parseTimeRange, squash, type TimeRange } from "./text";
 import type { NormalizedGroup, NormalizedTimetable } from "./types";
 
@@ -75,6 +75,8 @@ export function civilCell(raw: string) {
     parsed.room = detail[1];
     if (detail[2]) parsed.teacher = detail[2];
   }
+  // In the year-2 layout the caption of the room box comes first: "Sală GEOLOGIE INGINEREASCĂ".
+  parsed.name = parsed.name.replace(/^Sal[aă]\s+(?=\p{Lu}{3})/u, "");
   const lecture = parsed.teacher ? null : civilLecture.exec(parsed.name);
   if (lecture) {
     parsed.name = lecture[1].trim();
@@ -102,7 +104,11 @@ export function readPrintedTable(
   columnsFor: (header: Box[], clockRight: number) => PrintedColumn[],
   documentWeeks = "all",
   parse = parseCellText,
-  options: { splitSharedHours?: boolean; splitActivities?: (text: string) => string[]; isDetail?: (text: string) => boolean } = {},
+  options: {
+    splitSharedHours?: boolean; splitActivities?: (text: string) => string[]; isDetail?: (text: string) => boolean;
+    /** Whether an activity of a shared cell is for this group: "Fizica (L) sapt. pare (gr 1.1)". */
+    isFor?: (activity: string, group: NormalizedGroup) => boolean;
+  } = {},
 ): NormalizedTimetable {
   const result: NormalizedTimetable = { groups: [], entries: [], warnings: [] };
   const byX = new Map<number, Array<{ box: Box; time: TimeRange; day: number }>>();
@@ -232,22 +238,28 @@ export function readPrintedTable(
       const parsed = parse(activity);
       const subgroups = options.splitActivities ? [...activity.matchAll(/\bsg\.\s*(\d+\s*\/\s*\d+)/gi)]
         .map((m) => m[1].replaceAll(" ", "")) : [];
-      const byRule = new Map<string, number[]>();
-      for (const [id, rules] of audience) {
-        if (subgroups.length && !subgroups.includes(result.groups[id].name)) continue;
-        const parity = rules.size === 1 ? [...rules][0] : "all";
-        const weeks = [...new Set([documentWeeks, parsed.weeks, parity].filter((w) => w !== "all"))].join("&") || "all";
-        const ids = byRule.get(weeks) ?? [];
-        ids.push(id);
-        byRule.set(weeks, ids);
-      }
-      for (const [weeks, groups] of byRule) {
-        const time = activityTime(activity, slot);
-        result.entries.push({ sheet, day: start.day, ...time, groups, weeks,
-          courseName: parsed.name, courseAbbr: parsed.abbr, kind: parsed.kind,
-          room: parsed.room ?? (roomCell ? squash(roomCell[4]).replace(/^sal[aă]\s+/i, "") : null),
-          teacher: parsed.teacher, rawText: squash(activity), isSlotOption: false,
-          publishedOptional: isFacultative(activity) });
+      const time = activityTime(activity, slot);
+      // "(s:1-8 2h, s:9-12 3h)": a lecture whose length changes is one entry per length.
+      const loads = hourLoads(activity);
+      for (const load of loads.length ? loads : [null]) {
+        const byRule = new Map<string, number[]>();
+        for (const [id, rules] of audience) {
+          if (subgroups.length && !subgroups.includes(result.groups[id].name)) continue;
+          if (options.isFor && !options.isFor(activity, result.groups[id])) continue;
+          const parity = rules.size === 1 ? [...rules][0] : "all";
+          const weeks = [...new Set([documentWeeks, load?.weeks ?? parsed.weeks, parity].filter((w) => w !== "all"))].join("&") || "all";
+          const ids = byRule.get(weeks) ?? [];
+          ids.push(id);
+          byRule.set(weeks, ids);
+        }
+        for (const [weeks, groups] of byRule) {
+          result.entries.push({ sheet, day: start.day, startMin: time.startMin,
+            endMin: load ? Math.min(time.endMin, time.startMin + load.hours * 60) : time.endMin, groups, weeks,
+            courseName: parsed.name, courseAbbr: parsed.abbr, kind: parsed.kind,
+            room: parsed.room ?? (roomCell ? squash(roomCell[4]).replace(/^sal[aă]\s+/i, "") : null),
+            teacher: parsed.teacher, rawText: squash(activity), isSlotOption: false,
+            publishedOptional: isFacultative(activity) });
+        }
       }
     }
   }

@@ -6,9 +6,10 @@ import { acAdapter } from "@/scraper/adapters/ac";
 import { fihAdapter } from "@/scraper/adapters/fih";
 import { etcAdapter, fscAdapter } from "@/scraper/adapters/others";
 import { pageTerm } from "@/scraper/adapters/printedFaculties";
+import { roboticsActivities, roboticsAudience } from "@/scraper/adapters/ria";
 import { civilCell, civilDetail, electricalActivities, electricalCell, headerColumns, readPrintedTable, type Box } from "@/scraper/printed";
 import { extractSpecializations, parseProgrammeLabel } from "@/scraper/catalog";
-import { parseCellText } from "@/scraper/cellText";
+import { hourLoads, parseCellText } from "@/scraper/cellText";
 import { distanceTimetable } from "@/scraper/distance";
 import { classifyLink, detectAcademicYear, detectSemester, downloadUrl, extractLinks, matchesSemester } from "@/scraper/discover";
 import { parseExamCell, parseRoomGridExams } from "@/scraper/exams";
@@ -333,6 +334,26 @@ describe("parseTimetable", () => {
     expect(t.entries.find((e) => e.day === 2)).toMatchObject({ courseName: "Electronica digitala", startMin: hm(8), endMin: hm(10), groups: [2, 3] });
   });
 
+  it("gives a lecture that gets shorter during the term its length in each part", () => {
+    // MPT, "IM an I", Thursday 16-19: three hours in weeks 1-4, two from week 5.
+    const g = new Grid("IM an I");
+    g.add({ row: 1, col: 3, rowSpan: 1, colSpan: 2, text: "ANUL I - SEM. I 2026/2027" });
+    ["1.1", "1.2"].forEach((name, i) => g.add({ row: 3, col: 3 + i, rowSpan: 1, colSpan: 1, text: name }));
+    ["16-17", "17-18", "18-19", "16-17", "17-18", "18-19"].forEach((time, i) => g.add({ row: 4 + i, col: 2, rowSpan: 1, colSpan: 1, text: time }));
+    g.add({ row: 4, col: 3, rowSpan: 3, colSpan: 2, text: "Fizica (Fiz), curs, A0, A.Palcu, 3 h sapt.1-4, 2 h sapt. 5-12" });
+    g.add({ row: 7, col: 3, rowSpan: 3, colSpan: 2, text: "Limbaje de programare (LP), curs, A0, sapt.1-8 (3 h), sapt. 9-10 (2 h), M.Pop" });
+    const t = parseTimetable(g);
+    const parts = (name: string) => t.entries.filter((e) => e.courseName.startsWith(name)).map((e) => `${e.weeks} ${e.startMin / 60}-${e.endMin / 60} ${e.kind} ${e.room} ${e.teacher}`);
+    // In week 9 the student was kept until 19:00 for a lecture that ends at 18:00.
+    expect(parts("Fizica")).toEqual(["1-4 16-19 course A0 A. Palcu", "5-12 16-18 course A0 A. Palcu"]);
+    expect(parts("Limbaje")).toEqual(["1-8 16-19 course A0 M. Pop", "9-10 16-18 course A0 M. Pop"]);
+    // The "2" of "2 h" is an hour count, not week 2.
+    expect(parseCellText("Fizica (Fiz), curs, A0, A.Palcu, 3 h sapt.1-4, 2 h sapt. 5-12").weeks).toBe("1-4,5-12");
+    expect(hourLoads("Controlere Logice Programabile (s:1-8 2h, s:9-12 3h), curs")).toEqual([{ weeks: "1-8", hours: 2 }, { weeks: "9-12", hours: 3 }]);
+    expect(hourLoads("Sisteme mobile si aplicatii (c) M. Marcu sala 303CP 2h/12sapt")).toEqual([]);
+    expect(hourLoads("MM (s) sapt 1-7 sala SPM205")).toEqual([]);
+  });
+
   it("reports sheets that are not timetables", () => {
     const g = new Grid("Legenda sali");
     g.add({ row: 1, col: 1, rowSpan: 1, colSpan: 1, text: "Sali" });
@@ -478,6 +499,28 @@ describe("printed and interactive timetables", () => {
     expect(of(/^Calc/)).toEqual([expect.objectContaining({ startMin: hm(8), endMin: hm(10), room: "A107", groups: [3] })]);
   });
 
+  it("splits a seminar and a lab that share a cell at Robotics, each in its weeks and for its semigroup", () => {
+    // RIA, year 1, Tuesday 10-12, the cell merged across semigroups 1/1 and 1/2.
+    const cell = "Fizica (S) sapt. impare Sala N206 Fizica (L) sapt. pare (gr 1.1) Sala C303a";
+    expect(roboticsActivities(cell)).toEqual(["Fizica (S) sapt. impare Sala N206", "Fizica (L) sapt. pare (gr 1.1) Sala C303a"]);
+    expect(roboticsActivities("Fizica (S) sapt. impare Sala N206 Fizica (L) par (gr 2.1) Sala C303a")).toHaveLength(2);
+    expect(roboticsActivities("Chimie (C) sala M306 Prof.dr Ing. Narcis DUȚEANU")).toHaveLength(1);
+    const cells: Box[] = [
+      [1, 0, 3, 1, "Grupa 1"], [1, 1, 2, 2, "1/1"], [2, 1, 3, 2, "1/2"],
+      [0, 2, 1, 3, "8-10"], [0, 3, 1, 4, "10-12"], [0, 4, 1, 5, "12-14"],
+      [1, 3, 3, 4, cell],
+    ];
+    const table = readPrintedTable(cells, "An I", (headers) => headerColumns(headers.filter((b) => /^(?:grupa|\d)/i.test(b[4])), (path) => ({
+      spec: { name: "Mecatronică și robotică", degree: "bachelor" }, year: 1, series: "", name: path.join(" "),
+    })), "all", undefined, { splitActivities: roboticsActivities, isFor: roboticsAudience });
+    expect(table.groups.map((g) => g.name)).toEqual(["Grupa 1 1/1", "Grupa 1 1/2"]);
+    expect(table.entries).toEqual([
+      expect.objectContaining({ courseName: "Fizica", kind: "seminar", weeks: "odd", room: "N206", groups: [0, 1], startMin: hm(10), endMin: hm(12) }),
+      // The lab the students were told did not exist: even weeks, semigroup 1/1 only.
+      expect.objectContaining({ courseName: "Fizica", kind: "lab", weeks: "even", room: "C303a", groups: [0] }),
+    ]);
+  });
+
   it("reads the printed term, room and lecturer without treating evening hours as an academic year", () => {
     expect(pageTerm("20-21\nSemestrul I 2026/2027")).toEqual({ academicYear: "2026-2027", semester: 1 });
     expect(pageTerm("ORAR\nSemestrul II\nAnul III Anul universitar 2026/2027")).toEqual({ academicYear: "2026-2027", semester: 2 });
@@ -487,6 +530,7 @@ describe("printed and interactive timetables", () => {
       name: "Circuite", kind: "course", room: "A 101", teacher: "Conf.dr. I. Pop", weeks: "2-13",
     });
     expect(parseCellText("Materiale (curs) ‐ primele 10 săptămâni").weeks).toBe("1-10");
+    expect(parseCellText("Fizica (L) par (gr 2.1) Sala C303a")).toMatchObject({ kind: "lab", weeks: "even", room: "C303a" });
     // IEE years 2-4: SP and SI are even and odd weeks, never a lecturer.
     expect(electricalCell("TCE, lab, SP, C304")).toMatchObject({ name: "TCE", kind: "lab", room: "C304", weeks: "even", teacher: null });
     expect(electricalCell("CS2, lab, D010 S.I.")).toMatchObject({ kind: "lab", room: "D010", weeks: "odd", teacher: null });

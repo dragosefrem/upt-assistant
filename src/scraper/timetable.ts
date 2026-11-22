@@ -1,5 +1,5 @@
 import type { EntryKind } from "@/db/schema";
-import { hasKindMarker, parseCellText, isFacultative } from "./cellText";
+import { hasKindMarker, hourLoads, isFacultative, parseCellText } from "./cellText";
 import type { Grid, GridCell } from "./grid";
 import {
   DAY_IN_TEXT,
@@ -361,6 +361,15 @@ export function parseTimetable(grid: Grid, opts: {
       if (relocated) {
         out.entries.push({ ...entry, day: otherDay, ...otherTime, room: squash(move[4]), weeks: move[1] });
         entry.weeks = [entry.weeks === "all" ? "" : entry.weeks, "!" + move[1]].filter(Boolean).join("&");
+      }
+      // "3 h sapt.1-4, 2 h sapt. 5-12": the same lecture, shorter from week 5. One entry per
+      // length, so the calendar does not keep the student an hour after it has ended.
+      const loads = relocated ? [] : hourLoads(regular);
+      if (loads.length) {
+        for (const load of loads) {
+          out.entries.push({ ...entry, weeks: load.weeks, endMin: Math.min(entry.endMin, entry.startMin + load.hours * 60) });
+        }
+        continue;
       }
       out.entries.push(entry);
     }

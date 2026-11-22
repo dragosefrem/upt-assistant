@@ -6,6 +6,28 @@ import { norm, parseStudyYear, squash } from "../text";
 import type { FacultyAdapter, SpecRef } from "../types";
 import { genericNormalize } from "./generic";
 
+/**
+ * A seminar and a lab of the same course can share a cell, each in its own weeks and the lab
+ * for one semigroup only: "Fizica (S) sapt. impare Sala N206 Fizica (L) sapt. pare (gr 1.1)
+ * Sala C303a". Read as one activity it was a seminar every week, and the lab did not exist.
+ */
+export function roboticsActivities(text: string): string[] {
+  const flat = squash(text);
+  const first = /^(.+?)\s*\(([CSLP])\)/.exec(flat);
+  if (!first) return [text];
+  const course = first[1].trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const again = new RegExp(`\\s${course}\\s*\\((?!${first[2]}\\))[CSLP]\\)`, "u").exec(flat.slice(first[0].length));
+  if (!again) return [text];
+  const cut = first[0].length + again.index;
+  return [flat.slice(0, cut).trim(), flat.slice(cut).trim()];
+}
+
+/** "(gr 1.1)" is semigroup 1 of group 1, which the sheet's columns call "Grupa 1" and "1/1". */
+export function roboticsAudience(activity: string, group: { name: string }): boolean {
+  const named = /\(\s*gr\.?\s*(\d)\s*[./]\s*(\d)\s*\)/i.exec(activity);
+  return !named || new RegExp(`(?:^|\\D)${named[1]}\\s*/\\s*${named[2]}$`).test(group.name.trim());
+}
+
 export const riaAdapter: FacultyAdapter = {
   slug: "facultatea-de-robotica-inteligenta-artificiala-si-sisteme-autonome",
   timetablePages: (_semester, url) => [url ?? "https://ria.upt.ro/studenti/orare/"],
@@ -43,6 +65,6 @@ export const riaAdapter: FacultyAdapter = {
         spec: path.some((s) => /dual/i.test(s)) ? { ...spec, name: "Robotică, învățământ dual" } : spec,
         year, series: "", name: path.filter((s) => /^(?:gr|semi|sgr|\d)/i.test(s)).join(" "),
       }));
-    });
+    }, "all", undefined, { splitActivities: roboticsActivities, isFor: roboticsAudience });
   },
 };

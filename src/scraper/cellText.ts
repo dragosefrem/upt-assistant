@@ -67,7 +67,22 @@ const BUILDING =
 const weekWord = String.raw`(?:s[aă]pt(?:[aă]m[aâ]n(?:ile|a|ă|i))?\.?|weeks?|s\.|s(?=\s*[:.]?\s*\d{1,2}\s*[-–÷]))`;
 const parityWord = String.raw`(?:imp(?:ar[aăe]?)?|par[aăe]?|[pi](?=\.))`;
 const weekNumber = String.raw`\d{1,2}(?:\s*[-–÷]\s*s?\d{1,2})?`;
-const numberedWeeks = new RegExp(String.raw`(?<![\p{L}\d.])(${weekWord})\s*[:.]?\s*(${weekNumber}(?:\s*[,/]\s*${weekNumber})*)(?!\d|[.:]\d|\s*[-–÷]\s*\d)`, "giu");
+const numberedWeeks = new RegExp(String.raw`(?<![\p{L}\d.])(${weekWord})\s*[:.]?\s*(${weekNumber}(?:\s*[,/]\s*${weekNumber}(?!\s*h\b))*)(?!\d|[.:]\d|\s*[-–÷]\s*\d)`, "giu");
+
+/**
+ * A lecture whose length changes during the term: "3 h sapt.1-4, 2 h sapt. 5-12",
+ * "sapt.1-8 (3 h), sapt. 9-10 (2 h)", "(s:1-8 2h, s:9-12 3h)". Each part with its weeks and
+ * hours, in the order written; empty unless at least two parts are given.
+ */
+export function hourLoads(text: string): Array<{ weeks: string; hours: number }> {
+  const range = String.raw`(\d{1,2})\s*[-–÷]\s*(\d{1,2})`;
+  const word = String.raw`(?:s[aă]pt\w*\.?|s\s*[:.])`;
+  const before = [...text.matchAll(new RegExp(String.raw`(\d)\s*h\s*,?\s*${word}\s*${range}`, "giu"))].map((m) => ({ hours: +m[1], from: +m[2], to: +m[3] }));
+  const after = [...text.matchAll(new RegExp(String.raw`${word}\s*${range}\s*\(?\s*(\d)\s*h\b\)?`, "giu"))].map((m) => ({ hours: +m[3], from: +m[1], to: +m[2] }));
+  const loads = before.length >= 2 ? before : after.length >= 2 ? after : [];
+  return loads.every((l) => l.hours >= 1 && l.hours <= 6 && l.from >= 1 && l.to >= l.from && l.to <= 20)
+    ? loads.map((l) => ({ weeks: `${l.from}-${l.to}`, hours: l.hours })) : [];
+}
 const parityWeeks = new RegExp(String.raw`(?<![\p{L}\d.])${weekWord}\s*[:.]?\s*(${parityWord})(?!\p{L})\.?`, "giu");
 
 function extractWeeks(input: string) {
@@ -90,6 +105,8 @@ function extractWeeks(input: string) {
   if ([...rest.matchAll(counted)].length === 1) {
     rest = rest.replace(counted, (match, n: string) => (+n >= 2 && +n <= 13 ? `săpt. 1-${n}` : match));
   }
+  // "Fizica (L) par (gr 2.1)": the parity alone, right after the kind.
+  rest = rest.replace(/(?<=\([CSLP]\)\s*)((?:im)?par[aăe]?)(?![\p{L}])/giu, "săpt. $1");
   // "sala 311 impar": the parity alone, after everything else.
   rest = rest.replace(/(?<=[\p{L}\d)]\s+)((?:im)?par[aăe]?)\s*$/iu, "săpt. $1");
   rest = rest.replace(/(\bs[aă]pt\.?\s*\d{1,2}\s*[-–÷]\s*\d{1,2})\s*:\s*((?:im)?par[aăe]?)(?!\p{L})/giu, "$1 săpt. $2");
