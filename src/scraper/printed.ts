@@ -15,6 +15,8 @@ const roomOnly = /^(?:sal[aă]\s+[\p{L}\d .-]{1,14}|(?:[A-Z]{1,3}\s?-?\d{2,4}[a-
 const staffTitle = /(?:\b(?:asist|prof|conf|lect)\s*\.|[sșş](?:ef\s+lucr|\s*\.\s*l)\.)/i;
 /** A lecturer alone on a line, as an initial and a surname: "C Turc", "D. Ostoia". */
 const teacherLine = /^\p{Lu}\.?\s+\p{Lu}\p{Ll}+(?:[-\s]\p{Lu}\p{Ll}+)?$/u;
+/** A sub-heading inside the grid that limits the classes below it to some weeks: "S1-S7". */
+const weekHeading = /^S\s?(\d{1,2})\s*[-–]\s*S\s?(\d{1,2})$/i;
 
 /**
  * What is typed in a box, without the marks that spill over from the neighbouring cell of a
@@ -212,6 +214,10 @@ export function readPrintedTable(
       blocks.splice(blocks.indexOf(right), 1);
     }
   }
+  const weekHeadings = blocks.flatMap((b) => {
+    const range = weekHeading.exec(squash(b[4]));
+    return range ? [{ box: b, weeks: `${Number(range[1])}-${Number(range[2])}` }] : [];
+  });
   // MEC prints two hours per clock label. A change between two full-cohort
   // activities inside that label marks the intermediate hour, even when the
   // spreadsheet rows were printed with unequal heights.
@@ -235,7 +241,7 @@ export function readPrintedTable(
   }
   for (const b of blocks) {
     const raw = squash(b[4]);
-    if (parseTimeRange(raw) || dayOf(raw) || !/\p{L}/u.test(raw) || detailCell(raw) || continuation.test(raw)) continue;
+    if (parseTimeRange(raw) || dayOf(raw) || !/\p{L}/u.test(raw) || detailCell(raw) || continuation.test(raw) || weekHeading.test(raw)) continue;
     const adjoiningRoom = cells.find((r) => roomOnly.test(squash(r[4])) && Math.abs(r[0] - b[2]) < 0.05 &&
       Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
     const covered = indexed.filter((c) => Math.min(c.right, adjoiningRoom?.[2] ?? b[2]) - Math.max(c.left, b[0]) > 0.1);
@@ -273,6 +279,9 @@ export function readPrintedTable(
     const roomCell = adjoiningRoom ?? cells.find((other) => roomOnly.test(squash(other[4])) &&
       Math.abs(other[1] - b[3]) < 0.05 && Math.abs(other[0] - b[0]) < 0.05 &&
       Math.abs(other[2] - b[2]) < 0.05 && other[3] <= end.box[3] + 0.05);
+    // "S1-S7" over a column: what is below it that day is held in those weeks only.
+    const headed = weekHeadings.find(({ box }) => box[0] <= b[0] + 0.05 && box[2] >= b[2] - 0.05 && box[3] <= b[1] + 0.05 &&
+      dayAt((box[1] + box[3]) / 2) === start.day)?.weeks ?? "all";
     const audience = new Map<number, Set<string>>();
     for (const c of covered) {
       const rules = audience.get(c.id) ?? new Set();
@@ -292,7 +301,7 @@ export function readPrintedTable(
           if (subgroups.length && !subgroups.includes(result.groups[id].name)) continue;
           if (options.isFor && !options.isFor(activity, result.groups[id])) continue;
           const parity = rules.size === 1 ? [...rules][0] : "all";
-          const weeks = [...new Set([documentWeeks, load?.weeks ?? parsed.weeks, parity].filter((w) => w !== "all"))].join("&") || "all";
+          const weeks = [...new Set([documentWeeks, load?.weeks ?? parsed.weeks, parity, headed].filter((w) => w !== "all"))].join("&") || "all";
           const ids = byRule.get(weeks) ?? [];
           ids.push(id);
           byRule.set(weeks, ids);

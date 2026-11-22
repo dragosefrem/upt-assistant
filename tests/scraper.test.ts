@@ -574,6 +574,29 @@ describe("printed and interactive timetables", () => {
     ]);
   });
 
+  it("reads \"S1-S7\" over a column as the weeks of the classes below it, and starts a stitched lab with its row", () => {
+    // Mecanică, master Inginerie integrată: Monday splits into "S1-S7" and "S8-S14". Both were
+    // shown as classes, and all four MIPT blocks appeared every week, overlapping.
+    // Year 1: "GDDT (L) Farkas A." is written half-way down 18-20, its room in 20-21.
+    const cells: Box[] = [
+      [156.02, 180, 304.91, 190, "Anul II"],
+      [140, 199.22, 156.02, 212.42, "14-16"], [140, 212.42, 156.02, 238.7, "16-18"], [140, 238.7, 156.02, 264.98, "18-20"], [140, 264.98, 156.02, 278.12, "20-21"],
+      [156.02, 199.22, 219.77, 212.42, "S1-S7"], [219.77, 199.22, 304.91, 212.42, "S8-S14"],
+      [156.02, 212.42, 219.77, 238.7, "MIPT (C)\nSala M 010"], [219.77, 212.42, 304.91, 238.7, "MIPT (P)\nSala 126 SPM"],
+      [156.02, 251.84, 219.77, 264.98, "GDDT (L) Farkas A."], [156.02, 264.98, 219.77, 278.12, "Sala N 302"],
+      [219.77, 238.7, 304.91, 264.98, "GDDT (L) Farkas A.\nSala N 302"],
+    ];
+    const read = (splitSharedHours: boolean) => readPrintedTable(cells, "Anul II", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Inginerie integrată", degree: "master" }, year: 2, series: "", name: labels[0],
+    })), "all", undefined, { splitSharedHours }).entries.map((e) => `${e.startMin / 60}-${e.endMin / 60} ${e.weeks} ${e.kind} ${e.courseName} @${e.room}`).sort();
+    expect(read(true)).toEqual([
+      "16-18 1-7 course MIPT @M 010", "16-18 8-14 project MIPT @126 SPM",
+      "18-20 8-14 lab GDDT @N 302", "18-21 1-7 lab GDDT @N 302",
+    ]);
+    // Where rows are drawn to scale (Construcții), the same boxes are a class from 19 to 21.
+    expect(read(false)).toContain("19-21 1-7 lab GDDT @N 302");
+  });
+
   it("gives a class written in half of its row the whole row", () => {
     // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
     // box covers the lower half of the row only (coordinates as read from the published PDF).
