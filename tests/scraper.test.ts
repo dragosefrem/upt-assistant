@@ -625,6 +625,22 @@ describe("printed and interactive timetables", () => {
     expect(read(false)).toContain("19-21 1-7 lab GDDT @N 302");
   });
 
+  it("reads both activities of an IEE cell that names two taking turns", () => {
+    // Inginerie electrică, years 3 and 4. Only the first was kept: the odd-week MNCE project
+    // did not exist, "M.E Seminar · A214" showed every week although odd weeks are a BAE
+    // project in A215, and the IEJT project never became the lab it is from week 7.
+    const read = (cell: string) => electricalActivities(cell).map(electricalCell).map((a) => `${a.name} ${a.kind} ${a.weeks} @${a.room}`);
+    expect(read("MNCE lab. S.P, C423/ MNCE\npr.S.I c423")).toEqual(["MNCE lab even @C423", "MNCE project odd @C423"]);
+    expect(read("M.E, sem, SP, A214 / BAE pr. SI A215")).toEqual(["M.E seminar even @A214", "BAE project odd @A215"]);
+    expect(read("SP: IA, lab /\nSI: IA pr D010")).toEqual(["IA lab even @D010", "IA project odd @D010"]);
+    expect(read("C 220, IEJT (P) s. 2-6\nC 220, IEJT (L) s. 7-11")).toEqual(["IEJT project 2-6 @C 220", "IEJT lab 7-11 @C 220"]);
+    expect(read("C 002 Limba Franceză (S) / A 216 Limba Engleză (S)")).toEqual(["Limba Franceză seminar all @C 002", "Limba Engleză seminar all @A 216"]);
+    // A subgroup or two rooms written with a slash are not two activities, and neither are the lines of a note.
+    expect(read("sg. 3/2, C303B, Fiz. (L) s.imp")).toHaveLength(1);
+    expect(read("TCE, lab, SP, C304/C305")).toEqual(["TCE lab even @C304"]);
+    expect(read("A223, Etică şi Integritate Academică (S)\ns. 1,3,5 grupa 1\ns. 2,4,6 grupa 2")).toHaveLength(1);
+  });
+
   it("gives a class written in half of its row the whole row", () => {
     // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
     // box covers the lower half of the row only (coordinates as read from the published PDF).

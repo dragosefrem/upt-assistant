@@ -35,7 +35,7 @@ const continuation = /^(?:(?:\([CSLP]\)\s*)?(?:s[aă]pt\w*\.?\s*(?:\d+\s*[-–]\
  * and the other SI, which is what tells the letters apart from a lecturer's initials.
  */
 function electricalWeeks(text: string) {
-  return text.replace(/(?<![\p{L}\d])S\.?\s?([PI])(?![\p{L}\d])\.?(?=\s*(?:[,;:/]|$|[A-Z]\s?\d))/gu,
+  return text.replace(/(?<![\p{L}\d])S\.?\s?([PI])(?![\p{L}\d])\.?(?=\s*(?:[,;:/]|$|[A-Za-z]\s?\d))/gu,
     (_, parity: string) => (parity === "P" ? "săpt. pare" : "săpt. impare"));
 }
 
@@ -44,7 +44,11 @@ const elsewhere = /^(?:Facultatea\s+de\s+)?(Chimie|Mecanic[aă]|Hidrotehnic[aă]
 
 /** IEE prints the room first and the kind after the lecturer's name. */
 export function electricalCell(input: string) {
-  let raw = electricalWeeks(squash(input)).replace(/^sg\.\s*\d+\s*\/\s*\d+\s*[,;]\s*/i, "");
+  let raw = electricalWeeks(squash(input)).replace(/^sg\.\s*\d+\s*\/\s*\d+\s*[,;]\s*/i, "")
+    // "MNCE pr.S.I C423", "IA pr D010": the project, named in a word of its own.
+    .replace(/(?<![\p{L}\d])pr(?![\p{L}\d])\.?\s*/iu, "(P) ")
+    // "c423" for C423.
+    .replace(/(?<![\p{L}\d])([a-f])(?=\d{3}(?![\p{L}\d]))/gu, (wing) => wing.toUpperCase());
   const away = elsewhere.exec(raw);
   if (away) raw = raw.slice(away[0].length);
   const room = /^(?:sal[aă]\s*((?:[A-Z]+\s*)?\d{2,4}[a-z]?)|([A-Z]\s?\d{2,4}[a-z]?|SPM\s*\d+))[\s,;]+(?=\S)/iu.exec(raw);
@@ -60,11 +64,34 @@ export function electricalCell(input: string) {
   return parsed;
 }
 
+/** IEE also names the kind in a word with no brackets or commas: "MNCE pr.S.I C423", "IA pr D010". */
+const electricalKind = (text: string) => hasKindMarker(text) || /(?<![\p{L}\d])(?:lab|sem|pr|curs)(?![\p{L}\d])/iu.test(text);
+const electricalRoom = /(?<![\p{L}\d])[A-Z]\s?\d{3}[a-z]?(?![\p{L}\d])/u;
+
+/**
+ * The activities of one cell. Two that take turns are written one under the other or on one
+ * line with a slash, each with its weeks: "MNCE lab. S.P, C423/ MNCE pr.S.I C423" is the lab
+ * in even weeks and the project in odd weeks; "IEJT (P) s. 2-6" over "IEJT (L) s. 7-11" a
+ * project that becomes a lab. Read as one, the second was lost.
+ */
 export function electricalActivities(text: string): string[] {
+  // On one line or wrapped over several, with a slash between the two.
+  // Not the slash of a subgroup ("sg. 3/2") or of two rooms ("409/410").
+  const halves = squash(text).split(/\s*(?:(?<!\d\s*)\/|\/(?!\s*\d))\s*(?=\S)/);
+  if (halves.length === 2 && halves.every(electricalKind)) {
+    // "SP: IA, lab / SI: IA pr D010": the room both share is written once, at the end.
+    const shared = new RegExp(electricalRoom.source + "\\s*$", "u").exec(halves[1]);
+    if (shared && !electricalRoom.test(halves[0])) halves[0] += `, ${shared[0].trim()}`;
+    return halves;
+  }
+  // One under the other: both name their kind in brackets, and the first says when it is held
+  // (odd or even weeks, or a range of weeks that the second continues).
+  const parity = (part: string) => /(?:\bs\.|s[aă]pt\.?)\s*(?:imp|par)/i.test(electricalWeeks(part));
+  const range = (part: string) => /(?:\bs\.|s[aă]pt\.?)\s*\d{1,2}\s*[-–]\s*\d{1,2}/i.test(part);
   const parts: string[] = [];
   for (const line of text.split(/\n/)) {
     const last = parts.at(-1);
-    if (last && !(hasKindMarker(last) && hasKindMarker(line) && /(?:\bs\.|s[aă]pt\.?)\s*(?:imp|par)/i.test(electricalWeeks(last)))) {
+    if (last && !(hasKindMarker(last) && hasKindMarker(line) && (parity(last) || (range(last) && range(line))))) {
       parts[parts.length - 1] += "\n" + line;
     } else parts.push(line);
   }
