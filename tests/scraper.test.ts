@@ -204,6 +204,16 @@ describe("parseCellText", () => {
     expect(parseCellText("Etică și integritate academică Săpt. 1 / 5 / 9; Săpt.13 (14-15) Reisz Sală H4").name).toBe("Etică și integritate academică");
   });
 
+  it("takes a lecture's room from the brackets after it, not from the note about its lab", () => {
+    // Mecanică, year 1. The Fizica lecture was shown in "303 A si 303 B corpul C" (where the lab
+    // is, in another faculty's building) and the campus page looked for that as a room.
+    expect(parseCellText("Fizica - curs (sala N 301) SL. dr. Irizoiu Oana Evaluare - D; 4 puncte credit Laboratorul este la Facultatea de Fac. Electronica, sala 303 A si 303 B corpul C (Irizoiu Oana)"))
+      .toMatchObject({ name: "Fizica", kind: "course", room: "N 301" });
+    expect(parseCellText("Introducere în Știința Materialelor (C) - curs (sala N 110) Uțu Dragoș Evaluare - E; 6 puncte credit Sala laborator N214 si M214"))
+      .toMatchObject({ kind: "course", room: "N 110" });
+    expect(parseCellText("M.A.C.I. (L) (Sala 207-RM et. 2)")).toMatchObject({ kind: "lab", room: "207-RM et. 2" });
+  });
+
   it("keeps a building named before the room out of the lecturer's name", () => {
     // ETcTI, year 3: "IV(c) M.Lascu Mecanica M304". The lecturer was shown as "M. Lascu Mecanica".
     expect(parseCellText("IV(c) M.Lascu Mecanica M304")).toMatchObject({ name: "IV", kind: "course", teacher: "M. Lascu", room: "M304 Mecanica" });

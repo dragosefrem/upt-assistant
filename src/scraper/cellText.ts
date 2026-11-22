@@ -44,7 +44,7 @@ export function hasKindMarker(text: string): boolean {
 }
 
 const ROOM_KEYWORD =
-  /(?:\bsal[aă]|\bamf(?:iteatru(?:l)?)?\.?|\broom|\b(?<![a-z])ala)\s*:?\s*([\p{L}\d][\p{L}\d .\/-]*?)(?=\s*(?:[,;(]|$|\d+\s*h\s*\/|s[aă]pt|week|\bonline\b))/iu;
+  /(?:\bsal[aă]|\bamf(?:iteatru(?:l)?)?\.?|\broom|\b(?<![a-z])ala)\s*:?\s*([\p{L}\d][\p{L}\d .\/-]*?)(?=\s*(?:[,;()]|$|\d+\s*h\s*\/|s[aă]pt|week|\bonline\b))/iu;
 
 /** A bare room code such as B413, 301CP, A105, SPM 210, D1, Ca3, B418a, N305. */
 const ROOM_CODE =
