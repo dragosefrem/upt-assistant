@@ -1,5 +1,7 @@
 import { importDiagnostic } from "@/i18n/messages/import-diagnostics";
 import { asc, desc, eq, sql } from "drizzle-orm";
+import { Ticket } from "lucide-react";
+import Link from "next/link";
 import { ScrapePanel } from "@/components/ScrapePanel";
 import { getDb } from "@/db";
 import { courses, faculties, scrapeRuns, semesters, sources, users } from "@/db/schema";
@@ -18,7 +20,7 @@ export async function generateMetadata() {
 
 export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
   const admin = await requireAdmin();
-  const t = (await getT()).admin;
+  const { admin: t, sponsored } = await getT();
   const locale = await getLocale();
   const assistant = geminiConfigured() ? t.integrations.geminiConfigured : claudeConfigured() ? t.integrations.claudeConnected : null;
   const day = (date: string) => formatDate(date, { day: "numeric", month: "short", year: "numeric" }, locale);
@@ -77,9 +79,12 @@ export default async function AdminPage({ searchParams }: PageProps<"/admin">) {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
-        <p className="mt-1 text-sm text-slate-600">{t.intro}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>
+          <p className="mt-1 text-sm text-slate-600">{t.intro}</p>
+        </div>
+        <Link href="/admin/sponsored-events" className="btn-secondary"><Ticket size={17} aria-hidden />{sponsored.title}</Link>
       </div>
 
       <section className="card p-6">

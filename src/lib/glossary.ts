@@ -6,18 +6,19 @@ const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,
 
 /**
  * Entries matching a word or abbreviation, best first: an exact headword or alias, then
- * a headword or alias that starts with the query, then any mention in the text.
+ * a headword or alias that starts with the query, then any mention in the text for
+ * full-text searches. Definition requests only search terms and aliases.
  */
-export function searchGlossary(entries: GlossaryEntry[], query: string): GlossaryEntry[] {
+export function searchGlossary(entries: GlossaryEntry[], query: string, scope: "full-text" | "terms" = "full-text"): GlossaryEntry[] {
   const q = fold(query);
-  if (!q) return entries;
+  if (!q) return scope === "full-text" ? entries : [];
   const scored = entries.flatMap((entry) => {
     const names = [entry.term, ...entry.also].map(fold);
     const words = names.flatMap((n) => n.split(/[\s/]+/));
     let score = 0;
     if (names.includes(q) || words.includes(q)) score = 3;
     else if (q.length >= 2 && [...names, ...words].some((n) => n.startsWith(q) || (q.length >= 4 && q.startsWith(n) && n.length >= 4))) score = 2;
-    else if (q.length >= 3 && fold(`${entry.short} ${entry.body}`).includes(q)) score = 1;
+    else if (scope === "full-text" && q.length >= 3 && fold(`${entry.short} ${entry.body}`).includes(q)) score = 1;
     return score ? [{ entry, score }] : [];
   });
   return scored.sort((a, b) => b.score - a.score).map((s) => s.entry);

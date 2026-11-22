@@ -338,6 +338,34 @@ a.hero-cta.btn-primary { box-shadow: 0 8px 20px -12px #14213da6; }
 .calendar-add { margin-left: auto; }
 .agenda-event { display: flex; align-items: center; gap: .65rem; width: 100%; border-radius: .5rem; padding: .5rem 0; text-align: left; }
 .agenda-event:hover { background: #f4f7fc; }
+.upt-subscription {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center;
+  grid-template-areas: "icon name toggle" "icon hint toggle"; gap: .1rem .7rem;
+  padding: .75rem 1rem; border-bottom: 1px solid #dfe3ef; background: #f8f9ff;
+}
+.upt-subscription-icon {
+  grid-area: icon; display: grid; place-items: center; width: 2.35rem; height: 2.35rem;
+  background: #ebedff; border: 1px solid #dce1f9; border-radius: .75rem; color: #46449c;
+}
+.upt-subscription-title { grid-area: name; align-self: end; }
+.upt-subscription-hint { grid-area: hint; align-self: start; }
+.upt-subscription-toggle {
+  grid-area: toggle; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: 2.75rem;
+  padding: .35rem .65rem; border-radius: .65rem; font-size: .8rem; font-weight: 650; color: #454377;
+}
+.upt-subscription-toggle:hover { background: #ebedfb; }
+.upt-subscription-toggle:disabled { cursor: progress; }
+.upt-switch-track { display: flex; align-items: center; width: 2rem; height: 1.15rem; padding: .15rem; border-radius: 1rem; background: #64748b; }
+.upt-switch-thumb { display: grid; place-items: center; width: .85rem; height: .85rem; border-radius: 50%; color: #4338a4; background: white; }
+.upt-subscription[data-subscribed=true] .upt-switch-track { background: #4b45a7; }
+.upt-subscription[data-subscribed=true] .upt-switch-thumb { transform: translateX(.85rem); }
+@media (prefers-reduced-motion: no-preference) { .upt-switch-thumb { transition: transform .18s ease; } }
+@media (max-width: 32rem) {
+  .upt-subscription { grid-template-areas: "icon name toggle" ". hint hint"; gap: 0 .5rem; padding-block: .4rem .75rem; }
+  .upt-subscription-icon { width: 2rem; height: 2rem; }
+  .upt-subscription-title { align-self: center; }
+  .upt-subscription-toggle { justify-self: end; margin-right: -.45rem; }
+}
 @media (max-width: 39.99rem) {
   .calendar-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .6rem .3rem; }
   .calendar-range { grid-column: 1 / -1; }

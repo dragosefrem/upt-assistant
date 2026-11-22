@@ -1,3 +1,4 @@
+import { load } from "cheerio";
 import { createElement } from "react";
 import { jsx } from "react/jsx-runtime";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -5,6 +6,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/events/route";
 import { POST as planStudy, DELETE as removeStudy } from "@/app/api/study-plan/route";
 import { Calendar } from "@/components/Calendar";
+import { EventDialog } from "@/components/EventDialog";
 import { StudyPlanCard } from "@/components/StudyPlanCard";
 import { WeekLabs } from "@/components/WeekLabs";
 import { getDb } from "@/db";
@@ -14,6 +16,7 @@ import type { Locale } from "@/i18n/config";
 import { messages } from "@/i18n/messages";
 import { getLocale, getT } from "@/i18n/server";
 import { getUser, type User } from "@/lib/auth";
+import { eventsBetween, type CalEvent } from "@/lib/schedule";
 import { studyBlocks } from "@/lib/study-plan";
 
 vi.mock("@/lib/auth", async (load) => ({ ...(await load<typeof import("@/lib/auth")>()), getUser: vi.fn() }));
@@ -63,6 +66,36 @@ it("saves one plan for both sittings in the current interface language and can r
   }
 });
 afterAll(() => vi.unstubAllEnvs());
+
+it("opens a single route from event details and only treats recognized meeting locations as rooms", () => {
+  const date = "2027-03-15";
+  getDb().insert(personalEvents).values(["Sala B419", "Online", "Coffee near B419"].map((location) => ({
+    userId: user.id, title: "Study group", date, startMin: 600, endMin: 660, location,
+  }))).run();
+  const events = eventsBetween(user, date, date);
+  const meeting = events.find((event) => event.room === "Sala B419")!;
+  const exam: CalEvent = { ...meeting, type: "exam", kind: "exam", room: "B419", campusRoom: undefined,
+    place: { name: "Electro", address: null, lat: 45.747, lng: 21.226, approximate: false } };
+  for (const locale of ["en", "ro"] as const) {
+    const render = (event: CalEvent) => load(renderToStaticMarkup(jsx(LocaleProvider, { locale,
+      children: createElement(EventDialog, { event, onHidden: vi.fn(), onClose: vi.fn() }),
+    })));
+    for (const event of [exam, { ...meeting, allDay: true }]) {
+      const dialog = render(event);
+      const link = dialog("a[href^='/campus']");
+      expect(link).toHaveLength(1);
+      expect(link.text()).toContain(messages[locale].calendar.event.getDirections);
+      expect(dialog("button").text()).not.toContain(messages[locale].campus.journey.shareLocation);
+      const params = new URL(link.attr("href")!, "https://example.org").searchParams;
+      expect(Object.fromEntries(params)).toEqual({
+        to: "B419", course: "Study group", date, ...(event.allDay ? {} : { at: "10:00", building: "Electro" }),
+      });
+    }
+    for (const event of events.filter((item) => item !== meeting)) {
+      expect(render(event)("a[href^='/campus']")).toHaveLength(0);
+    }
+  }
+});
 
 describe("public holidays in the calendar", () => {
   it.each([

@@ -23,6 +23,7 @@ export interface CalendarFields {
   location: string;
   description: string;
   timing: CalendarTiming;
+  transparency?: "opaque" | "transparent";
   reminders: { useDefault: boolean; overrides?: { method: string; minutes: number }[] };
 }
 

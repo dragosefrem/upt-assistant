@@ -5,9 +5,10 @@ import { attendance, courses, entries, exams, personalEvents, userOverrides, typ
 import type { Locale } from "@/i18n/config";
 import { attendance as attendanceText } from "@/i18n/messages/attendance";
 import { common } from "@/i18n/messages/common";
+import { sponsoredNote } from "@/i18n/messages/sponsored";
 import type { User } from "./auth";
 import { kindOrder } from "./kinds";
-import { attendanceOccurrenceKey, currentSemester, eventsBetween, placeResolver, studentWeek, type Place } from "./schedule";
+import { attendanceOccurrenceKey, currentSemester, eventsBetween, placeResolver, savedSponsoredEvents, studentWeek, type Place } from "./schedule";
 import { describeWeeks, weekday } from "./time";
 
 export type AttendanceRecord = typeof attendance.$inferSelect;
@@ -219,6 +220,13 @@ function lookupSeries(user: User, seriesKey: string, week: ReturnType<typeof stu
     return { title: x.courseName, abbr: x.courseAbbr, kind: "exam", weeks: t.once, room: x.room, teacher: x.teacher, note: null, examDate: x.date, audience: x.audience };
   }
 
+  if (type === "s") {
+    const [event] = savedSponsoredEvents(user.id, { id: key });
+    if (!event) return null;
+    return { ...base, title: event.title, abbr: null, kind: "sponsored", weeks: t.once,
+      room: event.location || null, teacher: null, note: sponsoredNote(event, locale) };
+  }
+
   if (type === "p") {
     const p = db
       .select()
@@ -276,8 +284,8 @@ export function seriesDetails(user: User, series: SeriesTally[], locale: Locale 
       kind: parts[0].kind,
       weeks: join((p) => p.weeks),
       room,
-      // Like the calendar: personal events have no building; others fall back to the faculty.
-      place: parts[0].kind === "personal" ? null : place(firstRoom),
+      // Free-text event locations can be outside the student's faculty.
+      place: parts[0].kind === "personal" || parts[0].kind === "sponsored" ? null : place(firstRoom),
       teacher: join((p) => p.teacher),
       note: join((p) => p.note),
       examDates: [...new Set(parts.map((p) => p.examDate).filter((d): d is string => !!d))],
