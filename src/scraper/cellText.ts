@@ -182,6 +182,17 @@ export function parseCellText(input: string): ParsedText {
     rest = text.slice(word.index + word[0].length);
   }
 
+  if (!marker) {
+    // "(2C)", "(2L)", "(2P)": the weekly hours and the kind of a class, as the Robotică master's sheets write it.
+    const hours = /\(\s*\d\s*([CSLP])\s*\)/i.exec(text);
+    if (hours) {
+      kind = KIND_BY_LETTER[hours[1].toLowerCase()] ?? "other";
+      marker = true;
+      name = text.slice(0, hours.index);
+      rest = text.slice(hours.index + hours[0].length);
+    }
+  }
+
   // MPT trailing parity flag: "…, O.Irizoiu, p" / "…, i".
   const flag = /[,;]\s*([pi])\s*$/i.exec(rest);
   if (flag && marker) {

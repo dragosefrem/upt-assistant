@@ -230,6 +230,16 @@ describe("parseCellText", () => {
     expect(parseCellText("Even and odd functions (c) A. Pop room A204")).toMatchObject({ name: "Even and odd functions", weeks: "all" });
   });
 
+  it("takes the kind of a class from \"(2C)\", \"(2L)\", \"(2P)\" when that is all the sheet says", () => {
+    // Robotică, master: every class was "Altele" with "(2C)" in its name, so a subject's
+    // lecture and lab were two unrelated activities.
+    expect(parseCellText("Inteligență artificială pentru robotică (2C) sala 411")).toMatchObject({ name: "Inteligență artificială pentru robotică", kind: "course", room: "411" });
+    expect(parseCellText("Inteligență artificială pentru robotică (2L) sala 411")).toMatchObject({ name: "Inteligență artificială pentru robotică", kind: "lab", room: "411" });
+    expect(parseCellText("Modelare 3D ( 2P) sala 409")).toMatchObject({ name: "Modelare 3D", kind: "project", room: "409" });
+    // Several kinds in one cell cannot be told apart: left as it is.
+    expect(parseCellText("Modelare Simulare 3D (2C + 2P) sala 409/SPM 225")).toMatchObject({ name: "Modelare Simulare 3D (2C + 2P)", kind: "other" });
+  });
+
   it("keeps a building named before the room out of the lecturer's name", () => {
     // ETcTI, year 3: "IV(c) M.Lascu Mecanica M304". The lecturer was shown as "M. Lascu Mecanica".
     expect(parseCellText("IV(c) M.Lascu Mecanica M304")).toMatchObject({ name: "IV", kind: "course", teacher: "M. Lascu", room: "M304 Mecanica" });
