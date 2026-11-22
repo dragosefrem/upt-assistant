@@ -571,6 +571,19 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
       expect(building(ac("A109"))).toBe("Clădirea Electro (AC, ETcTI, IEE)");
       expect(building(ria("A109"))).toBe("? Facultatea de Robotică");
       expect(building(ria("Sala fără cod"))).toBe("? Facultatea de Robotică");
+      // A word beside the code names the building, as timetables write it: MPT's physics lab is
+      // "C301B ET", RIA's chemistry lab "A303 Ch" (A303 exists in four buildings), and one lab is
+      // held in two rooms of the same building.
+      expect(building(ria("C301B ET"))).toBe("Clădirea Electro (AC, ETcTI, IEE)");
+      expect(building(ria("A303 Ch"))).toBe("Facultatea de Chimie (inclusiv Chimie Parc)");
+      expect(building(ria("A303"))).toBe("? Facultatea de Robotică");
+      expect(building(ria("M214/N214"))).toBe("Facultatea de Mecanică");
+      expect(building(ria("N 214 sau M214 Mec"))).toBe("Facultatea de Mecanică");
+      expect(building(ria("M201 Mecanica"))).toBe("Facultatea de Mecanică");
+      // The word and the code must agree, two rooms must share a building, and other text is not read as a code.
+      expect(building(ria("C301B Ch"))).toBe("? Facultatea de Robotică");
+      expect(building(ria("M214/B019"))).toBe("? Facultatea de Robotică");
+      expect(building(ria("M214 la etajul 2"))).toBe("? Facultatea de Robotică");
     } finally {
       db.delete(faculties).where(eq(faculties.id, other.id)).run();
       db.update(faculties).set({ lat: null, lng: null, address: null }).where(eq(faculties.id, ana.facultyId!)).run();
