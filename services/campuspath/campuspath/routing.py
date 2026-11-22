@@ -166,6 +166,10 @@ class Tour:
         codes = {word for word in wanted if re.fullmatch(r"[a-z]{1,3}\d+[a-z]?", word)}
         for index, (aliases, area) in self.search_fields.items():
             record = self.records[index]
+            if strict and not record["named"]:
+                # A panorama known only by its number is asked for as "#106" or "checkpoint 106"
+                # (handled above). A bare "106" in a request is a room number from a timetable.
+                continue
             if not wanted:
                 if strict or query.strip():
                     continue

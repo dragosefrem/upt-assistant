@@ -102,6 +102,20 @@ class RoutingTests(unittest.TestCase):
         with self.assertRaises(RouteQuestion):
             self.tour.plan("From https://visit360.upt.ro/#media=1 to B419")
 
+    def test_a_room_number_is_never_read_as_a_checkpoint_number(self):
+        # Timetables name rooms "106" or "225 A". The tour happens to number its panoramas too,
+        # and an unnamed panorama must not stand in for a room that is not in the catalogue.
+        for room in ("106", "115", "206", "22", "225 A", "303", "sala 118"):
+            with self.subTest(room=room), self.assertRaises(RouteQuestion) as unknown:
+                self.tour.plan(room, "auto")
+            self.assertEqual(unknown.exception.key, "ask.unknown")
+        # A checkpoint is still reachable by its number when the request says it is one.
+        for reference in ("#106", "checkpoint 106", "punctul 106"):
+            with self.subTest(reference=reference):
+                self.assertEqual(self.tour.plan(reference, self.entrance)["steps"][-1]["index"], 106)
+        # Searching for a starting point by number keeps working as you type.
+        self.assertIn(106, [r["index"] for r in self.tour.search("106")])
+
     def test_disconnected_component_and_same_location(self):
         isolated = next(i for i, s in self.tour.scenes.items() if not s["links"])
         with self.assertRaisesRegex(RouteQuestion, "no connected ground route"):
