@@ -24,6 +24,10 @@ const en = {
     attendedCount: (n: number) => `${n} ${n === 1 ? "session" : "sessions"} attended`,
     progress: (n: number, minimum: number) => `${n} of ${minimum} required sessions attended`,
     remaining: (n: number) => `${n} more needed`,
+    sessionsToCome: (n: number) => `${n} ${n === 1 ? "session" : "sessions"} still to come this semester.`,
+    outOfReach: (n: number) =>
+      n === 0 ? "There are no sessions left this semester, so this minimum can no longer be reached. Ask your teacher about making up sessions."
+        : `Only ${n} ${n === 1 ? "session is" : "sessions are"} left this semester, so this minimum can no longer be reached. Ask your teacher about making up sessions.`,
     met: "Goal met",
     metCount: (met: number, total: number) => `${met} of ${total} ${total === 1 ? "goal" : "goals"} met`,
     offTimetable: "No longer on your timetable",
@@ -101,6 +105,10 @@ const ro: typeof en = {
     attendedCount: (n) => `${n} ${plural("ro", n, { one: "prezență", few: "prezențe", other: "de prezențe" })}`,
     progress: (n, minimum) => `${n} din ${minimum} prezențe necesare`,
     remaining: (n) => n === 1 ? "Încă o prezență" : `Încă ${n} ${plural("ro", n, { one: "prezență", few: "prezențe", other: "de prezențe" })}`,
+    sessionsToCome: (n) => (n === 1 ? "Mai e o ședință în acest semestru." : `Mai sunt ${n} ${plural("ro", n, { one: "ședință", few: "ședințe", other: "de ședințe" })} în acest semestru.`),
+    outOfReach: (n) =>
+      n === 0 ? "Nu mai e nicio ședință în acest semestru, deci minimul nu mai poate fi atins. Întreabă profesorul despre recuperări."
+        : `${n === 1 ? "A mai rămas o singură ședință" : `Au mai rămas doar ${n} ${plural("ro", n, { one: "ședință", few: "ședințe", other: "de ședințe" })}`} în acest semestru, deci minimul nu mai poate fi atins. Întreabă profesorul despre recuperări.`,
     met: "Obiectiv atins",
     metCount: (met, total) => `${met} din ${total} ${plural("ro", total, { one: "obiectiv atins", few: "obiective atinse", other: "de obiective atinse" })}`,
     offTimetable: "Activitatea nu mai apare în orarul tău",

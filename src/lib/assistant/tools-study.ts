@@ -293,10 +293,17 @@ export const STUDY_TOOLS: AssistantTool[] = [
         attended: summary.attended,
         missed: summary.missed,
         attendance_rate_percent: summary.rate,
-        semester_activities: [...goals, ...available].filter(matches).map((a) => ({
-          activity_id: attendanceActivityId(a), course: a.title, kind: a.kind, attended: a.attended,
-          minimum: a.minimum, still_needed: a.minimum === null ? null : Math.max(0, a.minimum - a.attended),
-        })),
+        semester_activities: [
+          ...goals.filter(matches).map((a) => ({
+            activity_id: attendanceActivityId(a), course: a.title, kind: a.kind, attended: a.attended,
+            minimum: a.minimum as number | null, still_needed: a.remaining as number | null,
+            // Sessions still to come this semester; when fewer than still_needed the minimum cannot be reached.
+            sessions_left_this_semester: a.sessionsToCome ?? undefined, minimum_out_of_reach: a.outOfReach || undefined,
+          })),
+          ...available.filter(matches).map((a) => ({
+            activity_id: attendanceActivityId(a), course: a.title, kind: a.kind, attended: a.attended, minimum: null, still_needed: null,
+          })),
+        ],
         by_activity: summary.series.map((s) => ({
           activity: `${s.title} (${s.kind})`,
           usually: `${DAY_NAMES[s.weekday]} ${span(s.startMin, s.endMin)}`,

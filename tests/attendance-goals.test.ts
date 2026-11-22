@@ -56,6 +56,23 @@ describe("semester attendance goals", () => {
   });
   beforeEach(() => { user = student(); });
 
+  it("counts the sessions still to come and says when a minimum can no longer be reached", () => {
+    // Sunday 22 November 2026, after week 8 of 14. The lecture is on Mondays: six teaching
+    // Mondays remain, and 30 November is a public holiday.
+    const sunday = { date: "2026-11-22", minutes: 12 * 60 };
+    const at = (now: { date: string; minutes: number }) => attendanceGoalOverview(user, currentSemester(), "en", now).goals;
+    expect(setAttendanceGoal(user, id("course"), 7)).toBeNull();
+    expect(setAttendanceGoal(user, id("seminar"), 3)).toBeNull();
+    const [seminar, lecture] = at(sunday);
+    expect(lecture).toMatchObject({ kind: "course", remaining: 7, sessionsToCome: 5, outOfReach: true });
+    // Wednesdays: 25 Nov, 2, 9, 16 Dec, 13 and 20 Jan. Three more are well within reach.
+    expect(seminar).toMatchObject({ kind: "seminar", remaining: 3, sessionsToCome: 6, outOfReach: false });
+    // A session counts until it ends, and nothing is left after the last teaching day.
+    expect(at({ date: "2027-01-18", minutes: 8 * 60 }).find((g) => g.kind === "course")).toMatchObject({ sessionsToCome: 1 });
+    expect(at({ date: "2027-01-18", minutes: 23 * 60 }).find((g) => g.kind === "course")).toMatchObject({ sessionsToCome: 0, outOfReach: true });
+    expect(at({ date: "2027-02-01", minutes: 0 }).find((g) => g.kind === "seminar")).toMatchObject({ sessionsToCome: 0 });
+  });
+
   it("offers the student's classes before any marks and keeps separate minima for different kinds", () => {
     expect(overview().available.map((a) => [a.kind, a.attended])).toEqual([["course", 0], ["seminar", 0], ["lab", 0]]);
     expect(setAttendanceGoal(user, id("course"), 8)).toBeNull();

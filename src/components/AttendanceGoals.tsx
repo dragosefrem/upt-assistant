@@ -147,10 +147,15 @@ export function AttendanceGoals({ goals, available }: AttendanceGoalOverview) {
                       <span className="text-base text-slate-500">/ {goal.minimum}</span>
                       <span className="text-xs text-slate-600">{t.unit}</span>
                     </p>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${reached ? "bg-emerald-50 text-emerald-800" : "bg-brand-50 text-brand-700"}`}>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${reached ? "bg-emerald-50 text-emerald-800" : goal.outOfReach ? "bg-amber-50 text-amber-900" : "bg-brand-50 text-brand-700"}`}>
                       {reached && <Check size={14} aria-hidden />}{reached ? t.met : t.remaining(goal.remaining)}
                     </span>
                   </div>
+                  {!reached && goal.sessionsToCome !== null && (
+                    <p className={`mt-2 text-xs leading-relaxed ${goal.outOfReach ? "font-medium text-amber-900" : "text-slate-600"}`}>
+                      {goal.outOfReach ? t.outOfReach(goal.sessionsToCome) : t.sessionsToCome(goal.sessionsToCome)}
+                    </p>
+                  )}
                   <div role="progressbar" aria-label={activityName(goal)} aria-valuemin={0} aria-valuemax={goal.minimum}
                     aria-valuenow={Math.min(goal.attended, goal.minimum)} aria-valuetext={t.progress(goal.attended, goal.minimum)}
                     className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">

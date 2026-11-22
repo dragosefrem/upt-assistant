@@ -6,7 +6,8 @@ import type { Locale } from "@/i18n/config";
 import type { User } from "./auth";
 import { googleHiddenClasses } from "./google-schedule";
 import { attendanceActivityId, kindOrder } from "./kinds";
-import { currentSemester, studentWeek, type Semester } from "./schedule";
+import { currentSemester, eventsBetween, studentWeek, type Semester } from "./schedule";
+import { nowLocal } from "./time";
 
 export interface AttendanceActivity {
   courseKey: string;
@@ -38,8 +39,26 @@ function semesterActivities(user: User, semester: Semester) {
   return activities;
 }
 
-export function attendanceGoalOverview(user: User, semester: Semester | null, locale: Locale) {
+/**
+ * How many sessions of each activity are still to come this semester, from `now` on: the
+ * student's own timetable with its odd and even weeks, week ranges, moves and public holidays.
+ */
+function sessionsLeft(user: User, semester: Semester, now: { date: string; minutes: number }) {
+  const left = new Map<string, number>();
+  if (now.date > semester.endDate) return left;
+  const from = now.date < semester.startDate ? semester.startDate : now.date;
+  for (const event of eventsBetween(user, from, semester.endDate)) {
+    if (event.type !== "class" || !event.courseKey) continue;
+    if (event.date === now.date && event.endMin <= now.minutes) continue;
+    const id = attendanceActivityId({ courseKey: event.courseKey, kind: event.kind });
+    left.set(id, (left.get(id) ?? 0) + 1);
+  }
+  return left;
+}
+
+export function attendanceGoalOverview(user: User, semester: Semester | null, locale: Locale, now = nowLocal()) {
   const activities = semester ? semesterActivities(user, semester) : new Map<string, AttendanceActivity>();
+  const left = semester ? sessionsLeft(user, semester, now) : new Map<string, number>();
   if (activities.size) {
     const counts = getDb().select({ courseKey: attendance.courseKey, kind: attendance.kind, attended: count() })
       .from(attendance).where(and(eq(attendance.userId, user.id), eq(attendance.status, "attended")))
@@ -50,9 +69,15 @@ export function attendanceGoalOverview(user: User, semester: Semester | null, lo
     }
   }
   const sorted = [...activities.values()].sort((a, b) => a.title.localeCompare(b.title, locale) || kindOrder(a.kind) - kindOrder(b.kind));
-  const goals = sorted.flatMap((activity) => activity.minimum === null ? [] : [
-    { ...activity, minimum: activity.minimum, remaining: Math.max(0, activity.minimum - activity.attended) },
-  ]);
+  const goals = sorted.flatMap((activity) => {
+    if (activity.minimum === null) return [];
+    const remaining = Math.max(0, activity.minimum - activity.attended);
+    // Sessions still to come. An activity no longer on the timetable has none that can be counted.
+    const sessionsToCome = activity.onTimetable ? left.get(attendanceActivityId(activity)) ?? 0 : null;
+    return [{ ...activity, minimum: activity.minimum, remaining, sessionsToCome,
+      /** The semester no longer has enough sessions for the minimum, whatever the student does. */
+      outOfReach: sessionsToCome !== null && remaining > sessionsToCome }];
+  });
   // Show reachable milestones first, then completed goals. Ties keep the alphabetical order.
   goals.sort((a, b) => Number(a.remaining === 0) - Number(b.remaining === 0) || a.remaining - b.remaining);
   return { goals, available: sorted.filter((activity) => activity.minimum === null) };
