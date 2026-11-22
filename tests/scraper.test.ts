@@ -187,6 +187,23 @@ describe("parseCellText", () => {
     expect(parseCellText("Gr. F Gândire critică (s) Băiaș C303")).toMatchObject({ name: "Gândire critică", kind: "seminar", room: "C303" });
   });
 
+  it("ends an untyped title at its room, and reads the acronym and the lecturer around it", () => {
+    // Robotică, year 1, Friday: shown as "Algebra liniara · Altele" with no lecturer, a second
+    // course next to "ALGAD · Seminar".
+    expect(parseCellText("Algebra liniara, geometrie analitica si diferentiala- ALGAD sala M306 Sl. univ. dr. mat Loredana CIURDARIU (ȚÎRȚÎRĂU)")).toMatchObject({
+      name: "Algebra liniara, geometrie analitica si diferentiala", abbr: "ALGAD", room: "M306", teacher: "Sl. univ. dr. mat Loredana CIURDARIU (ȚÎRȚÎRĂU)",
+    });
+    // The room was left in the course name: "Germana sala 304 Facultatea de Chimie", "Ora de TUTORIAT sala".
+    expect(parseCellText("Germana sala 304 Facultatea de Chimie")).toMatchObject({ name: "Germana", room: "304 Chimie" });
+    expect(parseCellText("Franceza/ Engleza sala M201/ sala N 211")).toMatchObject({ name: "Franceza/ Engleza", room: "M201/ N 211" });
+    expect(parseCellText("Ora de TUTORIAT sala M306")).toMatchObject({ name: "Ora de TUTORIAT", room: "M306" });
+    expect(parseCellText("Modelare Simulare 3D (2C + 2P) sala 409/SPM 225")).toMatchObject({ name: "Modelare Simulare 3D (2C + 2P)", room: "409/SPM 225" });
+    expect(parseCellText("Programare Java - PJ (c) sapt. 1-10 R. ROBU - sala ASPC")).toMatchObject({ name: "Programare Java", abbr: "PJ", teacher: "R. ROBU", room: "ASPC", weeks: "1-10" });
+    // "Sală" that is not followed by a room is no place to cut, and a semicolon still decides first.
+    expect(parseCellText("Analiza datelor prin satelit şi Sală digitalizarea mediului C310").name).toContain("digitalizarea mediului");
+    expect(parseCellText("Etică și integritate academică Săpt. 1 / 5 / 9; Săpt.13 (14-15) Reisz Sală H4").name).toBe("Etică și integritate academică");
+  });
+
   it("keeps a building named before the room out of the lecturer's name", () => {
     // ETcTI, year 3: "IV(c) M.Lascu Mecanica M304". The lecturer was shown as "M. Lascu Mecanica".
     expect(parseCellText("IV(c) M.Lascu Mecanica M304")).toMatchObject({ name: "IV", kind: "course", teacher: "M. Lascu", room: "M304 Mecanica" });
