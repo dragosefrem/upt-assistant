@@ -291,3 +291,22 @@ export function makeupSessions(
   );
   return { ok: true, result: { course: title, abbr, kind, own, sessions: sessions.slice(0, limit) } };
 }
+
+/**
+ * The week the "labs this week" card should answer for. At the weekend, once the last lab or
+ * seminar of the week is over, a student who asks "do I have lab?" means the week ahead: the
+ * card then shows that one, and says so. A break or the exam session ahead is left to the
+ * current week's card, which already says when teaching resumes.
+ */
+export function practicalsToShow(
+  user: Pick<User, "id" | "facultyId" | "specializationId" | "year" | "groupId">,
+  now: { date: string; minutes: number },
+  locale: Locale = "en",
+): { week: PracticalWeek; upcoming: boolean } {
+  const week = practicalsInWeek(user, now.date, undefined, locale);
+  const left = week.running.some((e) => e.date > now.date || (e.date === now.date && e.endMin > now.minutes));
+  if (weekday(now.date) < 6 || left || week.pause) return { week, upcoming: false };
+  const next = practicalsInWeek(user, addDays(week.monday, 7), undefined, locale);
+  return next.pause ? { week, upcoming: false } : { week: next, upcoming: true };
+}
+

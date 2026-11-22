@@ -5,8 +5,8 @@ import { messagesFor } from "@/i18n/server";
 import type { User } from "@/lib/auth";
 import { campusJourneyHref } from "@/lib/campuspath/links";
 import { kindLabel, kindStyle } from "@/lib/kinds";
-import { practicalsInWeek } from "@/lib/labs";
-import { capitalize, dayName, describeWeeks, formatDate, formatMinutes, formatTimeSlot, weekday } from "@/lib/time";
+import { practicalsToShow } from "@/lib/labs";
+import { capitalize, dayName, describeWeeks, formatDate, formatMinutes, formatTimeSlot, nowLocal, weekday } from "@/lib/time";
 import { MakeupButton } from "./MakeupFinder";
 
 /**
@@ -14,8 +14,11 @@ import { MakeupButton } from "./MakeupFinder";
  * that take place this week, and the ones that do not, with the date they come next.
  */
 export function WeekLabs({ user, date, locale }: { user: User; date: string; locale: Locale }) {
-  const t = messagesFor(locale).study.labs;
-  const week = practicalsInWeek(user, date, undefined, locale);
+  const labs = messagesFor(locale).study.labs;
+  const now = nowLocal();
+  // On Saturday or Sunday, with nothing left of this week, the card answers for the next one.
+  const { week, upcoming } = practicalsToShow(user, now.date === date ? now : { date, minutes: 0 }, locale);
+  const t = upcoming ? { ...labs, ...labs.upcoming } : labs;
   if (!user.groupId || (!week.running.length && !week.skipped.length && !week.holidays.length)) return null;
   const shortDate = (d: string) => formatDate(d, { weekday: "short", day: "numeric", month: "short" }, locale);
 
@@ -31,6 +34,9 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
           <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${week.parity === "odd" ? "bg-violet-50 text-violet-700" : "bg-teal-50 text-teal-700"}`}>
             {week.parity === "odd" ? t.weekOdd(week.week) : t.weekEven(week.week)}
           </span>
+        )}
+        {upcoming && (
+          <p className="mt-2 text-sm text-slate-600">{labs.upcoming.note(formatDate(week.monday, { weekday: "long", day: "numeric", month: "long" }, locale))}</p>
         )}
       </div>
 
@@ -70,8 +76,12 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
                             <Link href={campusJourneyHref({ to: e.room, building: e.place?.name, course: e.title, date: e.date, at: formatMinutes(e.startMin) })} className="font-medium text-brand-700 hover:underline">{e.room}</Link>
                           </>
                         )}
-                        {" · "}
-                        <MakeupButton course={e.title} kind={e.kind} />
+                        {!upcoming && (
+                          <>
+                            {" · "}
+                            <MakeupButton course={e.title} kind={e.kind} />
+                          </>
+                        )}
                       </span>
                     </span>
                   </li>

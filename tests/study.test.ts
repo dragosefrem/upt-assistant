@@ -12,7 +12,7 @@ import type { User } from "@/lib/auth";
 import { contactWeek, currentContactStatuses } from "@/lib/contact-schedule";
 import { searchGlossary } from "@/lib/glossary";
 import { exportItems, toICS } from "@/lib/export";
-import { makeupSessions, nextOccurrence, practicalsInWeek, weekInfo } from "@/lib/labs";
+import { makeupSessions, nextOccurrence, practicalsInWeek, practicalsToShow, weekInfo } from "@/lib/labs";
 import { availabilityAt, listPeople, matchPeople } from "@/lib/people";
 import { currentSemester, eventsBetween, groupBusy } from "@/lib/schedule";
 import { semesterOverview } from "@/lib/semester-overview";
@@ -280,6 +280,32 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
       share(true);
     }
     expect(status(600)).toEqual(lab);
+  });
+
+  it("answers \"do I have lab?\" for the coming week once this week's sessions are over", () => {
+    // Sunday 22 November 2026, week 8 just ended: the card is about week 9, which starts tomorrow.
+    const sunday = practicalsToShow(ana, { date: "2026-11-22", minutes: 10 * 60 }, "ro");
+    expect(sunday.upcoming).toBe(true);
+    expect(sunday.week).toMatchObject({ monday: "2026-11-23", week: 9, parity: "odd" });
+    expect(sunday.week.running.map((e) => e.date).every((d) => d >= "2026-11-23")).toBe(true);
+    // During the week it stays on the current one, also on the last afternoon.
+    expect(practicalsToShow(ana, { date: "2026-11-20", minutes: 23 * 60 }, "ro")).toMatchObject({ upcoming: false, week: { monday: "2026-11-16", week: 8 } });
+    expect(practicalsToShow(ana, { date: "2026-11-23", minutes: 7 * 60 }, "ro")).toMatchObject({ upcoming: false, week: { monday: "2026-11-23" } });
+    // The Saturday before the Christmas break keeps this week's card, which says when classes resume.
+    const beforeBreak = practicalsToShow(ana, { date: "2026-12-19", minutes: 12 * 60 }, "ro");
+    expect(beforeBreak).toMatchObject({ upcoming: false, week: { monday: "2026-12-14" } });
+    // A session still to come on Saturday keeps the week current until it ends.
+    const db = getDb();
+    const semester = currentSemester()!;
+    const course = db.insert(courses).values({ key: "t-sat", semesterId: semester.id, facultyId: ana.facultyId!, name: "Proiect de sâmbătă", year: 1 }).returning().get();
+    const entry = db.insert(entries).values({ key: "t-sat-e", semesterId: semester.id, courseId: course.id, kind: "project", day: 6, startMin: 10 * 60, endMin: 12 * 60, weeks: "all", rawText: "" }).returning().get();
+    db.insert(entryGroups).values({ entryId: entry.id, groupId: ana.groupId! }).run();
+    try {
+      expect(practicalsToShow(ana, { date: "2026-11-21", minutes: 9 * 60 }, "ro").upcoming).toBe(false);
+      expect(practicalsToShow(ana, { date: "2026-11-21", minutes: 12 * 60 }, "ro").upcoming).toBe(true);
+    } finally {
+      db.delete(courses).where(eq(courses.id, course.id)).run();
+    }
   });
 
   it("does not tell whose e-mail address it is unless the two students are already in touch", () => {

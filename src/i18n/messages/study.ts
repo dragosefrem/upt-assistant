@@ -47,6 +47,15 @@ const en = {
     unchosen: (course: string) => `${course}: you have not picked a lab slot yet.`,
     pickSlot: "Pick a slot",
     findMakeup: "Missed it?",
+    /** At the weekend, once this week's sessions are over, the card shows the week ahead. */
+    upcoming: {
+      title: "Labs and seminars next week",
+      publicHolidays: "Public holidays next week",
+      thisWeek: "Next week",
+      notThisWeek: "Not next week",
+      nothing: "No labs, seminars or projects next week.",
+      note: (monday: string) => `This week's classes are over. This is the week that starts on ${monday}.`,
+    },
   },
   makeup: {
     title: (course: string) => `Other sessions of ${course}`,
@@ -110,6 +119,14 @@ const ro: typeof en = {
     unchosen: (course: string) => `${course}: nu ți-ai ales încă intervalul de laborator.`,
     pickSlot: "Alege intervalul",
     findMakeup: "L-ai ratat?",
+    upcoming: {
+      title: "Laboratoare și seminare săptămâna viitoare",
+      publicHolidays: "Zile libere legale săptămâna viitoare",
+      thisWeek: "Săptămâna viitoare",
+      notThisWeek: "Nu săptămâna viitoare",
+      nothing: "Niciun laborator, seminar sau proiect săptămâna viitoare.",
+      note: (monday: string) => `Orele din săptămâna aceasta s-au terminat. Aceasta este săptămâna care începe ${monday}.`,
+    },
   },
   makeup: {
     title: (course: string) => `Alte ședințe la ${course}`,
