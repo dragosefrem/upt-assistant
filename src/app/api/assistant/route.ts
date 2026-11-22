@@ -17,6 +17,7 @@ import { latestMessage, reviewTime } from "@/lib/assistant/preview";
 import type { AssistantChunk } from "@/lib/assistant/prompt";
 import { parseReplyCard } from "@/lib/assistant/reply-card";
 import type { ToolContext } from "@/lib/assistant/tools";
+import { beginTurn, endTurn, runningTurn } from "@/lib/assistant/turns";
 
 type Engine = "gemini" | "claude" | "basic";
 
@@ -122,7 +123,12 @@ export async function POST(request: Request) {
       return completedReply(saved.reply, { changed: true, acceptedId: last.id });
     }
   }
+  // The answer to the previous question is still being written (the page was reloaded, or this
+  // is a second tab). A second turn on top of it would answer the first question twice.
+  const answering = runningTurn(user.id);
+  if (answering !== null) return Response.json({ error: t.stillAnswering, answering }, { status: 409 });
   const turn = db.insert(chatMessages).values({ userId: user.id, role: "user", content: message }).returning({ id: chatMessages.id }).get();
+  beginTurn(user.id, turn.id);
   ctx.confirmPreview = (proposal) => {
     if (last?.role !== "assistant" || !last.preview) return;
     const saved = acceptPreview(user, last.id, locale, message, { userMessageId: turn.id, proposal });
@@ -134,11 +140,7 @@ export async function POST(request: Request) {
   // under way (and paid for, and its tools may have acted), so it is finished and saved
   // whoever is still listening: the answer is in the conversation when they come back.
   let listening = true;
-  const stream = new ReadableStream({
-    cancel() {
-      listening = false;
-    },
-    async start(controller) {
+  const answer = async (controller: ReadableStreamDefaultController) => {
       const send = (obj: unknown) => {
         if (!listening) return;
         try {
@@ -222,6 +224,17 @@ export async function POST(request: Request) {
           // The browser went away between the last line and the end of the stream.
         }
       }
+  };
+  const stream = new ReadableStream({
+    cancel() {
+      listening = false;
+    },
+    async start(controller) {
+      try {
+        await answer(controller);
+      } finally {
+        endTurn(user.id, turn.id);
+      }
     },
   });
   return new Response(stream, {
@@ -242,7 +255,8 @@ export async function GET() {
     .all()
     .reverse()
     .map((m) => ({ ...m, choices: parseChoices(m.choices), preview: publicPreview(parsePreview(m.preview)), links: parseLinks(m.links), card: parseReplyCard(m.card) }));
-  return Response.json({ messages: rows, engine: activeEngine() });
+  // `answering`: the question whose answer is still being written, for a page that was reloaded meanwhile.
+  return Response.json({ messages: rows, engine: activeEngine(), answering: runningTurn(user.id) });
 }
 
 export async function DELETE() {

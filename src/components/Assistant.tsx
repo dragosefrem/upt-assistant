@@ -149,6 +149,8 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
+  /** The question whose answer the server is still writing, after a reload. */
+  const [answering, setAnswering] = useState<number | null>(null);
   const [activity, setActivity] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [engine, setEngine] = useState<"gemini" | "claude" | "basic" | null>(null);
@@ -195,6 +197,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       .then((data) => {
         if (!data) return;
         setEngine(data.engine);
+        setAnswering(typeof data.answering === "number" ? data.answering : null);
         const history = data.messages.map((m: Omit<Message, "id"> & { id: number }) => ({
           ...m, id: String(m.id), dbId: m.id,
         }));
@@ -407,6 +410,15 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         if (!res.ok || !res.body) {
           const error = await res.json().catch(() => ({}));
           if (res.status === 409) setMessages((list) => list.filter((m) => m.id !== userId));
+          // Poli is still answering an earlier question (asked before a reload, or in another tab):
+          // show that conversation and wait for it.
+          if (typeof error.answering === "number") {
+            void fetch("/api/assistant").then((r) => (r.ok ? r.json() : null)).then((data) => {
+              if (!data) return;
+              setMessages(data.messages.map((m: Omit<Message, "id"> & { id: number }) => ({ ...m, id: String(m.id), dbId: m.id })));
+              setAnswering(typeof data.answering === "number" ? data.answering : null);
+            }).catch(() => {});
+          }
           throw new Error(error.error ?? (res.status === 401 ? tr.errors.sessionExpired : tr.errors.unavailable));
         }
         received = true;
@@ -593,25 +605,27 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
   const last = messages.at(-1);
 
   // The page was reloaded or closed while Poli was answering: the answer is still being
-  // written on the server. Wait for it instead of showing a question nobody answered.
-  const unanswered = !busy && last?.role === "user" && last.dbId ? last.dbId : null;
-  const [gaveUpOn, setGaveUpOn] = useState<number | null>(null);
-  const resuming = unanswered !== null && gaveUpOn !== unanswered;
+  // written on the server, which says so (`answering`). Wait for it, and take no new question
+  // meanwhile. A question the server is not answering any more simply has no answer.
+  const pending = !busy && last?.role === "user" && last.dbId ? last.dbId : null;
+  const resuming = pending !== null && answering === pending;
+  const unanswered = pending !== null && !resuming;
   useEffect(() => {
-    if (!unanswered) return;
-    let tries = 0;
+    if (!resuming) return;
     let stopped = false;
     const check = async () => {
       const data = await fetch("/api/assistant").then((r) => (r.ok ? r.json() : null)).catch(() => null);
       if (stopped) return;
-      const rows: (Omit<Message, "id"> & { id: number })[] = data?.messages ?? [];
-      const answer = rows.at(-1);
-      if (answer?.role === "assistant" && answer.id > unanswered) {
-        setMessages(rows.map((m) => ({ ...m, id: String(m.id), dbId: m.id })));
-      } else if (++tries < 24) {
+      if (!data) {
         timer = window.setTimeout(check, 2500);
+        return;
+      }
+      const rows: (Omit<Message, "id"> & { id: number })[] = data.messages ?? [];
+      if (rows.at(-1)?.role === "assistant" || data.answering !== pending) {
+        setMessages(rows.map((m) => ({ ...m, id: String(m.id), dbId: m.id })));
+        setAnswering(typeof data.answering === "number" ? data.answering : null);
       } else {
-        setGaveUpOn(unanswered);
+        timer = window.setTimeout(check, 2500);
       }
     };
     let timer = window.setTimeout(check, 1500);
@@ -619,7 +633,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
       stopped = true;
       window.clearTimeout(timer);
     };
-  }, [unanswered]);
+  }, [resuming, pending]);
 
   const questionButton = (s: { emoji: string; text: string }) => (
     <button
@@ -759,6 +773,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             {tr.stillAnswering}
           </p>
         )}
+        {unanswered && <p className="text-xs text-slate-500">{tr.noAnswer}</p>}
       </div>
 
       {notice && <p role="status" className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-xs text-amber-800">{notice}</p>}
@@ -767,7 +782,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
         className="flex items-end gap-2 border-t border-slate-200 p-3"
         onSubmit={(e) => {
           e.preventDefault();
-          void send(input);
+          if (!resuming) void send(input);
         }}
       >
         {voiceSupported && (
@@ -779,7 +794,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
               aria-label={listening ? tr.input.stopListening : tr.input.talk}
               title={listening ? tr.input.stopListening : tr.input.talk}
               aria-pressed={listening}
-              disabled={busy || transcribing}
+              disabled={busy || transcribing || resuming}
             >
               🎤
             </button>
@@ -799,13 +814,14 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
-              void send(input);
+              // The next question can be typed while Poli finishes the last one, and sent once it has.
+              if (!resuming) void send(input);
             }
           }}
           placeholder={listening ? tr.input.listening : transcribing ? tr.input.transcribing : tr.input.placeholder}
           aria-label={tr.input.message}
         />
-        <button className="btn-primary h-10 rounded-full px-4" disabled={busy || !input.trim()} aria-label={tr.input.send}>{tr.input.send} ➤</button>
+        <button className="btn-primary h-10 rounded-full px-4" disabled={busy || resuming || !input.trim()} aria-label={tr.input.send}>{tr.input.send} ➤</button>
       </form>
       {!voiceSupported && <p className="px-4 pb-2 text-[11px] text-slate-400">{tr.input.noMic}</p>}
     </section>
