@@ -411,6 +411,17 @@ describe("parseTimetable", () => {
     const ahaLabs = year3.entries.filter((e) => e.courseAbbr === "AHA" && e.kind === "lab");
     expect(ahaLabs.every((e) => e.groups.every((i) => year3.groups[i].track?.includes("TI")))).toBe(true);
 
+    // The second row may open with the weeks in brackets: "… (c) I. Tatai" / "(saptamanile 1-10) sala A2 - Chimie".
+    // It is still the same two-hour lecture, not a class of its own called "( ) sala A2 - Chimie".
+    const year1 = parseTimetable(grids.find((g) => g.name === "An 1")!);
+    const tuesday = year1.entries.filter((e) => e.day === 2 && e.rawText.includes("Tatai") && e.rawText.includes("A2"));
+    expect(tuesday).toEqual([expect.objectContaining({ courseName: "Electrotehnica", kind: "course", startMin: hm(14), endMin: hm(16), weeks: "1-10", room: "A2 - Chimie", teacher: "I. Tatai" })]);
+    expect(year1.entries.filter((e) => /^\(\s*(?:s[aă]pt|weeks?)/i.test(e.rawText))).toEqual([]);
+    const year2english = parseTimetable(grids.find((g) => g.name === "An 2 Eng")!);
+    expect(year2english.entries.find((e) => e.rawText.includes("Precup") && e.kind === "course"))
+      .toMatchObject({ day: 4, startMin: hm(9), endMin: hm(11), weeks: "5-14", room: "A204" });
+    expect(year2english.entries.filter((e) => /^\(\s*(?:s[aă]pt|weeks?)/i.test(e.rawText))).toEqual([]);
+
     // Master's sheets have no group header: one implicit group.
     const ml = parseTimetable(grids.find((g) => g.name === "An 1 ML")!);
     expect(ml.groups).toEqual([{ track: null, name: "", col: 3 }]);
