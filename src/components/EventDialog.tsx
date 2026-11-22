@@ -1,12 +1,12 @@
 "use client";
 
+import { ArrowRight, ExternalLink, Route } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import type { AttendanceStatus } from "@/db/schema";
 import { useLocale, useT } from "@/i18n/client";
-import { campusJourneyHref } from "@/lib/campuspath/links";
+import { eventDirectionsHref } from "@/lib/campuspath/links";
 import { attendanceActivityId, kindLabel } from "@/lib/kinds";
 import type { CalEvent } from "@/lib/schedule";
 import { capitalize, dayName, formatDate, formatMinutes, formatTimeSlot, nowLocal, weekday } from "@/lib/time";
@@ -14,7 +14,6 @@ import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
 import { MakeupFinder } from "./MakeupFinder";
 import { Modal } from "./Modal";
 import { PersonalEventDialog } from "./PersonalEventDialog";
-import { TripSuggestions } from "./TripSuggestions";
 
 const toClock = (min: number) => formatMinutes(min);
 const fromClock = (v: string) => {
@@ -38,9 +37,8 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
   const style = kindStyle(event.kind);
   // Labs, seminars and projects are held per group, so another group's session can stand in for a missed one.
   const canMakeUp = event.type === "class" && (event.kind === "lab" || event.kind === "seminar" || event.kind === "project");
-  // A room in a building (not "online") can be walked to on the Campus page.
   const academic = event.type === "class" || event.type === "exam";
-  const destination = event.campusRoom ?? (academic && event.place ? event.room : null);
+  const directionsHref = eventDirectionsHref(event);
 
   const send = async (body: Record<string, unknown>) => {
     setBusy(true);
@@ -77,33 +75,28 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
         {event.note && (<><dt className="text-slate-500">{event.type === "upt" ? messages.calendar.subscription.access : t.note}</dt><dd className="text-slate-800">{event.note}</dd></>)}
       </dl>
 
+      {directionsHref && (
+        <Link href={directionsHref} className="mb-4 flex min-h-12 items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5 text-brand-900 hover:border-brand-500">
+          <Route size={20} className="shrink-0 text-brand-600" aria-hidden />
+          <span className="flex-1">
+            <span className="block text-sm font-semibold">{t.getDirections}</span>
+            <span className="block text-xs text-slate-600">{event.room || event.campusRoom ? t.directionsHint : messages.campus.journey.openInMaps}</span>
+          </span>
+          <ArrowRight size={17} className="shrink-0 text-brand-600" aria-hidden />
+        </Link>
+      )}
+
       {event.type === "upt"
         ? <a className="btn-secondary" href={event.sourceUrl} target="_blank" rel="noreferrer">
             {messages.calendar.subscription.source}<ExternalLink size={15} aria-hidden />
           </a>
         : <AttendanceControl event={event} />}
 
-      {event.place && <TripSuggestions room={event.room} startMin={event.startMin} />}
-
-      {(destination || canMakeUp) && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {destination && (
-            <Link
-              href={campusJourneyHref({ to: destination, building: event.place?.name, course: event.title, at: formatMinutes(event.startMin), date: event.date })}
-              className="btn-secondary"
-              onClick={onClose}
-            >
-              <span aria-hidden>🧭</span>
-              {messages.guide.buildings.walkthrough}
-            </Link>
-          )}
-          {canMakeUp && (
-            <button type="button" className="btn-secondary" onClick={() => setMakeup(true)}>
-              <span aria-hidden>🔁</span>
-              {messages.study.makeup.open}
-            </button>
-          )}
-        </div>
+      {canMakeUp && (
+        <button type="button" className="btn-secondary" onClick={() => setMakeup(true)}>
+          <span aria-hidden>🔁</span>
+          {messages.study.makeup.open}
+        </button>
       )}
       {makeup && <MakeupFinder course={event.title} kind={event.kind} onClose={() => setMakeup(false)} />}
 

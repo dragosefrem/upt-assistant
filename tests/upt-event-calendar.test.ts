@@ -111,12 +111,12 @@ const toggle = (subscribed: boolean) => changeSchedule(new Request("http://local
 }));
 const calendar = async (offers = false) => (await readCalendar(new Request(
   `http://localhost/api/events?from=${date}&to=${date}${offers ? "&offers=1" : ""}`))).json();
-function session(id: string, startMin: number, endMin: number) {
-  getDb().insert(uptEventOccurrences).values({ id, title: id, date, startMin, endMin, sourceUrl: `https://www.upt.ro/evenimente/${id}` }).run();
+function session(id: string, startMin: number, endMin: number, location?: string) {
+  getDb().insert(uptEventOccurrences).values({ id, title: id, date, startMin, endMin, location, sourceUrl: `https://www.upt.ro/evenimente/${id}` }).run();
 }
 
 it("subscribes only the signed-in account and resolves whole slots again after calendar edits", async () => {
-  session("Workshop", 840, 900);
+  session("Workshop", 840, 900, "Sala B419");
   session("Overlapping talk", 875, 940);
   session("Evening", 900, 960);
   const titles = async () => (await calendar()).events.map((e: { title: string }) => e.title);
@@ -125,6 +125,7 @@ it("subscribes only the signed-in account and resolves whole slots again after c
   expect((await toggle(true)).ok).toBe(true);
   expect(isUptSubscriber(other.id)).toBe(false);
   expect(await titles()).toEqual(["Workshop", "Evening"]);
+  expect((await calendar()).events[0]).toMatchObject({ title: "Workshop", campusRoom: "B419" });
   expect((await calendar(true)).uptSubscribed).toBe(true);
   const db = getDb();
   const meeting = db.insert(personalEvents).values({ userId: student.id, title: "My weekly lab", day: 4, startMin: 890, endMin: 900 }).returning().get();

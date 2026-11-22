@@ -4,12 +4,27 @@ import { Navigation, Sun } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useT } from "@/i18n/client";
-import { campusJourneyHref } from "@/lib/campuspath/links";
+import { eventDirectionsHref } from "@/lib/campuspath/links";
+import { planTrip } from "@/lib/directions";
 import { kindLabel } from "@/lib/kinds";
-import type { CalEvent } from "@/lib/schedule";
+import type { CalEvent, Place } from "@/lib/schedule";
 import { addDays, capitalize, formatDate, formatMinutes, formatTimeSlot, nowLocal } from "@/lib/time";
 import { SCHEDULE_CHANGED, kindStyle } from "./Calendar";
-import { TripSuggestions } from "./TripSuggestions";
+import { useLocation } from "./LocationProvider";
+
+function TripEstimate({ place, startMin }: { place: Place; startMin: number }) {
+  const { position } = useLocation();
+  const locale = useLocale();
+  const t = useT().calendar.trip;
+  if (!position) return null;
+  const trip = planTrip(position, place, locale);
+  return (
+    <p className="pl-[1.375rem] text-xs text-slate-600">
+      {trip.summary}
+      {trip.leaveMinutesBefore > 0 && <strong> {t.leaveBy(formatMinutes(Math.max(0, startMin - trip.leaveMinutesBefore)))}</strong>}
+    </p>
+  );
+}
 
 /** "What day is it and what's next": today's date, the class in progress and the next one. */
 export function NextUp({ initial }: { initial: CalEvent[] }) {
@@ -56,7 +71,7 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
   const leftToday = events.filter((e) => e.date === now.date && e.endMin > now.minutes).length;
 
   const row = (label: string, e: CalEvent, when: string) => {
-    const destination = e.campusRoom ?? (e.place ? e.room : null);
+    const directionsHref = eventDirectionsHref(e);
     return (
       <div className="flex items-start gap-3">
         <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />
@@ -70,13 +85,13 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
             {e.room ? ` · ${e.room}` : (e.type === "class" || e.type === "exam") && ` · ${messages.exams.card.roomUnknown}`}
             {e.place && ` · ${e.place.approximate ? messages.campus.rooms.approximate(e.place.name) : e.place.name}`}
           </p>
-          {destination && (
+          {directionsHref && (
             <Link
-              href={campusJourneyHref({ to: destination, building: e.place?.name, course: e.title, at: formatMinutes(e.startMin), date: e.date })}
+              href={directionsHref}
               className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline"
             >
               <Navigation size={14} aria-hidden />
-              {messages.guide.buildings.walkthrough}
+              {messages.calendar.event.getDirections}
             </Link>
           )}
         </div>
@@ -98,7 +113,7 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
           <div className="space-y-1.5">
             {row(t.next, next, next.date === now.date ? inWords(next.startMin - now.minutes) : formatDate(next.date, { weekday: "long", day: "numeric", month: "short" }, locale))}
             {next.place && next.date === now.date && (
-              <div className="pl-[1.375rem]"><TripSuggestions room={next.room} startMin={next.startMin} compact /></div>
+              <TripEstimate place={next.place} startMin={next.startMin} />
             )}
           </div>
         ) : (

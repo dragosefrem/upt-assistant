@@ -7,13 +7,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/client";
 import { campusHref, routeGoal, routeLink, routeTitle, sharedHref, type CampusLink } from "@/lib/campuspath/links";
 import type { TimetableRoom } from "@/lib/campuspath/rooms";
+import type { Place } from "@/lib/schedule";
 import { isClassroom, type CampusPlace, type Classroom, type Question, type Route } from "@/lib/campuspath/types";
 import { Mascot } from "../Mascot";
 import { campusApi, CampusApiError, type PlanBody } from "./api";
 import { ClassroomBrowser } from "./ClassroomBrowser";
 import { reveal, roomFacts } from "./format";
-import { Journey } from "./Journey";
-import type { RouteKind } from "./RouteView";
+import { Journey, type JourneyContext } from "./Journey";
+import { RouteView, type RouteKind } from "./RouteView";
 import { ShareDialog } from "./ShareDialog";
 import { StartPicker } from "./StartPicker";
 import { Thumb } from "./Thumb";
@@ -35,9 +36,6 @@ interface PlanInput {
   /** A starting place a link named in words. */
   from?: string;
 }
-
-/** Where the journey is for, from a link: the building, the class and its time. */
-type Context = Pick<CampusLink, "building" | "at" | "date" | "course">;
 
 const START_KEY = "upt.campus.start";
 
@@ -68,12 +66,14 @@ function recalledStart(): Start | null {
  */
 export function CampusPage({
   initial,
+  timetablePlace,
   rooms,
   hasSemester,
   admin,
   mapsKey,
 }: {
   initial: CampusLink;
+  timetablePlace: Place | null;
   rooms: TimetableRoom[];
   hasSemester: boolean;
   admin: boolean;
@@ -87,7 +87,10 @@ export function CampusPage({
   /** A starting place a link named in words, sent as `from` until a checkpoint is chosen. */
   const [startText, setStartText] = useState<string | null>(null);
   const [result, setResult] = useState<{ route: Route; kind: RouteKind; id: number } | null>(null);
-  const [context, setContext] = useState<Context>({ building: initial.building, at: initial.at, date: initial.date, course: initial.course });
+  const [context, setContext] = useState<JourneyContext>({
+    building: initial.building, at: initial.at, date: initial.date, course: initial.course,
+    requestedRoom: initial.course ? initial.to : undefined, timetablePlace,
+  });
   const [question, setQuestion] = useState<Question | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
@@ -111,7 +114,8 @@ export function CampusPage({
 
   useEffect(() => {
     if (!focusNextResult.current || busy || picker || (!result && !question && !unavailable && !error)) return;
-    const heading = resultBox.current?.querySelector<HTMLElement>("h2, [role=alert]");
+    const selector = question ? "#campus-question" : unavailable ? "#campus-down-title" : error ? "[role=alert]" : "h2";
+    const heading = resultBox.current?.querySelector<HTMLElement>(selector);
     if (heading) {
       focusNextResult.current = false;
       heading.tabIndex = -1;
@@ -145,7 +149,7 @@ export function CampusPage({
     if (window.location.pathname + window.location.search !== href) window.history.replaceState(null, "", href);
   }, []);
 
-  const applyContext = (next: Context) => {
+  const applyContext = (next: JourneyContext) => {
     contextRef.current = next;
     setContext(next);
   };
@@ -294,6 +298,9 @@ export function CampusPage({
       chooseStart(next);
       void plan({ ...input, auto: false }, next);
     } else {
+      if (context.requestedRoom && isClassroom(option)) {
+        applyContext({ ...context, building: option.area, timetablePlace: null });
+      }
       void plan({ ...input, destination: option.index });
     }
   };
@@ -335,207 +342,220 @@ export function CampusPage({
   };
 
   const startLabel = start?.name ?? startText;
+  const eventRoom = context.requestedRoom;
+
+  const planner = (
+    <section key="planner" aria-labelledby="campus-plan-title" className="card p-5 sm:p-6 lg:sticky lg:top-20">
+      <h2 id="campus-plan-title" className="mb-5 flex items-center gap-2 text-xl font-semibold tracking-tight text-slate-900">
+        <RouteIcon size={22} className="text-brand-600" aria-hidden />{t.planner.title}
+      </h2>
+      <form onSubmit={submit} className="mt-3 space-y-4" noValidate>
+        <div>
+          <div className="flex items-center justify-between gap-2">
+            <label htmlFor="campus-prompt" className="label mb-0">
+              {t.planner.where}
+            </label>
+            <button type="button" className="text-sm font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-500" onClick={() => setBrowsing(true)} aria-haspopup="dialog">
+              {t.planner.browse}
+            </button>
+          </div>
+          <textarea
+            id="campus-prompt"
+            ref={promptBox}
+            rows={2}
+            maxLength={1000}
+            className="field mt-1 resize-none text-base sm:text-sm"
+            placeholder={t.planner.placeholder}
+            value={prompt}
+            aria-describedby={formError ? "campus-form-error" : undefined}
+            aria-invalid={!!formError}
+            onChange={(e) => {
+              setPrompt(e.target.value);
+              setFormError(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit();
+              }
+            }}
+          />
+          {formError && (
+            <p id="campus-form-error" role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
+              {formError}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between gap-2">
+            <span id="campus-start-label" className="label mb-0">
+              {t.planner.start}
+            </span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-500"
+              onClick={() => setPicker({ locate: true })}
+              aria-haspopup="dialog"
+            >
+              <LocateFixed size={15} aria-hidden />
+              {t.planner.locate}
+            </button>
+          </div>
+          <div className="mt-1 flex gap-1.5">
+            <button
+              type="button"
+              aria-labelledby="campus-start-label campus-start-value"
+              aria-haspopup="dialog"
+              onClick={() => setPicker({ locate: false })}
+              className={`field flex min-w-0 flex-1 items-center gap-2 text-left ${startLabel ? "" : "text-slate-500"}`}
+            >
+              <MapPin size={16} className="shrink-0 text-brand-600" aria-hidden />
+              <span id="campus-start-value" className="min-w-0 flex-1 truncate">
+                {startLabel ?? t.planner.chooseStart}
+              </span>
+              <ChevronDown size={15} aria-hidden />
+            </button>
+            {startLabel && (
+              <button
+                type="button"
+                className="btn-ghost px-2.5"
+                onClick={() => chooseStart(null)}
+                aria-label={t.planner.clearStart}
+                title={t.planner.clearStart}
+              >
+                <X size={16} aria-hidden />
+              </button>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-slate-500">{start?.area ?? t.planner.startHint}</p>
+        </div>
+
+        <button type="submit" className="btn-primary w-full py-2.5" disabled={busy === "route"}>
+          {busy === "route" ? t.planner.submitting : t.planner.submit}<ArrowRight size={17} aria-hidden />
+        </button>
+      </form>
+    </section>
+  );
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <header className="page-heading">
         <h1>{t.page.heading}</h1>
-        <p className="mt-2 text-slate-600">{t.page.lead}</p>
+        {!eventRoom && <p className="mt-2 text-slate-600">{t.page.lead}</p>}
       </header>
 
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(20rem,.82fr)_minmax(0,1.18fr)]">
-        <section aria-labelledby="campus-plan-title" className="card p-5 sm:p-6 lg:sticky lg:top-20">
-          <h2 id="campus-plan-title" className="mb-5 flex items-center gap-2 text-xl font-semibold tracking-tight text-slate-900">
-            <RouteIcon size={22} className="text-brand-600" aria-hidden />{t.planner.title}
-          </h2>
-          <form onSubmit={submit} className="mt-3 space-y-4" noValidate>
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <label htmlFor="campus-prompt" className="label mb-0">
-                  {t.planner.where}
-                </label>
-                <button type="button" className="text-sm font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-500" onClick={() => setBrowsing(true)} aria-haspopup="dialog">
-                  {t.planner.browse}
-                </button>
-              </div>
-              <textarea
-                id="campus-prompt"
-                ref={promptBox}
-                rows={2}
-                maxLength={1000}
-                className="field mt-1 resize-none text-base sm:text-sm"
-                placeholder={t.planner.placeholder}
-                value={prompt}
-                aria-describedby={formError ? "campus-form-error" : undefined}
-                aria-invalid={!!formError}
-                onChange={(e) => {
-                  setPrompt(e.target.value);
-                  setFormError(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    e.currentTarget.form?.requestSubmit();
-                  }
-                }}
-              />
-              {formError && (
-                <p id="campus-form-error" role="alert" className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
-                  {formError}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between gap-2">
-                <span id="campus-start-label" className="label mb-0">
-                  {t.planner.start}
-                </span>
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-sm font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-500"
-                  onClick={() => setPicker({ locate: true })}
-                  aria-haspopup="dialog"
-                >
-                  <LocateFixed size={15} aria-hidden />
-                  {t.planner.locate}
-                </button>
-              </div>
-              <div className="mt-1 flex gap-1.5">
-                <button
-                  type="button"
-                  aria-labelledby="campus-start-label campus-start-value"
-                  aria-haspopup="dialog"
-                  onClick={() => setPicker({ locate: false })}
-                  className={`field flex min-w-0 flex-1 items-center gap-2 text-left ${startLabel ? "" : "text-slate-500"}`}
-                >
-                  <MapPin size={16} className="shrink-0 text-brand-600" aria-hidden />
-                  <span id="campus-start-value" className="min-w-0 flex-1 truncate">
-                    {startLabel ?? t.planner.chooseStart}
-                  </span>
-                  <ChevronDown size={15} aria-hidden />
-                </button>
-                {startLabel && (
-                  <button
-                    type="button"
-                    className="btn-ghost px-2.5"
-                    onClick={() => chooseStart(null)}
-                    aria-label={t.planner.clearStart}
-                    title={t.planner.clearStart}
-                  >
-                    <X size={16} aria-hidden />
-                  </button>
-                )}
-              </div>
-              <p className="mt-1 text-xs text-slate-500">{start?.area ?? t.planner.startHint}</p>
-            </div>
-
-            <button type="submit" className="btn-primary w-full py-2.5" disabled={busy === "route"}>
-              {busy === "route" ? t.planner.submitting : t.planner.submit}<ArrowRight size={17} aria-hidden />
-            </button>
-          </form>
-        </section>
-
+      <div className={`grid items-start gap-5 ${eventRoom ? "lg:grid-cols-[minmax(0,1.5fr)_minmax(18rem,.75fr)]" : "lg:grid-cols-[minmax(20rem,.82fr)_minmax(0,1.18fr)]"}`}>
+        {!eventRoom && planner}
         <div ref={resultBox} className="min-w-0 scroll-mt-20 space-y-4">
-          {busy && (
-            <p role="status" className="flex items-center gap-2 rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-200">
-              <span className="typing-dots text-brand-500" aria-hidden>
-                <span />
-                <span />
-                <span />
-              </span>
-              {busy === "example" ? t.route.loading : t.planner.submitting}
-            </p>
-          )}
-          {unavailable ? (
-            <section className="card flex flex-col items-center gap-3 p-6 text-center" aria-labelledby="campus-down-title">
-              <Mascot size={72} />
-              <h2 id="campus-down-title" className="text-lg font-semibold text-slate-900">
-                {t.unavailable.title}
-              </h2>
-              <p className="max-w-md text-sm text-slate-600">{t.unavailable.body}</p>
-              {admin && (
-                <p className="max-w-lg rounded-2xl bg-slate-50 px-4 py-3 text-left text-xs text-slate-700 ring-1 ring-slate-200">
-                  <strong className="font-semibold">{t.unavailable.adminLabel}: </strong>
-                  {t.unavailable.adminHint}
-                </p>
-              )}
-              <button type="button" className="btn-primary" onClick={retryAll}>
-                {t.unavailable.retry}
-              </button>
-            </section>
-          ) : (
-            <>
-              {error && (
-                <p role="alert" className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
-                  {error}
-                </p>
-              )}
-              {question && (
-                <section className="card p-4 sm:p-5" aria-labelledby="campus-question">
-                  <div className="flex items-start gap-3">
-                    <Mascot size={44} />
-                    <div className="min-w-0 flex-1">
-                      <h2 id="campus-question" className="font-semibold text-slate-900">
-                        {question.message}
-                      </h2>
-                      <p className="text-sm text-slate-600">{t.question.choose}</p>
+          <Journey
+            route={result?.kind === "yours" ? result.route : null}
+            context={context}
+            mapsKey={mapsKey}
+            onStartElsewhere={startElsewhere}
+          >
+            {busy && (
+              <p role="status" className="flex items-center gap-2 rounded-2xl bg-white/80 px-4 py-3 text-sm text-slate-700 ring-1 ring-slate-200">
+                <span className="typing-dots text-brand-500" aria-hidden>
+                  <span />
+                  <span />
+                  <span />
+                </span>
+                {busy === "example" ? t.route.loading : t.planner.submitting}
+              </p>
+            )}
+            {unavailable ? (
+              <section className="card flex flex-col items-center gap-3 p-6 text-center" aria-labelledby="campus-down-title">
+                <Mascot size={72} />
+                <h2 id="campus-down-title" className="text-lg font-semibold text-slate-900">
+                  {t.unavailable.title}
+                </h2>
+                <p className="max-w-md text-sm text-slate-600">{t.unavailable.body}</p>
+                {admin && (
+                  <p className="max-w-lg rounded-2xl bg-slate-50 px-4 py-3 text-left text-xs text-slate-700 ring-1 ring-slate-200">
+                    <strong className="font-semibold">{t.unavailable.adminLabel}: </strong>
+                    {t.unavailable.adminHint}
+                  </p>
+                )}
+                <button type="button" className="btn-primary" onClick={retryAll}>
+                  {t.unavailable.retry}
+                </button>
+              </section>
+            ) : (
+              <>
+                {error && (
+                  <p role="alert" className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900 ring-1 ring-amber-200">
+                    {error}
+                  </p>
+                )}
+                {question && (
+                  <section className="card p-4 sm:p-5" aria-labelledby="campus-question">
+                    <div className="flex items-start gap-3">
+                      <Mascot size={44} />
+                      <div className="min-w-0 flex-1">
+                        <h2 id="campus-question" className="font-semibold text-slate-900">
+                          {question.message}
+                        </h2>
+                        <p className="text-sm text-slate-600">{t.question.choose}</p>
+                      </div>
                     </div>
-                  </div>
-                  <ul className="mt-3 space-y-1.5">
-                    {question.options.map((option) => (
-                      <li key={String(option.index)}>
-                        <button
-                          type="button"
-                          onClick={() => answer(option)}
-                          className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-2 text-left transition hover:border-brand-200 hover:bg-brand-50/60 focus-visible:outline-2 focus-visible:outline-brand-500"
-                        >
-                          <Thumb src={option.thumb} />
-                          <span className="min-w-0 flex-1">
-                            <span className="block break-words text-sm font-semibold text-slate-900">{option.name}</span>
-                            <span className="block text-xs text-slate-500">
-                              {(isClassroom(option) ? roomFacts(option, t) : [option.area, t.picker.checkpoint(option.index)]).join(" · ")}
+                    <ul className="mt-3 space-y-1.5">
+                      {question.options.map((option) => (
+                        <li key={String(option.index)}>
+                          <button
+                            type="button"
+                            onClick={() => answer(option)}
+                            className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-2 text-left transition hover:border-brand-200 hover:bg-brand-50/60 focus-visible:outline-2 focus-visible:outline-brand-500"
+                          >
+                            <Thumb src={option.thumb} />
+                            <span className="min-w-0 flex-1">
+                              <span className="block break-words text-sm font-semibold text-slate-900">{option.name}</span>
+                              <span className="block text-xs text-slate-500">
+                                {(isClassroom(option) ? roomFacts(option, t) : [option.area, t.picker.checkpoint(option.index)]).join(" · ")}
+                              </span>
                             </span>
-                          </span>
-                          <span aria-hidden className="text-brand-600">→</span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                  <button type="button" className="btn-ghost mt-2 text-sm" onClick={() => setQuestion(null)}>
-                    {t.question.dismiss}
-                  </button>
-                </section>
-              )}
-              {result ? (
-                <Journey
-                  key={result.id}
-                  route={result.route}
-                  kind={result.kind}
-                  context={context}
-                  mapsKey={mapsKey}
-                  onRetry={retryAll}
-                  onShare={() => setSharing(true)}
-                  onCopy={copy}
-                  copied={copied}
-                  onStartElsewhere={startElsewhere}
-                />
-              ) : (
-                !busy && !question && !error && (
-                  <section className="campus-example">
-                    <Image src={entrancePhoto} alt="" fill sizes="(min-width: 1024px) 640px, 100vw" className="object-cover" />
-                    <div className="campus-example-copy">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-white/85">{t.route.kindExample}</p>
-                      <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t.route.exampleName}</h2>
-                      <button type="button" className="btn mt-4 bg-white text-brand-900 hover:bg-brand-50" onClick={loadExample}>
-                        {t.route.openExample}<ArrowRight size={16} aria-hidden />
-                      </button>
-                    </div>
+                            <span aria-hidden className="text-brand-600">→</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button type="button" className="btn-ghost mt-2 text-sm" onClick={() => {
+                      setQuestion(null);
+                      applyContext({});
+                      promptBox.current?.focus();
+                    }}>
+                      {t.question.dismiss}
+                    </button>
                   </section>
-                )
-              )}
-            </>
-          )}
+                )}
+                {result ? (
+                  <RouteView
+                    key={result.id}
+                    route={result.route}
+                    kind={result.kind}
+                    inJourney={result.kind === "yours"}
+                    onRetry={retryAll}
+                    onShare={() => setSharing(true)}
+                    onCopy={copy}
+                    copied={copied}
+                  />
+                ) : (
+                  !busy && !question && !error && !eventRoom && (
+                    <section className="campus-example">
+                      <Image src={entrancePhoto} alt="" fill sizes="(min-width: 1024px) 640px, 100vw" className="object-cover" />
+                      <div className="campus-example-copy">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-white/85">{t.route.kindExample}</p>
+                        <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{t.route.exampleName}</h2>
+                        <button type="button" className="btn mt-4 bg-white text-brand-900 hover:bg-brand-50" onClick={loadExample}>
+                          {t.route.openExample}<ArrowRight size={16} aria-hidden />
+                        </button>
+                      </div>
+                    </section>
+                  )
+                )}
+              </>
+            )}
+          </Journey>
           <p className="px-1 text-xs text-slate-500">
             {t.page.credit}{" "}
             <a href="https://visit360.upt.ro/" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-700 hover:underline">
@@ -543,6 +563,7 @@ export function CampusPage({
             </a>
           </p>
         </div>
+        {eventRoom && planner}
       </div>
 
       <StartPicker open={!!picker} locate={!!picker?.locate} onClose={() => {

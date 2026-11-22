@@ -2,6 +2,7 @@ import "server-only";
 import { and, asc, eq, gte, lte } from "drizzle-orm";
 import { getDb } from "@/db";
 import { uptEventOccurrences, uptEventSubscriptions } from "@/db/schema";
+import { campusRoomCode } from "./campuspath/known-room";
 import { tentativeTimesFor } from "./group-events";
 import { eventsBetween, overlaps, type CalEvent, type FreeSlot } from "./schedule";
 
@@ -44,7 +45,7 @@ export function matchingUptEvents(user: CalendarOwner, range?: { from: string; t
     const id = `upt:${slot.id}`;
     result.push({ id, seriesKey: id, courseKey: id, type: "upt", kind: "upt", title: slot.title,
       date: slot.date, startMin: slot.startMin, endMin: slot.endMin, room: slot.location, note: slot.access,
-      sourceUrl: slot.sourceUrl, teacher: null, place: null, abbr: null, attendance: null });
+      sourceUrl: slot.sourceUrl, campusRoom: campusRoomCode(slot.location), teacher: null, place: null, abbr: null, attendance: null });
   }
   return result;
 }
