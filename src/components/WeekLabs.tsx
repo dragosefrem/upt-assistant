@@ -19,6 +19,7 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
   // On Saturday or Sunday, with nothing left of this week, the card answers for the next one.
   const { week, upcoming } = practicalsToShow(user, now.date === date ? now : { date, minutes: 0 }, locale);
   const t = upcoming ? { ...labs, ...labs.upcoming } : labs;
+  const alternating = messagesFor(locale).common.time.alternating;
   if (!user.groupId || (!week.running.length && !week.skipped.length && !week.holidays.length)) return null;
   const shortDate = (d: string) => formatDate(d, { weekday: "short", day: "numeric", month: "short" }, locale);
 
@@ -82,6 +83,8 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
                             <MakeupButton course={e.title} kind={e.kind} />
                           </>
                         )}
+                        {/* Held every other week, and the timetable does not say which. */}
+                        {e.note?.includes(alternating) && <span className="block text-amber-800">{capitalize(alternating)}</span>}
                       </span>
                     </span>
                   </li>

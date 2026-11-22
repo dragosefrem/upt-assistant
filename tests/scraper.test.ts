@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { describeWeeks, weekMatches } from "@/lib/time";
 import path from "node:path";
 import ExcelJS from "exceljs";
 import { describe, expect, it } from "vitest";
@@ -352,6 +353,26 @@ describe("parseTimetable", () => {
     expect(hourLoads("Controlere Logice Programabile (s:1-8 2h, s:9-12 3h), curs")).toEqual([{ weeks: "1-8", hours: 2 }, { weeks: "9-12", hours: 3 }]);
     expect(hourLoads("Sisteme mobile si aplicatii (c) M. Marcu sala 303CP 2h/12sapt")).toEqual([]);
     expect(hourLoads("MM (s) sapt 1-7 sala SPM205")).toEqual([]);
+  });
+
+  it("marks an ETcTI class that shares its slot with a dash as held every other week", () => {
+    // Year 3, Wednesday 10-12: "TTI(l)" over "-" for subgroup 1.1, "-" over "TTI(l)" for 2.2.
+    const g = new Grid("An III");
+    g.add({ row: 1, col: 3, rowSpan: 1, colSpan: 2, text: "ETcTI" });
+    ["sg.1.1", "sg.2.2"].forEach((name, i) => g.add({ row: 3, col: 3 + i, rowSpan: 1, colSpan: 1, text: name }));
+    ["8-10", "10-12", "12-14", "8-10", "10-12", "12-14"].forEach((time, i) => g.add({ row: 4 + i, col: 2, rowSpan: 1, colSpan: 1, text: time }));
+    g.add({ row: 5, col: 3, rowSpan: 1, colSpan: 1, text: "TTI(l)\n-" });
+    g.add({ row: 5, col: 4, rowSpan: 1, colSpan: 1, text: "-\nTTI(l)" });
+    g.add({ row: 6, col: 3, rowSpan: 1, colSpan: 2, text: "TTI(c) A. Pop A316" });
+    const table = etcAdapter.normalize!(parseTimetable(g), { label: "Licență An III", url: "https://example.org", context: "", kind: "timetable", format: "gsheet", academicYear: "2026-2027", semester: 1 } as DiscoveredSource, g)!;
+    const labs = table.entries.filter((e) => e.kind === "lab");
+    // Not weekly, and not a parity the sheet does not state: shown every week with a note.
+    expect(labs.map((e) => [e.courseName, e.weeks])).toEqual([["TTI", "alt"], ["TTI", "alt"]]);
+    expect(table.entries.find((e) => e.kind === "course")?.weeks).toBe("all");
+    expect(weekMatches("alt", 8) && weekMatches("alt", 9)).toBe(true);
+    expect(weekMatches("1-7&alt", 8)).toBe(false);
+    expect(describeWeeks("alt", "ro")).toBe("o dată la două săptămâni (orarul nu spune în care: verifică la grupă)");
+    expect(describeWeeks("1-7&alt", "en")).toContain("every other week");
   });
 
   it("reports sheets that are not timetables", () => {

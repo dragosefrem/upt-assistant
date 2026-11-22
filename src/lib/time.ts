@@ -133,7 +133,9 @@ export function weekMatches(rule: string, week: number): boolean {
   if (rule.includes("&")) return rule.split("&").every((part) => weekMatches(part, week));
   if (rule.startsWith("!")) return !weekMatches(rule.slice(1), week);
   if (rule.includes(",")) return rule.split(",").some((part) => weekMatches(part, week));
-  if (rule === "all") return true;
+  // "alt": held every other week, and the published timetable does not say which. It stays
+  // in every week, with a note, rather than being shown in the wrong half.
+  if (rule === "all" || rule === "alt") return true;
   if (rule === "odd") return week % 2 === 1;
   if (rule === "even") return week % 2 === 0;
   const m = /^(\d+)-(\d+)$/.exec(rule);
@@ -145,6 +147,7 @@ export function describeWeeks(rule: string, locale: Locale = "en"): string | nul
   if (isDatedMeeting(rule)) return formatDate(rule, { day: "numeric", month: "long", year: "numeric" }, locale);
   if (rule.includes("&")) return rule.split("&").map((part) => describeWeeks(part, locale)).join(", ");
   if (rule === "all") return null;
+  if (rule === "alt") return t.alternating;
   if (rule === "odd") return t.oddWeeks;
   if (rule === "even") return t.evenWeeks;
   if (rule.startsWith("!")) return t.except(describeWeeks(rule.slice(1), locale) ?? "");

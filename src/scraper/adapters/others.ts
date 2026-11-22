@@ -74,6 +74,12 @@ export const etcAdapter: FacultyAdapter = {
       })) };
       if (master) parsed = { ...parsed, entries: masterElectives(parsed, grid) };
     }
+    // A cell of two lines, the class on one and a dash on the other ("TTI(l)" over "-"), is a
+    // class held every other week: the neighbouring subgroup has the two lines the other way
+    // round, in the same room. The sheets do not say which line is the odd week, so the class
+    // is marked as alternating rather than given a parity.
+    parsed = { ...parsed, entries: parsed.entries.map((e) => (/^[-–]\s+\S|\S\s+[-–]$/.test(e.rawText)
+      ? { ...e, weeks: e.weeks === "all" ? "alt" : `${e.weeks}&alt` } : e)) };
     return genericNormalize(parsed, source, {
       degree: master ? "master" : "bachelor",
       year,
