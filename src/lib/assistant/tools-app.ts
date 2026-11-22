@@ -312,7 +312,7 @@ export const APP_TOOLS: AssistantTool[] = [
     run(_input, { user }) {
       const list = studentBuildings(user);
       return {
-        buildings: list.map((b) => ({ name: b.name, address: b.address, position_is_approximate: b.approximate, rooms: b.rooms, courses: b.courses, timetable_entries: b.count })),
+        buildings: list.map((b) => ({ name: b.name, address: b.address, position_is_approximate: b.approximate, building_is_a_guess: b.guessed || undefined, rooms: b.rooms, courses: b.courses, timetable_entries: b.count })),
         note: list.length ? "Counts are activities in the semester timetable. Their weeks can vary. The Guide and Campus pages have a map and room walkthroughs." : "No timetable yet: the student has to choose a group first.",
       };
     },

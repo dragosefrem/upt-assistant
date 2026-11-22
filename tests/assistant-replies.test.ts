@@ -452,8 +452,17 @@ describe("Poli reply cards", () => {
       const res = await POST(new Request("http://localhost/api/assistant", { method: "POST", body: JSON.stringify({ message: "What do I have today?" }) }));
       // The student reloads: the browser stops reading the answer.
       await res.body!.cancel();
-      answer();
       const saved = () => getDb().select().from(chatMessages).all();
+      // The reopened conversation is told which question is still being answered, and a second
+      // question is not started on top of it: that answered the first one twice, out of order.
+      const question = saved()[0].id;
+      expect((await (await GET()).json()).answering).toBe(question);
+      const second = await POST(new Request("http://localhost/api/assistant", { method: "POST", body: JSON.stringify({ message: "And on Friday?" }) }));
+      expect(second.status).toBe(409);
+      expect(await second.json()).toMatchObject({ answering: question, error: messages.en.assistant.api.stillAnswering });
+      expect(saved().map((m) => m.content)).toEqual(["What do I have today?"]);
+      expect(generate).toHaveBeenCalledTimes(1);
+      answer();
       await vi.waitFor(() => expect(saved().map((m) => m.role)).toEqual(["user", "assistant"]));
       // The turn was not thrown away, not answered a second time by the built-in assistant,
       // and not reported as a failure of the model.
@@ -463,6 +472,10 @@ describe("Poli reply cards", () => {
       // Back on the page, the conversation has the answer.
       const history = await (await GET()).json();
       expect(history.messages.at(-1)).toMatchObject({ role: "assistant", content: "Your day starts with the reading group at 10." });
+      // Nothing is being answered any more, and the next question goes through.
+      await vi.waitFor(async () => expect((await (await GET()).json()).answering).toBeNull());
+      geminiTurn([{ text: "Nothing on Friday." }]);
+      expect((await ask("And on Friday?")).text).toBe("Nothing on Friday.");
     } finally {
       log.mockRestore();
     }

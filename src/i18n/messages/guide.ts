@@ -100,6 +100,7 @@ const en = {
     daysOff: "Public holidays, no classes:",
     session: "Exam session",
     sessionRange: (from: string, to: string) => `${from} – ${to}`,
+    ownExams: (from: string, to: string) => `Your own published exams run from ${from} to ${to}.`,
     examsPublished: (n: number) => `${n} of your exams ${n === 1 ? "is" : "are"} already published.`,
     examsNotPublished: "No upcoming exam dates have been published for you.",
     seeExams: "See exams",
@@ -120,6 +121,7 @@ const en = {
     map: "Map",
     walkthrough: "Show me the way",
     approximate: "position approximate",
+    guessed: "The timetable does not say which building these rooms are in. Your faculty’s building is a guess: check before you go.",
   },
   entries: [
     { id: "activitati", term: "C / S / L / P", short: "C = curs (lecture), S = seminar, L = laborator (lab), P = proiect (project).", body: "Look under your series for C, your group for S and your semigroup for L or P.", also: ["c", "curs", "lecture", "s", "seminar", "sem.", "l", "laborator", "lab", "lucrare", "lucrări practice", "p", "proiect", "project"] },
@@ -214,6 +216,7 @@ const ro: typeof en = {
     daysOff: "Zile libere legale, fără ore:",
     session: "Sesiune",
     sessionRange: (from: string, to: string) => `${from} – ${to}`,
+    ownExams: (from, to) => `Examenele tale publicate sunt între ${from} și ${to}.`,
     examsPublished: (n: number) => (n === 1 ? "Un examen al tău este deja publicat." : `${n}${n >= 20 ? " de" : ""} examene ale tale sunt deja publicate.`),
     examsNotPublished: "Nu sunt publicate date pentru următoarele tale examene.",
     seeExams: "Vezi examenele",
@@ -234,6 +237,7 @@ const ro: typeof en = {
     map: "Hartă",
     walkthrough: "Arată-mi drumul",
     approximate: "poziție aproximativă",
+    guessed: "Orarul nu spune în ce clădire sunt sălile acestea. Clădirea facultății tale e o presupunere: verifică înainte să pleci.",
   },
   entries: [
     { id: "activitati", term: "C / S / L / P", short: "C = curs, S = seminar, L = laborator, P = proiect.", body: "Pentru C urmărește seria, pentru S grupa, iar pentru L și P semigrupa.", also: ["c", "curs", "lecture", "s", "seminar", "sem.", "l", "laborator", "lab", "lucrare", "lucrări practice", "p", "proiect", "project"] },

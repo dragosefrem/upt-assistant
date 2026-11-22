@@ -152,8 +152,10 @@ export function AttendanceGoals({ goals, available }: AttendanceGoalOverview) {
                     </span>
                   </div>
                   {!reached && goal.sessionsToCome !== null && (
-                    <p className={`mt-2 text-xs leading-relaxed ${goal.outOfReach ? "font-medium text-amber-900" : "text-slate-600"}`}>
-                      {goal.outOfReach ? t.outOfReach(goal.sessionsToCome) : t.sessionsToCome(goal.sessionsToCome)}
+                    <p className={`mt-2 text-xs leading-relaxed ${goal.outOfReach ? "font-medium text-amber-900" : goal.needsPastMarks ? "font-medium text-slate-700" : "text-slate-600"}`}>
+                      {goal.outOfReach ? t.outOfReach(goal.sessionsToCome)
+                        : goal.needsPastMarks ? t.needsPastMarks(goal.sessionsToCome, goal.unmarkedPast)
+                        : t.sessionsToCome(goal.sessionsToCome)}
                     </p>
                   )}
                   <div role="progressbar" aria-label={activityName(goal)} aria-valuemin={0} aria-valuemax={goal.minimum}

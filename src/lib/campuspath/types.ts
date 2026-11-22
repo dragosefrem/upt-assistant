@@ -97,6 +97,8 @@ export interface Route {
   /** The planner chose the start: the mapped entrance nearest the destination. */
   automatic?: boolean;
   notice?: string;
+  /** To read before setting off: the place is on the Hunedoara campus, not in Timișoara. */
+  warning?: string;
   /** Null when the route is a single checkpoint or the room is not in the tour. */
   video: VideoState | null;
 }

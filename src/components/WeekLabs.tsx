@@ -9,6 +9,9 @@ import { practicalsToShow } from "@/lib/labs";
 import { capitalize, dayName, describeWeeks, formatDate, formatMinutes, formatTimeSlot, nowLocal, weekday } from "@/lib/time";
 import { MakeupButton } from "./MakeupFinder";
 
+/** A course's short name. A one-letter abbreviation ("C" for Chimie) tells a student nothing: the name is used. */
+const shortName = (e: { abbr: string | null; title: string }) => (e.abbr && e.abbr.replace(/[\s.]/g, "").length > 1 ? e.abbr : e.title);
+
 /**
  * "Do I have lab this week?" answered on the home page: the labs, seminars and projects
  * that take place this week, and the ones that do not, with the date they come next.
@@ -67,7 +70,7 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
                   <li key={e.id} className="flex gap-2 text-sm">
                     <span aria-hidden className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${kindStyle(e.kind).dot}`} />
                     <span className="min-w-0">
-                      <span className="font-medium text-slate-900">{e.abbr ?? e.title}</span>{" "}
+                      <span className="font-medium text-slate-900">{shortName(e)}</span>{" "}
                       <span className="text-slate-500">{kindLabel(e.kind, locale)}</span>
                       <span className="block text-xs text-slate-600">
                         {capitalize(dayName(weekday(e.date), locale, "short"))} <span className="tabular-nums">{formatTimeSlot(e.startMin, e.endMin)}</span>
@@ -102,7 +105,7 @@ export function WeekLabs({ user, date, locale }: { user: User; date: string; loc
                   <li key={e.entryId} className="flex gap-2 text-sm text-slate-500">
                     <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-slate-300" />
                     <span className="min-w-0">
-                      <span className="font-medium text-slate-700">{e.abbr ?? e.title}</span> {kindLabel(e.kind, locale)}
+                      <span className="font-medium text-slate-700">{shortName(e)}</span> {kindLabel(e.kind, locale)}
                       <span className="block text-xs">
                         {[describeWeeks(e.weeks, locale), e.next ? t.next(shortDate(e.next)) : t.finished].filter(Boolean).join(" · ")}
                       </span>

@@ -55,6 +55,7 @@ const en = {
   ],
   thinking: "Thinking…",
   stillAnswering: "Poli is still writing the answer to your last question…",
+  noAnswer: "This question did not get an answer. Send it again.",
   working: "Working…",
   /** What Poli says it is doing while a tool runs. */
   tools: {
@@ -176,6 +177,7 @@ const en = {
     emptyMessage: "The message is empty.",
     missingId: "The message to accept is missing.",
     staleChoice: "These options have expired. Ask Poli for the current choices.",
+    stillAnswering: "Poli is still answering your previous question. Wait for that answer, then send this one.",
     needsGemini: "Voice transcription needs a Gemini API key.",
     badAudio: (type: string) => `Unsupported audio format (${type}).`,
     tooLong: "The recording is too long.",
@@ -263,6 +265,7 @@ const ro: typeof en = {
   ],
   thinking: "Mă gândesc…",
   stillAnswering: "Poli încă scrie răspunsul la ultima ta întrebare…",
+  noAnswer: "Întrebarea aceasta nu a primit răspuns. Trimite-o din nou.",
   working: "Lucrez…",
   tools: {
     get_schedule: "Mă uit în orarul tău…",
@@ -382,6 +385,7 @@ const ro: typeof en = {
     emptyMessage: "Mesajul e gol.",
     missingId: "Lipsește mesajul de acceptat.",
     staleChoice: "Aceste opțiuni au expirat. Cere-i lui Poli opțiunile actuale.",
+    stillAnswering: "Poli încă răspunde la întrebarea dinainte. Așteaptă răspunsul, apoi trimite-o pe aceasta.",
     needsGemini: "Transcrierea vocală are nevoie de o cheie API Gemini.",
     badAudio: (type: string) => `Format audio neacceptat (${type}).`,
     tooLong: "Înregistrarea e prea lungă.",

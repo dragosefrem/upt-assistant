@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { and, eq } from "drizzle-orm";
-import { examAudience } from "./exam-audience";
+import { examAudience, examSitting } from "./exam-audience";
 import { getDb } from "@/db";
 import { calendarFeedRevisions, googleEventLinks, googleExceptions, personalEvents, users } from "@/db/schema";
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
@@ -118,9 +118,12 @@ export function sourceItems(user: User, locale: Locale = user.locale ?? "en"): E
     }
   }
   for (const x of examsForUser(user)) {
+    // A distance-learning exam is published once per sitting. In a phone's calendar and in its
+    // reminders only the title is seen, so the sitting belongs in it.
+    const sitting = examSitting(x.audience) ? examAudience(x.audience, locale) : null;
     items.push({
       uid: `exam-${x.id}`,
-      title: t.exam(`${x.courseName}${x.room ? ` · ${x.room}` : ""}`),
+      title: t.exam(`${x.courseName}${sitting ? ` (${sitting})` : ""}${x.room ? ` · ${x.room}` : ""}`),
       description: [x.room ? t.room(x.room) : null, x.teacher, examAudience(x.audience, locale), x.endMin === x.startMin ? time.endTimeUnpublished : null, t.goodLuck]
         .filter(Boolean)
         .join(" · "),

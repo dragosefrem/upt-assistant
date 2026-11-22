@@ -25,6 +25,8 @@ const en = {
     progress: (n: number, minimum: number) => `${n} of ${minimum} required sessions attended`,
     remaining: (n: number) => `${n} more needed`,
     sessionsToCome: (n: number) => `${n} ${n === 1 ? "session" : "sessions"} still to come this semester.`,
+    needsPastMarks: (n: number, unmarked: number) =>
+      `${n === 0 ? "No sessions are" : n === 1 ? "Only 1 session is" : `Only ${n} sessions are`} left this semester, fewer than you still need. ${unmarked === 1 ? "One past session has" : `${unmarked} past sessions have`} no mark yet: open ${unmarked === 1 ? "it" : "them"} in the calendar and mark ${unmarked === 1 ? "it if you attended" : "the ones you attended"}.`,
     outOfReach: (n: number) =>
       n === 0 ? "There are no sessions left this semester, so this minimum can no longer be reached. Ask your teacher about making up sessions."
         : `Only ${n} ${n === 1 ? "session is" : "sessions are"} left this semester, so this minimum can no longer be reached. Ask your teacher about making up sessions.`,
@@ -106,6 +108,8 @@ const ro: typeof en = {
     progress: (n, minimum) => `${n} din ${minimum} prezențe necesare`,
     remaining: (n) => n === 1 ? "Încă o prezență" : `Încă ${n} ${plural("ro", n, { one: "prezență", few: "prezențe", other: "de prezențe" })}`,
     sessionsToCome: (n) => (n === 1 ? "Mai e o ședință în acest semestru." : `Mai sunt ${n} ${plural("ro", n, { one: "ședință", few: "ședințe", other: "de ședințe" })} în acest semestru.`),
+    needsPastMarks: (n, unmarked) =>
+      `${n === 0 ? "Nu mai e nicio ședință" : n === 1 ? "A mai rămas o singură ședință" : `Au mai rămas doar ${n} ${plural("ro", n, { one: "ședință", few: "ședințe", other: "de ședințe" })}`} în acest semestru, mai puține decât îți lipsesc. ${unmarked === 1 ? "O ședință trecută nu e marcată încă: deschide-o în calendar și marcheaz-o dacă ai fost." : `${unmarked} ${plural("ro", unmarked, { one: "ședință trecută nu e marcată", few: "ședințe trecute nu sunt marcate", other: "de ședințe trecute nu sunt marcate" })} încă: deschide-le în calendar și marchează-le pe cele la care ai fost.`}`,
     outOfReach: (n) =>
       n === 0 ? "Nu mai e nicio ședință în acest semestru, deci minimul nu mai poate fi atins. Întreabă profesorul despre recuperări."
         : `${n === 1 ? "A mai rămas o singură ședință" : `Au mai rămas doar ${n} ${plural("ro", n, { one: "ședință", few: "ședințe", other: "de ședințe" })}`} în acest semestru, deci minimul nu mai poate fi atins. Întreabă profesorul despre recuperări.`,

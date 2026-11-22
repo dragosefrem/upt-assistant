@@ -59,8 +59,9 @@ export interface ParsedTimetable {
 const TITLE_RE = /\b(anul|semestr\w*|sem\.?|year|semester|orar|20\d\d)\b/i;
 const SIDE_HEADER_RE = /laborato|op[tţț]ional|ore comune|suplimentar|observa|not[aăe]\b/i;
 const LEGEND_RE = /denumire|nr\.?\s*ore|titular|nume si prenume|link curs|cvupt|consulta[tţț]i/i;
+/** The row under a class that only adds to it: "sala 303CP", "(saptamanile 1-10) sala A2 - Chimie". */
 const CONTINUATION_RE =
-  /^\s*(?:sal[aă]|ala|amf|amfiteatru|room|s[aă]pt|weeks?|online|\d+\s*h\s*\/)/i;
+  /^\s*\(?\s*(?:sal[aă]|ala|amf|amfiteatru|room|s[aă]pt|weeks?|online|\d+\s*h\s*\/)/i;
 /** A cell holding nothing but a room code ("B418a", "SPM 205"). */
 const BARE_ROOM_RE = /^(?:[A-Z]{1,4}\s?\d{1,4}[A-Za-z]?|\d{2,4}\s?[A-Z]{1,4})$/;
 // AC explicitly moves the first occurrence of some lectures to another day and room.
@@ -367,7 +368,7 @@ export function parseTimetable(grid: Grid, opts: {
       const loads = relocated ? [] : hourLoads(regular);
       if (loads.length) {
         for (const load of loads) {
-          out.entries.push({ ...entry, weeks: load.weeks, endMin: Math.min(entry.endMin, entry.startMin + load.hours * 60) });
+          out.entries.push({ ...entry, weeks: load.weeks, endMin: entry.startMin + load.hours * 60 });
         }
         continue;
       }

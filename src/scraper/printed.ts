@@ -1,4 +1,4 @@
-import { hasKindMarker, hourLoads, isFacultative, parseCellText } from "./cellText";
+import { extractWeeks, hasKindMarker, hourLoads, isFacultative, parseCellText } from "./cellText";
 import { activityTime, norm, parseDayWord, parseTimeRange, squash, type TimeRange } from "./text";
 import type { NormalizedGroup, NormalizedTimetable } from "./types";
 
@@ -13,6 +13,20 @@ export interface PrintedColumn {
 
 const roomOnly = /^(?:sal[aă]\s+[\p{L}\d .-]{1,14}|(?:[A-Z]{1,3}\s?-?\d{2,4}[a-z]?|\d{2,4}[A-Z]{1,3}|Ca\d+|NM|PN|V[Vv]))$/u;
 const staffTitle = /(?:\b(?:asist|prof|conf|lect)\s*\.|[sșş](?:ef\s+lucr|\s*\.\s*l)\.)/i;
+/** A lecturer alone on a line, as an initial and a surname: "C Turc", "D. Ostoia". */
+const teacherLine = /^\p{Lu}\.?\s+\p{Lu}\p{Ll}+(?:[-\s]\p{Lu}\p{Ll}+)?$/u;
+/** A sub-heading inside the grid that limits the classes below it to some weeks: "S1-S7". */
+const weekHeading = /^S\s?(\d{1,2})\s*[-–]\s*S\s?(\d{1,2})$/i;
+
+/**
+ * What is typed in a box, without the marks that spill over from the neighbouring cell of a
+ * diagonal split: a lone ")" or "`" on its own line, and "Fizica (L" that lost its bracket.
+ */
+function boxText(text: string): string {
+  const lines = text.split("\n").filter((line) => /[\p{L}\d]/u.test(line));
+  return lines.join("\n").replace(/\(\s*([CSLP])\s*$/i, "($1)");
+}
+
 const continuation = /^(?:(?:\([CSLP]\)\s*)?(?:s[aă]pt\w*\.?\s*(?:\d+\s*[-–]\s*\d+|imp\w*|par\w*)|\([CSLP]\))\s*$|(?:asist|prof|conf|lect)\.|[sșş]ef\s+lucr)/i;
 
 /**
@@ -21,7 +35,7 @@ const continuation = /^(?:(?:\([CSLP]\)\s*)?(?:s[aă]pt\w*\.?\s*(?:\d+\s*[-–]\
  * and the other SI, which is what tells the letters apart from a lecturer's initials.
  */
 function electricalWeeks(text: string) {
-  return text.replace(/(?<![\p{L}\d])S\.?\s?([PI])(?![\p{L}\d])\.?(?=\s*(?:[,;:/]|$|[A-Z]\s?\d))/gu,
+  return text.replace(/(?<![\p{L}\d])S\.?\s?([PI])(?![\p{L}\d])\.?(?=\s*(?:[,;:/]|$|[A-Za-z]\s?\d))/gu,
     (_, parity: string) => (parity === "P" ? "săpt. pare" : "săpt. impare"));
 }
 
@@ -30,7 +44,11 @@ const elsewhere = /^(?:Facultatea\s+de\s+)?(Chimie|Mecanic[aă]|Hidrotehnic[aă]
 
 /** IEE prints the room first and the kind after the lecturer's name. */
 export function electricalCell(input: string) {
-  let raw = electricalWeeks(squash(input)).replace(/^sg\.\s*\d+\s*\/\s*\d+\s*[,;]\s*/i, "");
+  let raw = electricalWeeks(squash(input)).replace(/^sg\.\s*\d+\s*\/\s*\d+\s*[,;]\s*/i, "")
+    // "MNCE pr.S.I C423", "IA pr D010": the project, named in a word of its own.
+    .replace(/(?<![\p{L}\d])pr(?![\p{L}\d])\.?\s*/iu, "(P) ")
+    // "c423" for C423.
+    .replace(/(?<![\p{L}\d])([a-f])(?=\d{3}(?![\p{L}\d]))/gu, (wing) => wing.toUpperCase());
   const away = elsewhere.exec(raw);
   if (away) raw = raw.slice(away[0].length);
   const room = /^(?:sal[aă]\s*((?:[A-Z]+\s*)?\d{2,4}[a-z]?)|([A-Z]\s?\d{2,4}[a-z]?|SPM\s*\d+))[\s,;]+(?=\S)/iu.exec(raw);
@@ -46,11 +64,34 @@ export function electricalCell(input: string) {
   return parsed;
 }
 
+/** IEE also names the kind in a word with no brackets or commas: "MNCE pr.S.I C423", "IA pr D010". */
+const electricalKind = (text: string) => hasKindMarker(text) || /(?<![\p{L}\d])(?:lab|sem|pr|curs)(?![\p{L}\d])/iu.test(text);
+const electricalRoom = /(?<![\p{L}\d])[A-Z]\s?\d{3}[a-z]?(?![\p{L}\d])/u;
+
+/**
+ * The activities of one cell. Two that take turns are written one under the other or on one
+ * line with a slash, each with its weeks: "MNCE lab. S.P, C423/ MNCE pr.S.I C423" is the lab
+ * in even weeks and the project in odd weeks; "IEJT (P) s. 2-6" over "IEJT (L) s. 7-11" a
+ * project that becomes a lab. Read as one, the second was lost.
+ */
 export function electricalActivities(text: string): string[] {
+  // On one line or wrapped over several, with a slash between the two.
+  // Not the slash of a subgroup ("sg. 3/2") or of two rooms ("409/410").
+  const halves = squash(text).split(/\s*(?:(?<!\d\s*)\/|\/(?!\s*\d))\s*(?=\S)/);
+  if (halves.length === 2 && halves.every(electricalKind)) {
+    // "SP: IA, lab / SI: IA pr D010": the room both share is written once, at the end.
+    const shared = new RegExp(electricalRoom.source + "\\s*$", "u").exec(halves[1]);
+    if (shared && !electricalRoom.test(halves[0])) halves[0] += `, ${shared[0].trim()}`;
+    return halves;
+  }
+  // One under the other: both name their kind in brackets, and the first says when it is held
+  // (odd or even weeks, or a range of weeks that the second continues).
+  const parity = (part: string) => /(?:\bs\.|s[aă]pt\.?)\s*(?:imp|par)/i.test(electricalWeeks(part));
+  const range = (part: string) => /(?:\bs\.|s[aă]pt\.?)\s*\d{1,2}\s*[-–]\s*\d{1,2}/i.test(part);
   const parts: string[] = [];
   for (const line of text.split(/\n/)) {
     const last = parts.at(-1);
-    if (last && !(hasKindMarker(last) && hasKindMarker(line) && /(?:\bs\.|s[aă]pt\.?)\s*(?:imp|par)/i.test(electricalWeeks(last)))) {
+    if (last && !(hasKindMarker(last) && hasKindMarker(line) && (parity(last) || (range(last) && range(line))))) {
       parts[parts.length - 1] += "\n" + line;
     } else parts.push(line);
   }
@@ -73,10 +114,14 @@ export function civilCell(raw: string) {
   const parsed = parseCellText((detail ? lines.slice(0, -1) : lines).join(" "));
   if (detail) {
     parsed.room = detail[1];
-    if (detail[2]) parsed.teacher = detail[2];
+    // "NM (săpt. 5-11) Conf.dr.ing Ș.V. NICOARĂ": the weeks may be written between the room and the lecturer.
+    const after = extractWeeks(detail[2]);
+    if (after.weeks !== "all" && parsed.weeks === "all") parsed.weeks = after.weeks;
+    const lecturer = squash(after.rest.replace(/\(\s*\)/g, " "));
+    if (lecturer) parsed.teacher = lecturer;
   }
-  // In the year-2 layout the caption of the room box comes first: "Sală GEOLOGIE INGINEREASCĂ".
-  parsed.name = parsed.name.replace(/^Sal[aă]\s+(?=\p{Lu}{3})/u, "");
+  // The caption of the room box may come first: "Sală GEOLOGIE INGINEREASCĂ", "Sală M.e.f. - elemente avansate".
+  parsed.name = parsed.name.replace(/^Sal[aă]\s+(?=\p{Lu})/u, "");
   const lecture = parsed.teacher ? null : civilLecture.exec(parsed.name);
   if (lecture) {
     parsed.name = lecture[1].trim();
@@ -154,22 +199,33 @@ export function readPrintedTable(
     return { ...c, id: groupIds.get(key)! };
   });
   const dayAt = (y: number) => clocks[0].find((r) => r.box[1] <= y && y < r.box[3])?.day;
+  /** Every box as it is printed in one piece somewhere on the page. */
+  const whole = new Set(cells.map((c) => squash(boxText(c[4]))));
   const aligned = new Map<string, Box>();
   const blocks: Box[] = [];
+  /** Where the first box of a class ended, before the lines below were joined to it. */
+  const heads = new Map<Box, number>();
   const detailCell = (text: string) => roomOnly.test(text) || !!options.isDetail?.(text);
   for (const b of cells.filter((b) => b[1] >= first && indexed.some((c) => c.left < b[2] && c.right > b[0]))
     .sort((a, b) => a[1] - b[1])) {
     const key = b[0] + "|" + b[2];
     const above = aligned.get(key);
+    b[4] = boxText(b[4]);
     const raw = squash(b[4]);
+    if (!raw) continue;
+    // A class cut in two by a line the printout does not have: "DA (L) Lab AR" over
+    // "D Ostoia" where the next group's cell reads "DA (L) Lab AR / D Ostoia" in one piece.
+    const restOfAbove = !!above && !hasKindMarker(raw) && hasKindMarker(above[4]) &&
+      (whole.has(squash(above[4] + " " + raw)) || teacherLine.test(raw));
     // The room of a lecture for the whole series is boxed at the end of its row, in the last
     // group's column. It belongs to that lecture, not to the class above it in the column.
     const besideLecture = detailCell(raw) && cells.some((left) => Math.abs(left[2] - b[0]) < 0.05 &&
       Math.abs(left[1] - b[1]) < 0.05 && Math.abs(left[3] - b[3]) < 0.05 && left[2] - left[0] > (b[2] - b[0]) * 1.5 &&
       !detailCell(squash(left[4])) && !parseTimeRange(left[4]) && !dayOf(left[4]));
-    if (above && !besideLecture && (continuation.test(raw) || detailCell(raw)) && Math.abs(above[3] - b[1]) < 0.05
+    if (above && !besideLecture && (continuation.test(raw) || detailCell(raw) || restOfAbove) && Math.abs(above[3] - b[1]) < 0.05
       && dayAt((above[1] + above[3]) / 2) === dayAt((b[1] + b[3]) / 2)
       && !parseTimeRange(above[4]) && !dayOf(above[4]) && !detailCell(squash(above[4]))) {
+      if (!heads.has(above)) heads.set(above, above[3]);
       above[4] += "\n" + b[4];
       above[3] = b[3];
     } else {
@@ -178,6 +234,21 @@ export function readPrintedTable(
       aligned.set(key, copy);
     }
   }
+  // The same from left to right: a class held every week is one cell over the odd and the even
+  // column, and its text comes back cut at the line between them ("MN (L) Cristian Pop" and
+  // "Orologerie 408 (etaj IV)"). Read apart, the room became a class of the even weeks.
+  for (const b of [...blocks]) {
+    const right = blocks.find((r) => r !== b && Math.abs(r[0] - b[2]) < 0.05 && Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
+    if (right && hasKindMarker(b[4]) && !hasKindMarker(right[4]) && whole.has(squash(b[4] + " " + right[4]))) {
+      b[2] = right[2];
+      b[4] += "\n" + right[4];
+      blocks.splice(blocks.indexOf(right), 1);
+    }
+  }
+  const weekHeadings = blocks.flatMap((b) => {
+    const range = weekHeading.exec(squash(b[4]));
+    return range ? [{ box: b, weeks: `${Number(range[1])}-${Number(range[2])}` }] : [];
+  });
   // MEC prints two hours per clock label. A change between two full-cohort
   // activities inside that label marks the intermediate hour, even when the
   // spreadsheet rows were printed with unequal heights.
@@ -201,7 +272,7 @@ export function readPrintedTable(
   }
   for (const b of blocks) {
     const raw = squash(b[4]);
-    if (parseTimeRange(raw) || dayOf(raw) || /^[-–—.\s]+$/.test(raw) || detailCell(raw) || continuation.test(raw)) continue;
+    if (parseTimeRange(raw) || dayOf(raw) || !/\p{L}/u.test(raw) || detailCell(raw) || continuation.test(raw) || weekHeading.test(raw)) continue;
     const adjoiningRoom = cells.find((r) => roomOnly.test(squash(r[4])) && Math.abs(r[0] - b[2]) < 0.05 &&
       Math.abs(r[1] - b[1]) < 0.05 && Math.abs(r[3] - b[3]) < 0.05);
     const covered = indexed.filter((c) => Math.min(c.right, adjoiningRoom?.[2] ?? b[2]) - Math.max(c.left, b[0]) > 0.1);
@@ -223,11 +294,25 @@ export function readPrintedTable(
       if (!row || span < 120) return fallback;
       return row.time.startMin + Math.round(((y - row.box[1]) / (row.box[3] - row.box[1])) * (span / 60)) * 60;
     };
-    const slot = { startMin: hourAt(b[1], start.time.startMin), endMin: hourAt(b[3], end.time.endMin) };
+    // That holds for a class that runs from one row into another. A box that lies inside a
+    // single row is the written half of a cell split by a diagonal: the class lasts the whole row.
+    const inOneRow = clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && b[3] <= box[3] + 0.05);
+    // Mecanică's rows are not drawn to scale: there, a class put together from two boxes whose
+    // first line sat inside one row starts with that row ("GDDT (L) Farkas A." written
+    // half-way down 18-20, with its room in 20-21). Construcții does draw to scale: a title in
+    // the lower half of 14-16 with its room in the upper half of 16-18 is a class from 15 to 17.
+    const head = options.splitSharedHours ? heads.get(b) : undefined;
+    const headInRow = head !== undefined && clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && head <= box[3] + 0.05);
+    const slot = inOneRow
+      ? { startMin: start.time.startMin, endMin: end.time.endMin }
+      : { startMin: headInRow ? start.time.startMin : hourAt(b[1], start.time.startMin), endMin: hourAt(b[3], end.time.endMin) };
     if (slot.endMin <= slot.startMin) { slot.startMin = start.time.startMin; slot.endMin = end.time.endMin; }
     const roomCell = adjoiningRoom ?? cells.find((other) => roomOnly.test(squash(other[4])) &&
       Math.abs(other[1] - b[3]) < 0.05 && Math.abs(other[0] - b[0]) < 0.05 &&
       Math.abs(other[2] - b[2]) < 0.05 && other[3] <= end.box[3] + 0.05);
+    // "S1-S7" over a column: what is below it that day is held in those weeks only.
+    const headed = weekHeadings.find(({ box }) => box[0] <= b[0] + 0.05 && box[2] >= b[2] - 0.05 && box[3] <= b[1] + 0.05 &&
+      dayAt((box[1] + box[3]) / 2) === start.day)?.weeks ?? "all";
     const audience = new Map<number, Set<string>>();
     for (const c of covered) {
       const rules = audience.get(c.id) ?? new Set();
@@ -247,14 +332,15 @@ export function readPrintedTable(
           if (subgroups.length && !subgroups.includes(result.groups[id].name)) continue;
           if (options.isFor && !options.isFor(activity, result.groups[id])) continue;
           const parity = rules.size === 1 ? [...rules][0] : "all";
-          const weeks = [...new Set([documentWeeks, load?.weeks ?? parsed.weeks, parity].filter((w) => w !== "all"))].join("&") || "all";
+          const weeks = [...new Set([documentWeeks, load?.weeks ?? parsed.weeks, parity, headed].filter((w) => w !== "all"))].join("&") || "all";
           const ids = byRule.get(weeks) ?? [];
           ids.push(id);
           byRule.set(weeks, ids);
         }
         for (const [weeks, groups] of byRule) {
           result.entries.push({ sheet, day: start.day, startMin: time.startMin,
-            endMin: load ? Math.min(time.endMin, time.startMin + load.hours * 60) : time.endMin, groups, weeks,
+            // The length the timetable states wins over the box: "s:9-12 3h" in a two-hour row ends an hour later.
+            endMin: load ? time.startMin + load.hours * 60 : time.endMin, groups, weeks,
             courseName: parsed.name, courseAbbr: parsed.abbr, kind: parsed.kind,
             room: parsed.room ?? (roomCell ? squash(roomCell[4]).replace(/^sal[aă]\s+/i, "") : null),
             teacher: parsed.teacher, rawText: squash(activity), isSlotOption: false,
@@ -274,8 +360,28 @@ export function headerColumns(
   const edges = [...new Set(headings.flatMap((c) => [c[0], c[2]]))].sort((a, b) => a - b);
   return edges.slice(1).flatMap((right, i) => {
     const left = edges[i], x = (left + right) / 2;
-    const path = headings.filter((b) => b[0] <= x && b[2] > x)
-      .sort((a, b) => a[1] - b[1]).map((b) => squash(b[4]));
+    // A heading drawn a column too wide runs past the heading above it: "Grupa B" of one
+    // programme also covers the first column of the next programme, whose "Grupa 2" starts a
+    // column late. The line below shows it: its "sgr. 1" starts at the programme's edge and
+    // runs under both. There, the heading beside the wide one applies, from the programme's edge on.
+    const boxes: Box[] = [];
+    for (const box of headings.filter((b) => b[0] <= x && b[2] > x).sort((a, b) => a[1] - b[1])) {
+      const above = boxes.at(-1);
+      const shared = above ? Math.min(box[2], above[2]) - Math.max(box[0], above[0]) : 0;
+      const beside = above && shared < (box[2] - box[0]) / 2
+        ? headings.find((h) => h !== box && Math.abs(h[1] - box[1]) < 0.05 && Math.abs(h[3] - box[3]) < 0.05 &&
+            h[0] >= above[0] - 0.05 && h[2] <= above[2] + 0.05 &&
+            (Math.abs(h[0] - box[2]) < 0.05 || Math.abs(h[2] - box[0]) < 0.05))
+        : undefined;
+      // The wide heading's edge that lies under the heading above, and that heading's own edge on the same side.
+      const [inner, edge] = above && box[0] < above[0] - 0.05 ? [box[2], above[0]] : [box[0], above?.[2] ?? 0];
+      const confirmed = beside && headings.some((h) => h[1] >= box[3] - 0.05 && h[0] <= x && h[2] > x &&
+        h[0] < inner - 0.05 && h[2] > inner + 0.05 && (Math.abs(h[0] - edge) < 0.05 || Math.abs(h[2] - edge) < 0.05));
+      boxes.push(beside && above && confirmed
+        ? [Math.min(beside[0], Math.max(box[0], above[0])), beside[1], Math.max(beside[2], Math.min(box[2], above[2])), beside[3], beside[4]]
+        : box);
+    }
+    const path = boxes.map((b) => squash(b[4]));
     const group = path.length ? describe(path) : null;
     if (!group) return [];
     const flag = path.find((s) => /^(?:s[aă]pt\.?\s*)?(?:impar|imapr|par)[aăe]?$/i.test(s));

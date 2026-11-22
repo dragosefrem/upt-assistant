@@ -44,7 +44,7 @@ export function hasKindMarker(text: string): boolean {
 }
 
 const ROOM_KEYWORD =
-  /(?:\bsal[aă]|\bamf(?:iteatru(?:l)?)?\.?|\broom|\b(?<![a-z])ala)\s*:?\s*([\p{L}\d][\p{L}\d .\/-]*?)(?=\s*(?:[,;(]|$|\d+\s*h\s*\/|s[aă]pt|week|\bonline\b))/iu;
+  /(?:\bsal[aă]|\bamf(?:iteatru(?:l)?)?\.?|\broom|\b(?<![a-z])ala)\s*:?\s*([\p{L}\d][\p{L}\d .\/-]*?)(?=\s*(?:[,;()]|$|\d+\s*h\s*\/|s[aă]pt|week|\bonline\b))/iu;
 
 /** A bare room code such as B413, 301CP, A105, SPM 210, D1, Ca3, B418a, N305. */
 const ROOM_CODE =
@@ -52,6 +52,13 @@ const ROOM_CODE =
 
 const TEACHER =
   /(?<![\p{L}])((?:\p{Lu}\.\s?){1,3}-?\s?\p{Lu}[\p{L}'’-]+(?![\p{L}\d'’-])(?:\s\p{Lu}[\p{L}'’-]+(?![\p{L}\d'’-]))?)/u;
+
+/** The end of an untyped title: "… ALGAD sala M306 Sl. univ. dr. …", "Germana sala 304 Facultatea de Chimie". */
+const UNTYPED_ROOM = (() => {
+  const code = String.raw`\p{Lu}{0,4}\s?\d{1,4}[A-Za-z]?`;
+  return new RegExp(String.raw`(?<=[\p{L}\d)])\s+(?=(?:sal[aă]|room)\s+${code}(?:\s*\/\s*(?:sal[aă]\s+)?${code})*` +
+    String.raw`(?:\s+(?:Facultatea\s+de\s+)?(?:Chimie|Mecanic[aă]))?\s*(?:$|,|(?:Prof|Conf|Asist|Lect|Drd)\b|[SȘŞ]\.?\s?l\.))`, "iu");
+})();
 
 /** Where the lecturer begins after a room: an academic title, or an initial and a surname. */
 const AFTER_ROOM = /\s+(?=(?:Prof|Conf|Asist|Lect|Drd)\b\.?|[SȘŞ]\.?\s?l\.|\p{Lu}\.\s?\p{Lu}\p{L})/u;
@@ -85,7 +92,7 @@ export function hourLoads(text: string): Array<{ weeks: string; hours: number }>
 }
 const parityWeeks = new RegExp(String.raw`(?<![\p{L}\d.])${weekWord}\s*[:.]?\s*(${parityWord})(?!\p{L})\.?`, "giu");
 
-function extractWeeks(input: string) {
+export function extractWeeks(input: string) {
   const numbers = new Set<string>();
   const parities = new Set<string>();
   let rest = input.replace(/\d+\s*h\s*\/\s*\d+\s*s[aă]pt\w*/gi, " ");
@@ -178,11 +185,15 @@ export function parseCellText(input: string): ParsedText {
   }
 
   if (!marker) {
-    // No activity type: split a trailing room/teacher off the title where obvious.
-    const cut = /[,;]/.exec(text);
+    // No activity type: split a trailing room/teacher off the title where obvious. The word
+    // "sala" is where the title ends ("Algebra liniara, geometrie analitica si diferentiala-
+    // ALGAD sala M306 Sl. univ. dr. …"); without it, the first comma.
+    // Only where what follows "sala" is plainly a room (or two), then nothing, a comma or a
+    // lecturer's title: anything else is left to the comma, as before.
+    const cut = (text.includes(";") ? null : UNTYPED_ROOM.exec(text)) ?? /[,;]/.exec(text);
     if (cut) {
       name = text.slice(0, cut.index);
-      rest = text.slice(cut.index + 1);
+      rest = text.slice(cut.index + (cut[0].trim() ? 1 : 0));
     }
     if (/^curs\s+/i.test(name)) { kind = "course"; marker = true; }
   }
@@ -200,8 +211,20 @@ export function parseCellText(input: string): ParsedText {
   if (keyword) {
     // "sala M204 Conf. univ. dr. ing. Carmen OPRIȘ": the room ends where the lecturer begins.
     const [code, ...lecturer] = keyword[1].split(AFTER_ROOM);
-    room = clean(code);
+    // "sala M201/ sala N 211", "sala 304 Facultatea de Chimie": the room without the filler words.
+    room = clean(code.replace(/(?<=\/\s*)sal[aă]\s+/giu, "").replace(/\s+(?:Facultatea\s+de|Cl[aă]direa)\s+(?=\p{Lu})/giu, " "));
     rest = rest.replace(keyword[0], ` ${lecturer.join(" ")} `);
+  }
+
+  // "M.Lascu Mecanica M304": a building named before the room code is where the room is, not
+  // the end of the lecturer's name. Set it aside before the lecturer is read.
+  let ahead: string | null = null;
+  if (!room) {
+    const named = /(?<![\p{L}\d])(Chimie(?!\s+Centru)|Mecanic[aă]|Hidrotehnic[aă])\s+(?=[A-Z]{1,2}\s?\d{2,4}[a-z]?(?![\p{L}\d]))/u.exec(rest);
+    if (named) {
+      ahead = named[1];
+      rest = rest.slice(0, named.index) + rest.slice(named.index + named[0].length);
+    }
   }
 
   let teacher: string | null = null;
@@ -220,6 +243,9 @@ export function parseCellText(input: string): ParsedText {
       rest = rest.slice(0, code.index) + " " + rest.slice(code.index + code[0].length + (more ? more[0].length : 0));
     }
   }
+  if (ahead) room = room ? `${room} ${ahead}` : room;
+  // "Tămășilă M106 (MPT - M106)": the room repeated in brackets with its building says nothing new.
+  if (room) rest = rest.replace(new RegExp(`\\([^()]*${room.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^()]*\\)`, "u"), " ");
   if (!room && /\bonline\b/i.test(rest)) room = "online";
   // "A2CH" is how one ETcTI sheet shortens "A2 Chimie", the amphitheatre the others spell out.
   if (room && /^[A-Z]\d{1,3}\s?CH$/.test(room)) room = room.replace(/\s?CH$/, " Chimie");
@@ -245,14 +271,17 @@ export function parseCellText(input: string): ParsedText {
 
   if (!teacher) {
     const leftover = clean(rest.replace(/\bonline\b/gi, " "));
-    if (leftover && leftover.length <= 40 && /^\p{Lu}/u.test(leftover) && !/\d/.test(leftover) && /\p{L}{3}/u.test(leftover)) {
+    // A lecturer written with all the titles is long: "Sl. univ. dr. mat Loredana CIURDARIU (ȚÎRȚÎRĂU)".
+    const titled = /^(?:(?:Prof|Conf|Asist|Lect|Drd)\b\.?|[SȘŞ]\.?\s?l\.)/iu.test(leftover) && !/[,;(]\s*\(?\p{Ll}/u.test(leftover);
+    if (leftover && leftover.length <= (titled ? 80 : 40) && /^\p{Lu}/u.test(leftover) && !/\d/.test(leftover) && /\p{L}{3}/u.test(leftover)) {
       teacher = leftover;
     }
   }
 
   name = clean(name);
   let abbr: string | null = null;
-  const explicit = /\(([\p{Lu}][\p{L}\d.]{0,7})\)\s*$/u.exec(name);
+  // "… (ALGAD)" or "… diferentiala- ALGAD": the acronym the timetable gives the course.
+  const explicit = /\(([\p{Lu}][\p{L}\d.]{0,7})\)\s*$/u.exec(name) ?? /(?<=\p{Ll})\s*[-–]\s*(\p{Lu}[\p{Lu}\d]{1,7})\s*$/u.exec(name);
   if (explicit && name.length > explicit[0].length + 3) {
     abbr = explicit[1];
     name = clean(name.slice(0, explicit.index));

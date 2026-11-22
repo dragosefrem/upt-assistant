@@ -231,7 +231,7 @@ class Tour:
             return rooms
         return matches
 
-    def resolve(self, query, field, choice=None):
+    def resolve(self, query, field, choice=None, home=None):
         valid_scene = type(choice) is int and choice in self.scenes
         valid_room = isinstance(choice, str) and choice in self.classrooms.records
         if choice is not None and not (valid_room or valid_scene):
@@ -254,6 +254,8 @@ class Tour:
         if len(matches) == 1:
             return matches[0]["index"]
         if matches:
+            # The student's own campus first: Timișoara, unless they study in Hunedoara.
+            matches.sort(key=lambda record: self.away(record) != (home == "hunedoara"))
             raise RouteQuestion("ask.several", field, matches)
         raise RouteQuestion("ask.unknown", field, query=query)
 
@@ -281,7 +283,7 @@ class Tour:
             "locatia mea", "locatia curenta", "cel mai apropiat checkpoint", "aici",
         }:
             origin_text = None
-        end = self.resolve(end_text, "destination", destination)
+        end = self.resolve(end_text, "destination", destination, home)
         room = self.localized(self.classrooms.records.get(end), lang)
         if room and room["coverage"] == "unmapped":
             return {"steps": [], "duration": 0, "lang": lang, "coverage": "unmapped", "destination": room,
@@ -292,7 +294,7 @@ class Tour:
                 raise RouteQuestion("ask.disconnected", "start")
         else:
             automatic = False
-            origin = self.resolve(origin_text, "start", start)
+            origin = self.resolve(origin_text, "start", start, home)
         start_room = self.localized(self.classrooms.records.get(origin), lang)
         if start_room and start_room["checkpoint"] is None:
             raise RouteQuestion("ask.start_room", "start", choose=True)
@@ -329,9 +331,10 @@ class Tour:
         elif waiting:
             notices.append(say(lang, "notice.already", place=self.mention(last["index"], lang)))
         if self.away(room or last) and home != "hunedoara":
-            # Most students are in Timișoara: nobody should set off before reading this.
+            # Most students are in Timișoara: nobody should set off before reading this, so it is
+            # kept apart from the notes about the video and shown above everything else.
             # home="hunedoara" is a student of that campus, who needs no telling.
-            notices.insert(0, say(lang, "notice.hunedoara"))
+            route["warning"] = say(lang, "notice.hunedoara")
         if automatic:
             # The entrance chosen for the student, with its map pin for the walk outdoors.
             route["origin"] = self.localized(self.records[origin], lang)

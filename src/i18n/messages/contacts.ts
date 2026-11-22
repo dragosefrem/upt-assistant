@@ -52,7 +52,7 @@ const en = {
       heading: "Upcoming meetings",
       invitations: "Meeting invitations",
       empty: "No other upcoming meetings.",
-      past: (n: number) => `Past invitations (${n})`,
+      past: (n: number) => `Past meetings (${n})`,
     },
   },
   /** "People without an account" on /contacts. */
@@ -297,7 +297,7 @@ const ro: typeof en = {
       heading: "Întâlniri viitoare",
       invitations: "Invitații la întâlniri",
       empty: "Nu ai alte întâlniri programate.",
-      past: (n: number) => `Invitații trecute (${n})`,
+      past: (n: number) => `Întâlniri trecute (${n})`,
     },
   },
   saved: {

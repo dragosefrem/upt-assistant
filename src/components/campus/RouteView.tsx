@@ -158,6 +158,9 @@ export function RouteView({
           {title || t.route.unmappedTitle}
         </h2>
         {route.destination && !inJourney && <p className="mt-1 text-sm text-slate-600">{roomFacts(route.destination, t).join(" · ")}</p>}
+        {route.warning && !inJourney && (
+          <p role="note" className="mt-3 rounded-2xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-900 ring-1 ring-amber-200">{route.warning}</p>
+        )}
         {route.notice && (
           <p className={`mt-3 rounded-2xl px-3.5 py-2.5 text-sm ${partial || !steps.length ? "bg-amber-50 text-amber-900" : "bg-brand-50 text-brand-900"}`}>
             {route.notice}

@@ -61,6 +61,9 @@ export function Journey({
           {room && room.label !== goal && room.name !== goal && <span className="text-sm text-slate-600">{room.label}</span>}
         </div>
         <p className="mt-1 text-sm text-slate-600">{[building, floor, room ? t.reach[room.reach] : null].filter(Boolean).join(" · ")}</p>
+        {route?.warning && (
+          <p role="note" className="mt-3 rounded-2xl bg-amber-50 px-3.5 py-2.5 text-sm font-medium text-amber-900 ring-1 ring-amber-200">{route.warning}</p>
+        )}
         {context.course ? (
           <p className="mt-2 inline-flex rounded-full bg-brand-50 px-3 py-1 text-sm font-medium text-brand-800">
             📚 {t.journey.forClass(context.course, context.at ?? null)}

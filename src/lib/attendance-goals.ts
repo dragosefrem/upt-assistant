@@ -40,25 +40,25 @@ function semesterActivities(user: User, semester: Semester) {
 }
 
 /**
- * How many sessions of each activity are still to come this semester, from `now` on: the
- * student's own timetable with its odd and even weeks, week ranges, moves and public holidays.
+ * The sessions of each activity this semester, as they stand at `now`: how many are still to
+ * come, and how many have already taken place without the student saying whether they went.
+ * From the student's own timetable, with its odd and even weeks, week ranges, moves and public holidays.
  */
-function sessionsLeft(user: User, semester: Semester, now: { date: string; minutes: number }) {
-  const left = new Map<string, number>();
-  if (now.date > semester.endDate) return left;
-  const from = now.date < semester.startDate ? semester.startDate : now.date;
-  for (const event of eventsBetween(user, from, semester.endDate)) {
+function semesterSessions(user: User, semester: Semester, now: { date: string; minutes: number }) {
+  const toCome = new Map<string, number>(), unmarked = new Map<string, number>();
+  for (const event of eventsBetween(user, semester.startDate, semester.endDate)) {
     if (event.type !== "class" || !event.courseKey) continue;
-    if (event.date === now.date && event.endMin <= now.minutes) continue;
     const id = attendanceActivityId({ courseKey: event.courseKey, kind: event.kind });
-    left.set(id, (left.get(id) ?? 0) + 1);
+    const over = event.date < now.date || (event.date === now.date && event.endMin <= now.minutes);
+    if (!over) toCome.set(id, (toCome.get(id) ?? 0) + 1);
+    else if (!event.attendance) unmarked.set(id, (unmarked.get(id) ?? 0) + 1);
   }
-  return left;
+  return { toCome, unmarked };
 }
 
 export function attendanceGoalOverview(user: User, semester: Semester | null, locale: Locale, now = nowLocal()) {
   const activities = semester ? semesterActivities(user, semester) : new Map<string, AttendanceActivity>();
-  const left = semester ? sessionsLeft(user, semester, now) : new Map<string, number>();
+  const sessions = semester ? semesterSessions(user, semester, now) : null;
   if (activities.size) {
     const counts = getDb().select({ courseKey: attendance.courseKey, kind: attendance.kind, attended: count() })
       .from(attendance).where(and(eq(attendance.userId, user.id), eq(attendance.status, "attended")))
@@ -73,10 +73,16 @@ export function attendanceGoalOverview(user: User, semester: Semester | null, lo
     if (activity.minimum === null) return [];
     const remaining = Math.max(0, activity.minimum - activity.attended);
     // Sessions still to come. An activity no longer on the timetable has none that can be counted.
-    const sessionsToCome = activity.onTimetable ? left.get(attendanceActivityId(activity)) ?? 0 : null;
-    return [{ ...activity, minimum: activity.minimum, remaining, sessionsToCome,
-      /** The semester no longer has enough sessions for the minimum, whatever the student does. */
-      outOfReach: sessionsToCome !== null && remaining > sessionsToCome }];
+    const key = attendanceActivityId(activity);
+    const sessionsToCome = activity.onTimetable ? sessions?.toCome.get(key) ?? 0 : null;
+    // Past sessions the student has not marked either way: they may well have been there.
+    const unmarkedPast = activity.onTimetable ? sessions?.unmarked.get(key) ?? 0 : 0;
+    const short = sessionsToCome !== null && remaining > sessionsToCome;
+    return [{ ...activity, minimum: activity.minimum, remaining, sessionsToCome, unmarkedPast,
+      /** The sessions to come are not enough, but unmarked past ones could still make up the difference. */
+      needsPastMarks: short && remaining <= sessionsToCome + unmarkedPast,
+      /** The semester no longer has enough sessions for the minimum, whatever the student marks or does. */
+      outOfReach: short && remaining > sessionsToCome + unmarkedPast }];
   });
   // Show reachable milestones first, then completed goals. Ties keep the alphabetical order.
   goals.sort((a, b) => Number(a.remaining === 0) - Number(b.remaining === 0) || a.remaining - b.remaining);

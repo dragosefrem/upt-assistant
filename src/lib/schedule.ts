@@ -128,6 +128,9 @@ const SITE_BUILDING: Record<string, string> = {
   aspc: "ASPC", remus: "MPT", hidro: "HIDRO", constructii: "CT",
 };
 
+/** A site of the catalogue that is the building of one faculty, by the faculty's acronym. */
+const SITE_FACULTY: Record<string, string> = { hunedoara: "fih" };
+
 export function placeResolver(facultyId: number | null) {
   const db = getDb();
   const rules = db.select().from(buildings).orderBy(asc(buildings.priority)).all();
@@ -160,10 +163,14 @@ export function placeResolver(facultyId: number | null) {
     // The room catalogue behind the campus walkthroughs knows where many rooms are. A code it
     // has in one building only is placed there, so the calendar and the walkthrough agree
     // (a Mecanică class in C301B is in Electro, not "probably Mecanică").
-    const site = campusRoomSite(room);
+    const site = campusRoomSite(room, faculty?.name);
     const known = site ? byCode.get(SITE_BUILDING[site] ?? "") : undefined;
     if (known) {
       return { name: known.name, address: known.address, lat: known.lat, lng: known.lng, approximate: /approx/i.test(known.notes ?? "") };
+    }
+    // The Hunedoara campus is its faculty's own building: there the faculty is not a guess.
+    if (site && SITE_FACULTY[site] === acronym && faculty?.lat != null && faculty.lng != null) {
+      return { name: faculty.name, address: faculty.address, lat: faculty.lat, lng: faculty.lng, approximate: true };
     }
     // An unrecognised room is most likely in the student's own faculty building.
     if (faculty?.lat != null && faculty.lng != null) {

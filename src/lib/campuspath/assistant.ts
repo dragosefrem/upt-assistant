@@ -81,7 +81,8 @@ export function toCampusAnswer(outcome: PlanOutcome): CampusRouteAnswer {
     start: { name: first?.name ?? "", lat: pin?.lat ?? null, lon: pin?.lon ?? null },
     coverage: route.coverage ?? "exact",
     reach: reachOf(route),
-    notice: route.notice ?? null,
+    // What must be read before setting off (a place in Hunedoara) comes first.
+    notice: [route.warning, route.notice].filter(Boolean).join(" ") || null,
     steps: route.steps.map((s) => ({ name: s.name, instruction: s.instruction, floor: s.floor ?? null })),
     durationSeconds: route.duration,
     link: campusHref(routeLink(route)),
