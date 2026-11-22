@@ -279,8 +279,28 @@ export function headerColumns(
   const edges = [...new Set(headings.flatMap((c) => [c[0], c[2]]))].sort((a, b) => a - b);
   return edges.slice(1).flatMap((right, i) => {
     const left = edges[i], x = (left + right) / 2;
-    const path = headings.filter((b) => b[0] <= x && b[2] > x)
-      .sort((a, b) => a[1] - b[1]).map((b) => squash(b[4]));
+    // A heading drawn a column too wide runs past the heading above it: "Grupa B" of one
+    // programme also covers the first column of the next programme, whose "Grupa 2" starts a
+    // column late. The line below shows it: its "sgr. 1" starts at the programme's edge and
+    // runs under both. There, the heading beside the wide one applies, from the programme's edge on.
+    const boxes: Box[] = [];
+    for (const box of headings.filter((b) => b[0] <= x && b[2] > x).sort((a, b) => a[1] - b[1])) {
+      const above = boxes.at(-1);
+      const shared = above ? Math.min(box[2], above[2]) - Math.max(box[0], above[0]) : 0;
+      const beside = above && shared < (box[2] - box[0]) / 2
+        ? headings.find((h) => h !== box && Math.abs(h[1] - box[1]) < 0.05 && Math.abs(h[3] - box[3]) < 0.05 &&
+            h[0] >= above[0] - 0.05 && h[2] <= above[2] + 0.05 &&
+            (Math.abs(h[0] - box[2]) < 0.05 || Math.abs(h[2] - box[0]) < 0.05))
+        : undefined;
+      // The wide heading's edge that lies under the heading above, and that heading's own edge on the same side.
+      const [inner, edge] = above && box[0] < above[0] - 0.05 ? [box[2], above[0]] : [box[0], above?.[2] ?? 0];
+      const confirmed = beside && headings.some((h) => h[1] >= box[3] - 0.05 && h[0] <= x && h[2] > x &&
+        h[0] < inner - 0.05 && h[2] > inner + 0.05 && (Math.abs(h[0] - edge) < 0.05 || Math.abs(h[2] - edge) < 0.05));
+      boxes.push(beside && above && confirmed
+        ? [Math.min(beside[0], Math.max(box[0], above[0])), beside[1], Math.max(beside[2], Math.min(box[2], above[2])), beside[3], beside[4]]
+        : box);
+    }
+    const path = boxes.map((b) => squash(b[4]));
     const group = path.length ? describe(path) : null;
     if (!group) return [];
     const flag = path.find((s) => /^(?:s[aă]pt\.?\s*)?(?:impar|imapr|par)[aăe]?$/i.test(s));

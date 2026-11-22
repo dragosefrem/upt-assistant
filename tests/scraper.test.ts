@@ -514,6 +514,34 @@ describe("printed and interactive timetables", () => {
     expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 12] });
   });
 
+  it("does not make a group of its own out of a heading drawn one column too wide", () => {
+    // Mecanică, year 2, Seria A (coordinates as read from the published PDF). "Grupa B" of
+    // Mecatronică is drawn over the first column of Științe inginerești aplicate, whose
+    // "Grupa 2" starts a column late; "sgr. 1" below starts at the programme's edge. The odd
+    // weeks of Grupa 2 sgr. 1 became a group "Grupa B sgr. 1" that does not exist, and the
+    // real group was left with lectures in even weeks only.
+    const cells: Box[] = [
+      [156.64, 57.72, 277.24, 59.69, "MECATRONICĂ ȘI ROBOTICĂ"], [277.24, 57.72, 358.38, 59.69, "ȘTIINȚE INGINEREȘTI APLICATE"],
+      [156.64, 59.69, 236.33, 61.5, "Grupa A"], [236.33, 59.69, 296.46, 61.5, "Grupa B"], [296.46, 59.69, 358.38, 61.5, "Grupa 2"],
+      [156.64, 61.5, 236.33, 63.3, "sgr. 1"], [236.33, 61.5, 277.24, 63.3, "sgr. 1"], [277.24, 61.5, 315.78, 63.3, "sgr. 1"], [315.78, 61.5, 358.38, 63.3, "sgr. 2"],
+      [236.33, 63.3, 255.66, 65.09, "săpt. impară"], [255.66, 63.3, 277.24, 65.09, "săpt. pară"],
+      [277.24, 63.3, 296.46, 65.09, "săpt. impară"], [296.46, 63.3, 315.78, 65.09, "săpt. pară"],
+      [315.78, 63.3, 336.78, 65.09, "săpt. impară"], [336.78, 63.3, 358.38, 65.09, "săpt. pară"],
+      [140, 65.09, 156.64, 70, "08:00 - 10:00"], [140, 70, 156.64, 75, "10:00 - 12:00"], [140, 75, 156.64, 80, "12:00 - 14:00"],
+      [156.64, 65.09, 358.38, 70, "TERMOTEHNICĂ I (C) N 210"],
+      [277.24, 70, 296.46, 75, "M (L) Orologerie"], [296.46, 70, 315.78, 75, "TT (L) M101"],
+    ];
+    const table = readPrintedTable(cells, "Anul II", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: labels[0], degree: "bachelor" }, year: 2, series: "", name: labels.slice(1).filter((l) => !/^săpt/.test(l)).join(" "),
+    })));
+    const group = (i: number) => `${table.groups[i].spec.name.split(" ")[0]} ${table.groups[i].name}`;
+    expect(table.groups.map((_, i) => group(i))).toEqual(["MECATRONICĂ Grupa A sgr. 1", "MECATRONICĂ Grupa B sgr. 1", "ȘTIINȚE Grupa 2 sgr. 1", "ȘTIINȚE Grupa 2 sgr. 2"]);
+    expect(table.entries.map((e) => [e.courseName, e.weeks, e.groups.map(group).join(", ")])).toEqual([
+      ["TERMOTEHNICĂ I", "all", "MECATRONICĂ Grupa A sgr. 1, MECATRONICĂ Grupa B sgr. 1, ȘTIINȚE Grupa 2 sgr. 1, ȘTIINȚE Grupa 2 sgr. 2"],
+      ["M", "odd", "ȘTIINȚE Grupa 2 sgr. 1"], ["TT", "even", "ȘTIINȚE Grupa 2 sgr. 1"],
+    ]);
+  });
+
   it("gives a class written in half of its row the whole row", () => {
     // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
     // box covers the lower half of the row only (coordinates as read from the published PDF).
