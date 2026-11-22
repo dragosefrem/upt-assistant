@@ -458,6 +458,26 @@ describe("printed and interactive timetables", () => {
     expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 11] });
   });
 
+  it("gives a series lecture to every group, with the room boxed at the end of its row", () => {
+    // Construcții, year 1: the lecture spans groups a to c and its room ("VV") is boxed in
+    // the last group's column, below that group's own seminar and its room.
+    const cells: Box[] = [
+      [1, 0, 2, 1, "111 a"], [2, 0, 3, 1, "111 b"], [3, 0, 4, 1, "112 a"], [4, 0, 5, 1, "112 b"],
+      [0, 1, 1, 2, "8-10"], [0, 2, 1, 3, "10-12"], [0, 3, 1, 4, "12-14"],
+      [4, 1, 5, 1.6, "Calc."], [4, 1.6, 5, 2, "A107"],
+      [1, 2, 4, 3, "GEOMETRIE DESCRIPTIVĂ C.Voicu\nSală"], [4, 2, 5, 3, "VV"],
+      [1, 3, 4, 4, "CHIMIE GENERALĂ Vancea\nSală"], [4, 3, 5, 4, "NM"],
+    ];
+    const table = readPrintedTable(cells, "Anul I", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 1, series: "", name: labels[0],
+    })), "all", civilCell, { isDetail: civilDetail });
+    const of = (name: RegExp) => table.entries.filter((e) => name.test(e.courseName));
+    expect(of(/GEOMETRIE/)).toEqual([expect.objectContaining({ courseName: "GEOMETRIE DESCRIPTIVĂ", teacher: "C.Voicu", startMin: hm(10), endMin: hm(12), room: "VV", groups: [0, 1, 2, 3] })]);
+    expect(of(/CHIMIE/)).toEqual([expect.objectContaining({ startMin: hm(12), endMin: hm(14), room: "NM", groups: [0, 1, 2, 3] })]);
+    // The last group's own seminar keeps its two hours and its room.
+    expect(of(/^Calc/)).toEqual([expect.objectContaining({ startMin: hm(8), endMin: hm(10), room: "A107", groups: [3] })]);
+  });
+
   it("reads the printed term, room and lecturer without treating evening hours as an academic year", () => {
     expect(pageTerm("20-21\nSemestrul I 2026/2027")).toEqual({ academicYear: "2026-2027", semester: 1 });
     expect(pageTerm("ORAR\nSemestrul II\nAnul III Anul universitar 2026/2027")).toEqual({ academicYear: "2026-2027", semester: 2 });

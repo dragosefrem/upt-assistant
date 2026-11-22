@@ -11,7 +11,7 @@ export interface PrintedColumn {
   weeks?: string;
 }
 
-const roomOnly = /^(?:sal[aă]\s+[\p{L}\d .-]{1,14}|(?:[A-Z]{1,3}\s?-?\d{2,4}[a-z]?|\d{2,4}[A-Z]{1,3}|Ca\d+|NM|PN|Vv))$/u;
+const roomOnly = /^(?:sal[aă]\s+[\p{L}\d .-]{1,14}|(?:[A-Z]{1,3}\s?-?\d{2,4}[a-z]?|\d{2,4}[A-Z]{1,3}|Ca\d+|NM|PN|V[Vv]))$/u;
 const staffTitle = /(?:\b(?:asist|prof|conf|lect)\s*\.|[sșş](?:ef\s+lucr|\s*\.\s*l)\.)/i;
 const continuation = /^(?:(?:\([CSLP]\)\s*)?(?:s[aă]pt\w*\.?\s*(?:\d+\s*[-–]\s*\d+|imp\w*|par\w*)|\([CSLP]\))\s*$|(?:asist|prof|conf|lect)\.|[sșş]ef\s+lucr)/i;
 
@@ -61,14 +61,31 @@ export function electricalActivities(text: string): string[] {
 const civilRoom = /^(?:[Ss]al[aă]\s+)?(LG\s*\d+|[A-Z]{1,3}\s?-?\d+[a-z]?|PN|NM|V[Vv]|\d+)\b\s*(.*)$/u;
 export function civilDetail(text: string) { return civilRoom.test(squash(text)); }
 
+/** A lecture is titled in capitals, with its lecturer after it: "GEOMETRIE DESCRIPTIVĂ C.Voicu". */
+const civilLecture = /^([^\p{Ll}]*\p{Lu}{4}[^\p{Ll}]*?)\s+((?:\p{Lu}\.\s?)*\p{Lu}\p{Ll}[\p{L}. -]*)$/u;
+
 export function civilCell(raw: string) {
   const lines = raw.trim().split(/\n+/).map(squash);
+  // "Sală" alone is the caption of the room box drawn at the end of a lecture's row.
+  while (lines.length > 1 && /^sal[aă]$/i.test(lines.at(-1)!)) lines.pop();
   const last = lines.at(-1) ?? "";
-  const detail = civilRoom.exec(last);
-  if (lines.length < 2 || !detail) return parseCellText(raw);
-  const parsed = parseCellText(lines.slice(0, -1).join(" "));
-  parsed.room = detail[1];
-  if (detail[2]) parsed.teacher = detail[2];
+  const detail = lines.length > 1 ? civilRoom.exec(last) : null;
+  const parsed = parseCellText((detail ? lines.slice(0, -1) : lines).join(" "));
+  if (detail) {
+    parsed.room = detail[1];
+    if (detail[2]) parsed.teacher = detail[2];
+  }
+  const lecture = parsed.teacher ? null : civilLecture.exec(parsed.name);
+  if (lecture) {
+    parsed.name = lecture[1].trim();
+    parsed.teacher = lecture[2].trim();
+  }
+  // "AMENAJĂRI HIDROTEHNICE H1": the hall, written after the title.
+  const hall = parsed.room ? null : /\s([A-Z]{1,3}\d{1,4}[a-z]?|NM|PN|VV)$/.exec(parsed.name);
+  if (hall) {
+    parsed.room = hall[1];
+    parsed.name = parsed.name.slice(0, hall.index).trim();
+  }
   return parsed;
 }
 
@@ -139,7 +156,12 @@ export function readPrintedTable(
     const key = b[0] + "|" + b[2];
     const above = aligned.get(key);
     const raw = squash(b[4]);
-    if (above && (continuation.test(raw) || detailCell(raw)) && Math.abs(above[3] - b[1]) < 0.05
+    // The room of a lecture for the whole series is boxed at the end of its row, in the last
+    // group's column. It belongs to that lecture, not to the class above it in the column.
+    const besideLecture = detailCell(raw) && cells.some((left) => Math.abs(left[2] - b[0]) < 0.05 &&
+      Math.abs(left[1] - b[1]) < 0.05 && Math.abs(left[3] - b[3]) < 0.05 && left[2] - left[0] > (b[2] - b[0]) * 1.5 &&
+      !detailCell(squash(left[4])) && !parseTimeRange(left[4]) && !dayOf(left[4]));
+    if (above && !besideLecture && (continuation.test(raw) || detailCell(raw)) && Math.abs(above[3] - b[1]) < 0.05
       && dayAt((above[1] + above[3]) / 2) === dayAt((b[1] + b[3]) / 2)
       && !parseTimeRange(above[4]) && !dayOf(above[4]) && !detailCell(squash(above[4]))) {
       above[4] += "\n" + b[4];

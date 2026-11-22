@@ -76,4 +76,26 @@ describe.skipIf(!reader)("timetable PDFs, read from the published documents", ()
     expect(seminar("124 b")).toEqual([[hm(11), hm(14)]]);
     expect(seminar("125 a")).toEqual([[hm(14), hm(17)]]);
   });
+
+  it("gives the series lectures to the last semigroup too (Construcții, year 1)", async () => {
+    const { tables } = await read("ct-ing-civila-an1-2026-27-sem1.pdf", printedSlugs.CT, {
+      label: "1. ANI ING CIVILA ORARE SEM 1 2026-2027", context: "Orare semestrul I V9 06/10/26",
+    });
+    const lectures = (group: string, weekday: number) => day(tables, group, weekday).map((e) => `${e.startMin / 60}-${e.endMin / 60} ${e.courseName.split(" ").slice(0, 2).join(" ")} @${e.room}`);
+    // 114 b and 118 b sit under the grey box that holds each lecture's room ("NM", "VV").
+    // They had none of the series lectures: a whole week of courses missing from the calendar.
+    expect(lectures("114 b", 2)).toEqual(expect.arrayContaining(["8-10 GEOMETRIE DESCRIPTIVĂ @NM", "10-12 CHIMIE GENERALĂ @NM", "14-16 ELEM.DE ARHITECTURĂ @NM"]));
+    expect(lectures("118 b", 2)).toEqual(expect.arrayContaining(["14-16 GEOMETRIE DESCRIPTIVĂ @VV", "16-18 ELEM.DE ARHITECTURĂ @VV"]));
+    expect(lectures("118 b", 5)).toEqual(expect.arrayContaining(["8-10 ALGEBRĂ ŞI @VV"]));
+    expect(lectures("114 b", 5)).toEqual(expect.arrayContaining(["8-10 ANALIZĂ MATEMATICĂ @NM", "10-12 ALGEBRĂ ŞI @VV"]));
+    // 114 b's own seminar on Tuesday is two hours in A107, not six hours in the lecture hall.
+    expect(lectures("114 b", 2)).toContain("12-14 Calc. @A107");
+    // Every semigroup of a series has the same number of lectures in a week.
+    const count = (group: string) => tables.flatMap((t) => t.entries.filter((e) => e.groups.length >= 7 && e.groups.some((g) => t.groups[g].name === group))).length;
+    // (Tuesday 12-14 is tutoring for the series while 114 b has its own seminar, as printed.)
+    expect(count("114 b")).toBe(count("111 a") - 1);
+    expect(count("118 b")).toBeGreaterThanOrEqual(count("115 a") - 1);
+    // The caption of the room box is not part of the lecture's name, and its lecturer is.
+    expect(day(tables, "111 a", 2)[0]).toMatchObject({ courseName: "GEOMETRIE DESCRIPTIVĂ", teacher: "C.Voicu", room: "NM" });
+  });
 });
