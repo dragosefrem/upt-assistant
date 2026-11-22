@@ -30,6 +30,13 @@ def tokens(value):
     # Some faculty timetables put the building last, including shared rooms such as "106/115 SPM".
     text = re.sub(r"\b(\d{3}[a-z]?(?:\s*/\s*\d{3}[a-z]?)*)\s+spm\b",
                   lambda m: " ".join("spm" + room.strip() for room in m[1].split("/")), text)
+    # A building written beside the room: "CEL 403" and "CEL401" are C403 and C401 in CeL,
+    # "206 Orologerie" is O206, "A2CH" is A2 at Chimie, "MEC-N301" is N301.
+    text = re.sub(r"\bcel[ -]?(\d{3})\b", r"c\1 cel", text)
+    text = re.sub(r"\borologerie\s+(\d{3}[a-z]?)\b|\b(\d{3}[a-z]?)\s+orologerie\b",
+                  lambda m: f"o{m[1] or m[2]} orologerie {m[1] or m[2]}", text)
+    text = re.sub(r"\b([a-z]\d{1,3})ch\b", r"\1 ch", text)
+    text = re.sub(r"\b(mec|mpt|chimie|ch)\s*-\s*(?=[a-z]?\d)", r"\1 ", text)
     text = re.sub(r"\b" + PREFIX + r"[ -]+(?=\d)", r"\1", text)
     text = re.sub(r"(\d)\s+([abcd])\b", r"\1\2", text)
     text = re.sub(r"(?<=\d)\s*([-/])\s*(?=\d)", r"\1", text)
@@ -40,7 +47,9 @@ def words(value):
     parts = set(tokens(value))
     for term, extra in {"ac": "automatica calculatoare", "civil": "constructii",
                         "chemistry": "chimie", "architecture": "arhitectura",
-                        "mechanical": "mecanica", "management": "management"}.items():
+                        "mechanical": "mecanica", "management": "management",
+                        # As timetables shorten them: "A303 Ch", "MEC - M304".
+                        "ch": "chimie", "mec": "mecanica"}.items():
         if term in parts:
             parts.update(extra.split())
     return parts - NOISE
@@ -91,6 +100,12 @@ class Classrooms:
         self.codes = defaultdict(set)
         self.names = defaultdict(set)
         self.fields = {}
+        self.sites = {}
+        # Buildings whose name in a request rules out a room with the same code elsewhere.
+        self.only = defaultdict(set)
+        for key, site in data["sites"].items():
+            for alias in site.get("aliases", []) if site.get("only") else []:
+                self.only[fold(alias)].add(key)
         rows = []
         outside = defaultdict(list)
         reach = {}
@@ -161,6 +176,8 @@ class Classrooms:
             level = ("Parter" if coded[1] == 0 else f"Etaj {coded[1]}") if coded else row.get("level")
             record = {
                 "index": rid, "code": code, "name": name, "label": label, "area": site["name"],
+                # What timetables call the building, e.g. "MPT" for Str. Remus 14.
+                "areaAliases": site.get("aliases", []),
                 "faculties": row.get("faculties", []), "level": level,
                 "coverage": coverage, "reach": reach, "checkpoint": checkpoint, "checkpointName": point.get("name"),
                 "thumb": point.get("thumb"), "url": point.get("url"), "aliases": aliases,
@@ -182,8 +199,9 @@ class Classrooms:
                 key = name_key(value)
                 if len(key) > 1:
                     self.names[key].add(rid)
-            building = " ".join([site["name"], *(site[lang] for lang in LANGUAGES[1:] if lang in site)])
+            building = " ".join([site["name"], *site.get("aliases", []), *(site[lang] for lang in LANGUAGES[1:] if lang in site)])
             self.fields[rid] = (names, words(building), words(" ".join(record["faculties"])))
+            self.sites[rid] = row["site"]
 
     @staticmethod
     def anchor(zone, site, outside, tour):
@@ -203,11 +221,36 @@ class Classrooms:
                     return dict(found, checkpoint=checkpoint, at=at, beside=room)
         return found
 
+    def codes_in(self, token):
+        """The room codes one word of a request stands for."""
+        if token in self.codes:
+            return {token}
+        # "ASPC 113" is room 113 in ASPC. Rooms listed there as A306 are also written "ASPC 306".
+        prefixed = re.fullmatch(r"aspc(\d{3}[a-z]?)", token)
+        if prefixed:
+            return next(({code} for code in (prefixed[1], "a" + prefixed[1])
+                         if any(self.sites[rid] == "aspc" for rid in self.codes.get(code, ()))), set())
+        # Two rooms in one cell: "M214/N214", "C402-C403".
+        parts = re.split(r"[-/]", token)
+        return set(parts) if len(parts) > 1 and all(part in self.codes for part in parts) else set()
+
     def search(self, query, *, strict=False):
         wanted = words(query)
         key = name_key(query)
         references = re.sub(r"\b(?:et\.?|etaj(?:ul)?|floor)\s*\d+\b", "", fold(query))
-        identifiers = set(tokens(references)) & self.codes.keys()
+        spelled = {token: self.codes_in(token) for token in tokens(references)}
+        identifiers = set().union(*spelled.values())
+        # A word read as room codes is not also a name to look for.
+        read = {token for token, codes in spelled.items() if codes}
+        wanted = (wanted - read) | identifiers
+        key = tuple(part for part in key if part not in read or part in identifiers)
+        only = set().union(*(self.only[word] for word in wanted if word in self.only))
+        if any(token.startswith("aspc") and codes for token, codes in spelled.items()):
+            only.add("aspc")
+        # Beside a room code, "ASPC" names the building, not the room listed as "ASPC".
+        buildings = {word for word in identifiers if word in self.only}
+        if identifiers - buildings:
+            identifiers -= buildings
         if any(any(c.isalpha() for c in identifier) for identifier in identifiers):
             identifiers = {identifier for identifier in identifiers if not identifier.isdigit()}
         meaningful = set(key) - identifiers - {"sala", "room", "lab", "laborator", "laboratorul"}
@@ -223,6 +266,12 @@ class Classrooms:
             if not strict:
                 matched_ids.update(rid for value, ids in self.codes.items()
                                    if any(value.startswith(v) for v in identifiers) for rid in ids)
+            if only:
+                # "A206 SPM" is not A206 in ASPC or in Electro. Where the building itself is
+                # listed ("ASPC"), an unknown room in it still leads to the building.
+                matched_ids = {rid for rid in matched_ids if self.sites[rid] in only} or {
+                    rid for word in buildings for rid in self.codes[word] if self.sites[rid] in only}
+                identifiers = identifiers | buildings
         else:
             matched_ids = self.records.keys()
         ranked = []

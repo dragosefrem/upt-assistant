@@ -50,6 +50,48 @@ class ClassroomTests(unittest.TestCase):
         self.assertEqual(search("M2 Multimedia", strict=True)[0]["checkpoint"], 261)
         self.assertEqual(search("Amfiteatru 1", strict=True)[0]["checkpoint"], 348)
 
+    def test_a_building_written_beside_the_room_settles_which_room(self):
+        # Spellings taken from the 2026-27 timetables of AC, ETcTI, CHIM, RIA and MEC.
+        search = self.tour.classrooms.search
+        for request, room in (
+            ("A1 MPT", "room:remus-a1"), ("M106 MPT", "room:remus-m106"), ("MPT - M102", "room:remus-m102"),
+            ("A303 Ch", "room:chimie-a303"), ("A2CH", "room:chimie-a2"), ("A2 Chimie", "room:chimie-a2"),
+            ("CEL 403", "room:cel-c403"), ("CEL401", "room:cel-c401"), ("C401 CEL", "room:cel-c401"),
+            ("MEC-N301", "room:mecanica-n301"), ("MEC - M304", "room:mecanica-m304"),
+            ("206 Orologerie", "room:orologerie-o206"), ("206 Orologerie Et.2", "room:orologerie-o206"),
+            ("Orologerie 112", "room:orologerie-o112"), ("Orologerie 407", "room:orologerie-o407"),
+            ("ASPC 306", "room:aspc-a306"), ("ASPC323", "room:aspc-a323"), ("ASPC 1", "room:aspc-aspc1"),
+            ("ASPC 113", "room:aspc-113"), ("ASPC113", "room:aspc-113"),
+        ):
+            with self.subTest(request=request):
+                self.assertEqual([r["index"] for r in search(request, strict=True)], [room])
+
+    def test_a_named_building_is_not_swapped_for_another(self):
+        search = self.tour.classrooms.search
+        # A206 exists in ASPC and in Electro. A timetable that says SPM means neither of them.
+        self.assertEqual(search("A206 SPM", strict=True), [])
+        self.assertEqual(search("A109 ASPC", strict=True)[0]["index"], "room:aspc-a109")
+        self.assertEqual({r["index"] for r in search("A206", strict=True)}, {"room:aspc-a206", "room:electro-a206"})
+        with self.assertRaises(RouteQuestion) as unknown:
+            self.tour.plan("A206 SPM", "auto")
+        self.assertEqual(unknown.exception.key, "ask.unknown")
+
+    def test_two_rooms_in_one_timetable_cell_are_offered_as_a_choice(self):
+        search = self.tour.classrooms.search
+        both = {"room:mecanica-m214", "room:mecanica-n214"}
+        for request in ("M214/N214", "N 214/M214", "laborator N214 si M214"):
+            with self.subTest(request=request):
+                self.assertEqual({r["index"] for r in search(request, strict=True)}, both)
+        self.assertEqual({r["index"] for r in search("C402-C403", strict=True)}, {"room:cel-c402", "room:cel-c403"})
+        # Codes that contain a separator themselves are still one room.
+        self.assertEqual(search("F1-1/1", strict=True)[0]["code"], "F1-1/1")
+        self.assertEqual(search("B1-3", strict=True)[0]["code"], "B1-3")
+
+    def test_classrooms_carry_the_names_a_timetable_gives_their_building(self):
+        records = self.tour.classrooms.records
+        self.assertIn("MPT", records["room:remus-a1"]["areaAliases"])
+        self.assertEqual(records["room:electro-b419"]["areaAliases"], [])
+
     def test_nearby_rooms_have_different_video_captions_and_keys(self):
         routes = [self.tour.plan(q, 388) for q in ("B418A", "B418B")]
         for r in routes:

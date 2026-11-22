@@ -157,7 +157,11 @@
         "3": {
           "checkpoint": "panorama_21C8EB35_3CC0_7FA9_41B4_0852B875E495"
         }
-      }
+      },
+      "aliases": [
+        "ASPC"
+      ],
+      "only": true
     },
     "archa": {
       "name": "ARChA · Bd. Mihai Viteazu 1B",
@@ -285,7 +289,12 @@
         "4": {
           "checkpoint": "panorama_09C9818F_3C40_EB79_41C7_C64048A7CE78"
         }
-      }
+      },
+      "aliases": [
+        "Orologerie",
+        "Orol"
+      ],
+      "only": true
     },
     "spm": {
       "name": "Mecanică · Clădirea SPM",
@@ -305,7 +314,11 @@
         "2": {
           "checkpoint": "panorama_0124AA96_3DC0_D96B_41CF_0AC2FA4F5B95"
         }
-      }
+      },
+      "aliases": [
+        "SPM"
+      ],
+      "only": true
     },
     "remus": {
       "name": "Str. Remus 14",
@@ -318,7 +331,10 @@
         "1": {
           "checkpoint": "panorama_275B3709_3C47_B779_41BA_D394DC1F886F"
         }
-      }
+      },
+      "aliases": [
+        "MPT"
+      ]
     },
     "hunedoara": {
       "name": "Hunedoara · Str. Revoluției 5",
@@ -365,7 +381,11 @@
       "name": "CeL · ID/IFR",
       "checkpoint": "panorama_02B3D755_4A39_AF81_4191_90E6D77E29D2",
       "zones": "C(?P<floor>\\d)\\d{2}",
-      "floors": true
+      "floors": true,
+      "aliases": [
+        "CEL"
+      ],
+      "only": true
     },
     "sport1": {
       "name": "Baza Sportivă 1",
@@ -381,7 +401,12 @@
     },
     "imf": {
       "name": "Mecanică · IMF / TCM",
-      "checkpoint": "panorama_02C8D528_3C40_6BA7_41CC_4F456139101D"
+      "checkpoint": "panorama_02C8D528_3C40_6BA7_41CC_4F456139101D",
+      "aliases": [
+        "IMF",
+        "SPM"
+      ],
+      "only": true
     },
     "ct-orar": {
       "name": "Construcții · building unconfirmed",
@@ -389,7 +414,10 @@
     },
     "mpt-orar": {
       "name": "Management · building unconfirmed",
-      "ro": "Management · clădire neconfirmată"
+      "ro": "Management · clădire neconfirmată",
+      "aliases": [
+        "MPT"
+      ]
     },
     "chim-orar": {
       "name": "Chimie · building unconfirmed",
