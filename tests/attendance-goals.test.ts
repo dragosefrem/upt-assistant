@@ -64,13 +64,24 @@ describe("semester attendance goals", () => {
     expect(setAttendanceGoal(user, id("course"), 7)).toBeNull();
     expect(setAttendanceGoal(user, id("seminar"), 3)).toBeNull();
     const [seminar, lecture] = at(sunday);
-    expect(lecture).toMatchObject({ kind: "course", remaining: 7, sessionsToCome: 5, outOfReach: true });
+    // Seven are needed and five are to come. The eight past lectures carry no mark yet, and the
+    // student may have been to them: that is a nudge to mark them, not a missed minimum.
+    expect(lecture).toMatchObject({ kind: "course", remaining: 7, sessionsToCome: 5, unmarkedPast: 8, needsPastMarks: true, outOfReach: false });
     // Wednesdays: 25 Nov, 2, 9, 16 Dec, 13 and 20 Jan. Three more are well within reach.
-    expect(seminar).toMatchObject({ kind: "seminar", remaining: 3, sessionsToCome: 6, outOfReach: false });
+    expect(seminar).toMatchObject({ kind: "seminar", remaining: 3, sessionsToCome: 6, needsPastMarks: false, outOfReach: false });
     // A session counts until it ends, and nothing is left after the last teaching day.
     expect(at({ date: "2027-01-18", minutes: 8 * 60 }).find((g) => g.kind === "course")).toMatchObject({ sessionsToCome: 1 });
-    expect(at({ date: "2027-01-18", minutes: 23 * 60 }).find((g) => g.kind === "course")).toMatchObject({ sessionsToCome: 0, outOfReach: true });
+    expect(at({ date: "2027-01-18", minutes: 23 * 60 }).find((g) => g.kind === "course")).toMatchObject({ sessionsToCome: 0, unmarkedPast: 13, outOfReach: false });
     expect(at({ date: "2027-02-01", minutes: 0 }).find((g) => g.kind === "seminar")).toMatchObject({ sessionsToCome: 0 });
+
+    // Once the past lectures are marked, what is left decides. Seven missed and one attended:
+    // six more are needed, five are to come and none is unmarked.
+    const mondays = ["2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02", "2026-11-09", "2026-11-16"];
+    mondays.forEach((date, i) => mark(user, date, i === 0 ? "attended" : "missed"));
+    expect(at(sunday).find((g) => g.kind === "course")).toMatchObject({ attended: 1, remaining: 6, sessionsToCome: 5, unmarkedPast: 0, needsPastMarks: false, outOfReach: true });
+    // A goal the sessions to come cover is neither.
+    expect(setAttendanceGoal(user, id("course"), 6)).toBeNull();
+    expect(at(sunday).find((g) => g.kind === "course")).toMatchObject({ remaining: 5, sessionsToCome: 5, needsPastMarks: false, outOfReach: false });
   });
 
   it("offers the student's classes before any marks and keeps separate minima for different kinds", () => {

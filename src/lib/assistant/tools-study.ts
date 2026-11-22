@@ -297,8 +297,10 @@ export const STUDY_TOOLS: AssistantTool[] = [
           ...goals.filter(matches).map((a) => ({
             activity_id: attendanceActivityId(a), course: a.title, kind: a.kind, attended: a.attended,
             minimum: a.minimum as number | null, still_needed: a.remaining as number | null,
-            // Sessions still to come this semester; when fewer than still_needed the minimum cannot be reached.
-            sessions_left_this_semester: a.sessionsToCome ?? undefined, minimum_out_of_reach: a.outOfReach || undefined,
+            // Sessions still to come this semester, and past ones the student has not marked either way (they may
+            // have attended those). The minimum is out of reach only when both together are fewer than still_needed.
+            sessions_left_this_semester: a.sessionsToCome ?? undefined, past_sessions_not_marked: a.unmarkedPast || undefined,
+            minimum_out_of_reach: a.outOfReach || undefined,
           })),
           ...available.filter(matches).map((a) => ({
             activity_id: attendanceActivityId(a), course: a.title, kind: a.kind, attended: a.attended, minimum: null, still_needed: null,
