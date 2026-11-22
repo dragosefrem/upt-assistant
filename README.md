@@ -22,7 +22,8 @@ works in Romanian and English.
   for one week only. Changes affect only the student.
 - **Labs this week.** A card on the home page answers "do I have lab this week?": the
   teaching week and its parity, the labs, seminars and projects that take place, and the
-  ones that do not, with the date they come next.
+  ones that do not, with the date they come next. At the weekend, once the week's last
+  session is over, it shows the coming week and says so.
 - **Make-up sessions.** From a lab in the calendar, "Find a make-up session" lists the
   other groups' sessions of the same lab, the ones that fit the student's timetable first.
 - **Campus.** A door-to-door journey to a room: an embedded Google map from where the
@@ -33,7 +34,8 @@ works in Romanian and English.
   the faculty's exams; and a study planner that works backwards from each exam and puts
   study blocks into the student's free time.
 - **Attendance.** Set a semester minimum separately for each course’s lectures, labs,
-  seminars and other classes. The Attendance tab shows how many more sessions you need.
+  seminars and other classes. The Attendance tab shows how many more sessions you need,
+  how many are still to come this semester, and when a minimum can no longer be reached.
   Mark sessions from the calendar and review individual dates in History.
 - **Notifications.** The bell shows contact requests, event invitations, today's and
   tomorrow's timetable, and exams over the next 30 days. Classes and personal or group
@@ -95,7 +97,7 @@ still require a fresh database.
 | --- | --- |
 | `npm run dev` / `npm run build` / `npm start` | Development server / production build / production server |
 | `npm run scrape` | Run the scraper from the terminal. Flags: `--only=AC,MPT`, `--no-catalog`, `--no-timetables`, `--no-exams`, `--dry-run` |
-| `npm test` | Unit tests, including parsers run against real UPT documents in `tests/fixtures` |
+| `npm test` | Unit tests, including parsers run against real UPT documents in `tests/fixtures`. The PDF timetables in `tests/timetable-pdf.test.ts` need the interpreter from `scripts/requirements-timetables.txt` and are skipped without it |
 | `npm run typecheck` / `npm run lint` | TypeScript / ESLint |
 | `npm run db:generate` | Generate a migration after editing `src/db/schema.ts` |
 | `cd services/campuspath && .venv/bin/python -m unittest discover -s tests` | Campuspath's own tests |
@@ -236,7 +238,11 @@ and TCM reduced-attendance programmes. These events show the published start tim
 - **Where rooms are.** Faculty buildings come from upt.ro with coordinates. Room codes
   are mapped to buildings by patterns seeded in `src/db/seed.ts`, taken from AC's room
   legend. Three of those (ASPC, SPM, Hidrotehnică) were placed from their street address
-  and are flagged as approximate in the UI — worth correcting in the `buildings` table.
+  and their position is flagged as approximate — worth correcting in the `buildings` table.
+  A code no pattern matches is placed in the building where Campuspath's catalogue has it,
+  when that is one building only. Otherwise the student's own faculty building is shown as
+  a guess ("probably …"). The importers keep a building written beside a room with the
+  room ("A2 Chimie", "218 SPM").
 
 Exam sessions are filled in by faculties as the session approaches, so re-run the
 scrape then.
