@@ -74,6 +74,25 @@ describe("calendar export language", () => {
     expect(texts(exportItems({ ...user, locale: "ro" }, "en"))).toContain("(Lecture)");
   });
 
+  it("names the sitting in the title of a distance-learning exam", () => {
+    // Each sitting is published as an exam of its own. In a phone's calendar all three were
+    // "Examen: Limbaje de programare 1", and so were its reminders, on three dates.
+    const db = getDb();
+    const added = [1, 2].map((n) => {
+      const exam = db.insert(exams).values({ key: `id-lp1-${n}`, facultyId: user.facultyId!, courseName: "Limbaje de programare 1", date: `2027-01-2${n}`,
+        startMin: 600, endMin: 600, room: null, year: 1, rawText: "x", audience: `Examen_LP1_TST ID_Anul l_Prezentarea ${n}` }).returning().get();
+      db.insert(examSpecializations).values({ examId: exam.id, specializationId: user.specializationId! }).run();
+      return exam.id;
+    });
+    try {
+      const titles = exportItems({ ...user, locale: "ro" }).map((i) => i.title);
+      expect(titles).toEqual(expect.arrayContaining(["Examen: Limbaje de programare 1 (Prezentarea 1)", "Examen: Limbaje de programare 1 (Prezentarea 2)", "Examen: Matematică · A204"]));
+      expect(exportItems(user, "en").map((i) => i.title)).toContain("Exam: Limbaje de programare 1 (Sitting 2 of the exam)");
+    } finally {
+      for (const id of added) db.delete(exams).where(eq(exams.id, id)).run();
+    }
+  });
+
   it("names the feed Poli and keeps existing event identities", () => {
     const [item] = exportItems(user);
     const feed = toICS([item]);
