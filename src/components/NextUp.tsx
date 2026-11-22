@@ -68,7 +68,7 @@ export function NextUp({ initial }: { initial: CalEvent[] }) {
           <p className="text-sm text-slate-600">
             {formatTimeSlot(e.startMin, e.endMin)} · {kindLabel(e.kind, locale)}
             {e.room ? ` · ${e.room}` : (e.type === "class" || e.type === "exam") && ` · ${messages.exams.card.roomUnknown}`}
-            {e.place && ` · ${e.place.approximate ? messages.campus.rooms.approximate(e.place.name) : e.place.name}`}
+            {e.place && ` · ${e.place.guessed ? messages.campus.rooms.approximate(e.place.name) : e.place.name}`}
           </p>
           {destination && (
             <Link

@@ -27,7 +27,7 @@ export function YourRooms({ rooms, hasSemester, onGo }: {
             <DoorOpen size={20} className="shrink-0 text-brand-600" aria-hidden />
             <span className="min-w-0 flex-1">
               <strong className="block text-sm">{room.room}</strong>
-              <span className="block text-xs text-slate-600">{room.building ? (room.approximate ? t.approximate(room.building) : room.building) : t.unknownBuilding}</span>
+              <span className="block text-xs text-slate-600">{room.building ? (room.guessed ? t.approximate(room.building) : room.building) : t.unknownBuilding}</span>
               <span className="mt-1 block text-xs text-slate-600">{room.courses.map((c) => c.title).join(" · ")}</span>
             </span>
             <ArrowRight size={16} className="shrink-0 text-brand-600" aria-hidden />

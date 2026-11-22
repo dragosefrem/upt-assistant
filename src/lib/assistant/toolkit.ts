@@ -120,7 +120,8 @@ export function brief(e: CalEvent) {
     end: e.endMin === e.startMin ? null : formatMinutes(e.endMin),
     room: e.room,
     building: e.place?.name ?? null,
-    ...(e.place?.approximate ? { approximate: true } : {}),
+    // "probably …" is for a building that is a guess, not for one whose map pin is approximate.
+    ...(e.place?.guessed ? { approximate: true } : {}),
     ...(e.campusRoom ? { campus_room: e.campusRoom } : {}),
     address: e.place?.address ?? null,
     teacher: e.teacher,

@@ -326,7 +326,7 @@ const CORE_TOOLS: AssistantTool[] = [
             room: x.room,
             building: building?.name ?? null,
             address: building?.address ?? null,
-            ...(building?.approximate ? { approximate: true } : {}),
+            ...(building?.guessed ? { approximate: true } : {}),
             teacher: x.teacher,
             for: x.audience,
           };
