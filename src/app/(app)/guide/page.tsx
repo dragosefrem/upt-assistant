@@ -25,7 +25,13 @@ export default async function GuidePage() {
   const group = describeGroup(user.groupId, locale);
   const buildings = studentBuildings(user);
   // A distance-learning exam is published as three sittings: one exam, not three.
-  const published = new Set(examsForUser(user, today).map((x) => x.courseName)).size;
+  const ownExams = examsForUser(user, today);
+  const published = new Set(ownExams.map((x) => x.courseName)).size;
+  // Distance-learning programmes hold their exams on dates of their own: when the student's
+  // published exams fall outside the general session, those are the dates that matter to them.
+  const examDates = ownExams.map((x) => x.date).sort();
+  const ownSession = overview?.session && examDates.length && (examDates[0] < overview.session.from || examDates.at(-1)! > overview.session.to)
+    ? { from: examDates[0], to: examDates.at(-1)! } : null;
   const date = (d: string, year = false) => formatDate(d, { day: "numeric", month: "long", ...(year ? { year: "numeric" } : {}) }, locale);
   // Which of the four levels the student's own group label fills in.
   const mine = group ? [messages.common.time.year(group.group.year), group.group.series, group.group.name.split(".")[0], group.group.name.includes(".") ? group.group.name : ""] : [];
@@ -131,6 +137,7 @@ export default async function GuidePage() {
               <div className="rounded-2xl border border-slate-200 p-3">
                 <dt className="flex items-center gap-2 font-semibold text-slate-900"><span aria-hidden className="h-2.5 w-2.5 rounded-full bg-red-400" />{t.semester.session}</dt>
                 <dd className="mt-1 text-slate-600">{overview.session ? t.semester.sessionRange(date(overview.session.from), date(overview.session.to, true)) : "—"}</dd>
+                {ownSession && <dd className="mt-1 font-medium text-slate-800">{t.semester.ownExams(date(ownSession.from), date(ownSession.to, true))}</dd>}
                 <dd className="mt-1 text-xs text-slate-500">
                   {published ? t.semester.examsPublished(published) : t.semester.examsNotPublished}{" "}
                   <Link href="/exams" className="font-medium text-brand-700 hover:underline">{t.semester.seeExams}</Link>
