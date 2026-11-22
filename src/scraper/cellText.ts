@@ -56,7 +56,7 @@ const TEACHER =
 /** The end of an untyped title: "… ALGAD sala M306 Sl. univ. dr. …", "Germana sala 304 Facultatea de Chimie". */
 const UNTYPED_ROOM = (() => {
   const code = String.raw`\p{Lu}{0,4}\s?\d{1,4}[A-Za-z]?`;
-  return new RegExp(String.raw`(?<=[\p{L}\d)])\s+(?=(?:sal[aă]|room)\s+${code}(?:\s*\/\s*(?:sal[aă]\s+)?${code})*` +
+  return new RegExp(String.raw`(?<=[\p{L}\d)])\s*[-–]?\s+(?=(?:sal[aă]|room)\s+${code}(?:\s*\/\s*(?:sal[aă]\s+)?${code})*` +
     String.raw`(?:\s+(?:Facultatea\s+de\s+)?(?:Chimie|Mecanic[aă]))?\s*(?:$|,|(?:Prof|Conf|Asist|Lect|Drd)\b|[SȘŞ]\.?\s?l\.))`, "iu");
 })();
 
@@ -282,7 +282,8 @@ export function parseCellText(input: string): ParsedText {
   let abbr: string | null = null;
   // "… (ALGAD)" or "… diferentiala- ALGAD": the acronym the timetable gives the course.
   const explicit = /\(([\p{Lu}][\p{L}\d.]{0,7})\)\s*$/u.exec(name) ?? /(?<=\p{Ll})\s*[-–]\s*(\p{Lu}[\p{Lu}\d]{1,7})\s*$/u.exec(name);
-  if (explicit && name.length > explicit[0].length + 3) {
+  // "Germana (Cartis)" names the lecturer, not the course: an acronym is short or in capitals.
+  if (explicit && name.length > explicit[0].length + 3 && (explicit[1].length <= 4 || looksLikeAcronym(explicit[1]))) {
     abbr = explicit[1];
     name = clean(name.slice(0, explicit.index));
   } else if (looksLikeAcronym(name)) {

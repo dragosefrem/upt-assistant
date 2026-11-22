@@ -214,6 +214,14 @@ describe("parseCellText", () => {
     expect(parseCellText("M.A.C.I. (L) (Sala 207-RM et. 2)")).toMatchObject({ kind: "lab", room: "207-RM et. 2" });
   });
 
+  it("reads the room of a class written \"title - sala N 210\", and does not take a lecturer in brackets for an acronym", () => {
+    // Mecanică, year 1: the tutoring and revision lectures had no room and no way to them.
+    expect(parseCellText("CURS TUTORIAT - sala N 210")).toMatchObject({ name: "CURS TUTORIAT", kind: "course", room: "N 210" });
+    expect(parseCellText("Curs recapitulare FIZICA - sala N 110")).toMatchObject({ name: "Curs recapitulare FIZICA", room: "N 110" });
+    expect(parseCellText("Limbi straine - Germana (Cartis) - Sala N 212")).toMatchObject({ name: "Limbi straine - Germana (Cartis)", abbr: null, room: "N 212" });
+    expect(parseCellText("Fizica (Fiz) (c) A. Palcu A0")).toMatchObject({ name: "Fizica", abbr: "Fiz" });
+  });
+
   it("keeps a building named before the room out of the lecturer's name", () => {
     // ETcTI, year 3: "IV(c) M.Lascu Mecanica M304". The lecturer was shown as "M. Lascu Mecanica".
     expect(parseCellText("IV(c) M.Lascu Mecanica M304")).toMatchObject({ name: "IV", kind: "course", teacher: "M. Lascu", room: "M304 Mecanica" });
