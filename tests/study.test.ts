@@ -471,6 +471,36 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     expect(askLocal("What does restanță mean?", ctx)).toMatch(/^Restanță: An exam you still have to pass/);
   });
 
+  it("answers without an API key for the day a student names, in their language", () => {
+    // The clock of these tests is Monday 23 November 2026, 10:00.
+    // "luni 30 noiembrie" is the 30th, a public holiday, not the Monday that comes first.
+    const holiday = askLocal("ce am luni 30 noiembrie?", ctx);
+    expect(holiday).toContain("Sfântul Andrei");
+    expect(holiday).not.toContain("23 noiembrie");
+    expect(askLocal("ce ore am pe 1 dec", ctx)).toContain("Ziua Națională a României");
+    expect(askLocal("what do I have on December 2?", ctx)).toMatch(/2 December|Wednesday/);
+    expect(askLocal("ce am pe 25.11?", ctx)).toContain("25 noiembrie");
+    // A request with no telling word is answered in the interface language, not in English.
+    expect(askLocal("scrie-mi o poezie", { ...ctx, locale: "ro" })).toMatch(/^Pot răspunde la/);
+    expect(askLocal("write me a poem", { ...ctx, locale: "ro" })).toMatch(/^I can answer/);
+    // The session's dates are known even while no exam is published for the question.
+    expect(askLocal("cand incepe sesiunea de restante la chimie?", ctx)).toMatch(/Sesiunea de examene ține din 25 ianuarie 2027 până în 21 februarie 2027/);
+    expect(askLocal("what week is it?", ctx)).toContain("Teaching week 9, an odd week.");
+  });
+
+  it("answers \"do I have lab?\" for the coming week at the weekend, like the home page", () => {
+    vi.setSystemTime(new Date("2026-11-22T10:00:00+02:00")); // Sunday, week 8 is over
+    try {
+      const sunday = askLocal("am lab saptamana asta?", ctx);
+      expect(sunday).toMatch(/^Orele din săptămâna aceasta s-au terminat\. Săptămâna viitoare:\nSăptămâna 9, impară\./);
+      expect(sunday).not.toContain("18 noiembrie");
+      // Asked about a named day, it answers for that day's week.
+      expect(askLocal("am laborator joi?", ctx)).not.toMatch(/^Orele din săptămâna aceasta/);
+    } finally {
+      vi.setSystemTime(new Date("2026-11-23T08:00:00Z"));
+    }
+  });
+
   it("keeps contact availability, missed labs and study plans out of personal timetable lookups", () => {
     expect(askLocal("Which of my contacts are free tomorrow at 14:00?", ctx)).toContain("Plan a group event");
     expect(askLocal("Am lipsit de la un laborator. Ce alte grupe îl au săptămâna aceasta?", ctx)).toContain("recuperare");

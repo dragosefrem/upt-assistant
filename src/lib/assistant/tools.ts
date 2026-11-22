@@ -1,4 +1,5 @@
 import "server-only";
+import { examAudience } from "../exam-audience";
 import { and, eq, inArray } from "drizzle-orm";
 import { getDb } from "@/db";
 import { isLocale } from "@/i18n/config";
@@ -293,7 +294,7 @@ const CORE_TOOLS: AssistantTool[] = [
         show_card: showCard,
       },
     },
-    run(input, { user }) {
+    run(input, { user, locale }) {
       const place = placeResolver(user.facultyId);
       const course = str(input.course);
       let list = examsForUser(user);
@@ -328,7 +329,8 @@ const CORE_TOOLS: AssistantTool[] = [
             address: building?.address ?? null,
             ...(building?.guessed ? { approximate: true } : {}),
             teacher: x.teacher,
-            for: x.audience,
+            // "Prezentarea 2" rather than the Campus Virtual event name it comes from.
+            for: examAudience(x.audience, locale ?? user.locale ?? "ro"),
           };
         }),
         note: list.length ? undefined : "No exam is scheduled yet for this query. Sessions are published by the faculty closer to the exam period.",

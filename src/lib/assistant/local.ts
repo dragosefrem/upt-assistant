@@ -5,7 +5,9 @@ import { chatMessages } from "@/db/schema";
 import type { Locale } from "@/i18n/config";
 import { assistant } from "@/i18n/messages/assistant";
 import type { PublicHoliday } from "../holidays";
+import { examAudience } from "../exam-audience";
 import { kindLabel } from "../kinds";
+import { practicalsToShow } from "../labs";
 import { currentSemester, studentWeek } from "../schedule";
 import { DAY_NAMES, addDays, dayName, formatDate, formatDateRange, mondayOf, nowLocal, weekday } from "../time";
 import { runTool, type ToolContext } from "./tools";
@@ -34,6 +36,30 @@ const EVERYDAY_WORDS = new Set(["am", "an", "as", "at", "be", "ce", "de", "do", 
 
 type Any = Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
 
+/** Month names and their short forms, Romanian and English, without diacritics. */
+const MONTH = "ianuarie|january|ian|jan|februarie|february|feb|martie|march|mar|aprilie|april|apr|mai|may|iunie|june|iun|jun|iulie|july|iul|jul|august|aug|septembrie|september|sept|sep|octombrie|october|oct|noiembrie|november|noi|nov|decembrie|december|dec";
+const MONTH_NUMBER: Array<[RegExp, number]> = [[/^(ian|jan)/, 1], [/^feb/, 2], [/^mar/, 3], [/^apr/, 4], [/^ma[iy]/, 5], [/^(iun|jun)/, 6],
+  [/^(iul|jul)/, 7], [/^aug/, 8], [/^sep/, 9], [/^oct/, 10], [/^no[iv]/, 11], [/^dec/, 12]];
+
+/** "30 noiembrie", "1 dec", "November 30", "30.11": that day, this year or the next if it has passed by more than a month. */
+function calendarDate(text: string, today: string): string | undefined {
+  const named = new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+(${MONTH})\\b`).exec(text) ?? undefined;
+  const english = named ? undefined : new RegExp(`\\b(${MONTH})\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b`).exec(text) ?? undefined;
+  const numeric = named || english ? undefined : /\b(\d{1,2})[./](\d{1,2})(?:[./](\d{4}))?\b/.exec(text) ?? undefined;
+  const day = Number(named?.[1] ?? english?.[2] ?? numeric?.[1]);
+  const month = numeric ? Number(numeric[2]) : MONTH_NUMBER.find(([re]) => re.test(named?.[2] ?? english?.[1] ?? ""))?.[1];
+  if (!day || !month) return undefined;
+  const at = (year: number) => `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  if (numeric?.[3]) return at(Number(numeric[3]));
+  const year = Number(today.slice(0, 4));
+  // A date named in January about "22 decembrie" is last month's; "12 ianuarie" asked in November is next year's.
+  return at(year) < addDays(today, -31) ? at(year + 1) : at(year);
+}
+
+function looksEnglish(text: string): boolean {
+  return /\b(what|when|where|which|how|who|do i|am i|is it|my|the|tomorrow|today|week|exam|free|please|write|tell me|show me)\b/.test(fold(text));
+}
+
 function isRomanian(text: string): boolean {
   // Only words that cannot be English ("am" and "sala" would misfire on "When am I…").
   return /[ăâîșşțţ]/i.test(text) || /\b(ce|unde|cand|azi|astazi|maine|examen|examenul|orar|orarul|liber|libera|grupa|cum|ajung|urmator|urmeaza|saptamana|luni|marti|miercuri|joi|vineri|ascunde|restaureaza|muta|mut|reprogrameaza)\b/.test(fold(text));
@@ -42,6 +68,9 @@ function isRomanian(text: string): boolean {
 function mentionedDate(text: string, today: string) {
   const iso = /\b\d{4}-\d{2}-\d{2}\b/.exec(text)?.[0];
   if (iso) return iso;
+  // "luni 30 noiembrie" is the 30th, not the next Monday.
+  const dated = calendarDate(text, today);
+  if (dated) return dated;
   if (/\b(tomorrow|maine)\b/.test(text)) return addDays(today, 1);
   if (/\b(today|azi|astazi)\b/.test(text)) return today;
   const named = DAY_WORDS.find(([re]) => re.test(text));
@@ -95,7 +124,8 @@ function line(e: Any, locale: Locale): string {
 
 export function askLocal(message: string, ctx: ToolContext): string {
   const q = fold(message);
-  const ro = isRomanian(message);
+  // A question with no telling word ("scrie-mi o poezie") is answered in the interface language.
+  const ro = isRomanian(message) || ((ctx.locale ?? ctx.user.locale) === "ro" && !looksEnglish(message));
   const locale = ro ? "ro" : "en";
   const basic = assistant[locale].basic;
   const holidayLine = (h: PublicHoliday) => basic.holiday(formatDate(h.date, { day: "numeric", month: "long" }, locale), h.name);
@@ -144,10 +174,13 @@ export function askLocal(message: string, ctx: ToolContext): string {
   }
 
   // "Do I have lab this week?" and "is it an odd week?" — the classic first-year questions.
-  if (/\b(lab|labs|laborator|laboratoare|laboratorul|seminar|seminare|odd|even|para|impara|paritate)\b/.test(q) && !/\b(exam|examen|examene)\b/.test(q)) {
+  if (/\b(lab|labs|laborator|laboratoare|laboratorul|seminar|seminare|odd|even|para|impara|paritate|what week|week is it|ce saptamana|a cata saptamana)\b/.test(q) && !/\b(exam|examen|examene)\b/.test(q)) {
     const nextWeek = /\b(next week|saptamana viitoare)\b/.test(q);
     const labsOnly = /\b(lab|labs|laborator|laboratoare|laboratorul)\b/.test(q);
-    const r = runTool("labs_this_week", { date: nextWeek ? addDays(now.date, 7) : date, course: course?.title, kinds: labsOnly ? ["lab"] : undefined }, { ...ctx, locale }) as Any;
+    // At the weekend, once this week's sessions are over, "do I have lab?" is about the week ahead,
+    // as on the home page's card.
+    const ahead = !nextWeek && !dayNamed && practicalsToShow(ctx.user, now, locale).upcoming;
+    const r = runTool("labs_this_week", { date: nextWeek || ahead ? addDays(mondayOf(now.date), 7) : date, course: course?.title, kinds: labsOnly ? ["lab"] : undefined }, { ...ctx, locale }) as Any;
     if (!r.error) {
       const when = (e: Any) => `${formatDate(e.date, { weekday: "long", day: "numeric", month: "long" }, ro ? "ro" : "en")} ${e.start}–${e.end}${e.room ? `, ${e.room}` : ""}`;
       const head = r.teaching_week
@@ -156,6 +189,7 @@ export function askLocal(message: string, ctx: ToolContext): string {
       const running = (r.takes_place as Any[]).map((e) => `• ${e.title} (${e.kind}) — ${when(e)}`);
       const skipped = (r.not_this_week as Any[]).map((e) => `• ${e.course} (${e.kind}) — ${t(`not this week; ${e.runs}; next on ${e.next_on}`, `nu săptămâna aceasta; următorul: ${e.next_on.replace(/^\w+ /, "")}`)}`);
       return [
+        ...(ahead ? [t("This week's classes are over. Next week:", "Orele din săptămâna aceasta s-au terminat. Săptămâna viitoare:")] : []),
         head,
         ...(r.holidays as PublicHoliday[]).map(holidayLine),
         running.length ? t("Taking place:", "Se țin:") : t("Nothing takes place.", "Nu se ține nimic."),
@@ -175,14 +209,18 @@ export function askLocal(message: string, ctx: ToolContext): string {
       to: weekRequest ? addDays(weekStart, 6) : dayNamed ? date : undefined,
       next_only: !weekRequest && /\b(next|urmatorul|urmator)\b/.test(q),
     }, ctx) as Any;
+    // The session's own dates are in the academic calendar, whether or not exams are published yet.
+    const long = (d: string) => formatDate(d, { day: "numeric", month: "long", year: "numeric" }, locale);
+    const session = semester?.examStart && semester.examEnd && /\b(sesiune|sesiunea|session)\b/.test(q)
+      ? t(`The exam session runs from ${long(semester.examStart)} to ${long(semester.examEnd)}. `, `Sesiunea de examene ține din ${long(semester.examStart)} până în ${long(semester.examEnd)}. `) : "";
     if (!r.count) {
-      return t(
+      return session + t(
         "I couldn't find a scheduled exam for that yet. Faculties publish the session calendar closer to the exam period, so check again later.",
         "Nu am găsit încă un examen programat. Facultățile publică programarea mai aproape de sesiune, așa că merită să verifici din nou mai târziu.",
       );
     }
-    const list = (r.exams as Any[]).slice(0, 6).map((x) => `${x.course}: ${formatDate(x.date, undefined, locale)} ${x.end ? `${x.start}–${x.end}` : x.start}, ${[x.room, x.building].filter(Boolean).join(", ") || t("room not set", "sala nestabilită")}`);
-    return `${t(`I found ${r.count} exam(s):`, `Am găsit ${r.count} examen(e):`)}\n${list.join("\n")}`;
+    const list = (r.exams as Any[]).slice(0, 6).map((x) => `${x.course}${examAudience(x.for, locale) ? ` (${examAudience(x.for, locale)})` : ""}: ${formatDate(x.date, undefined, locale)} ${x.end ? `${x.start}–${x.end}` : x.start}, ${[x.room, x.building].filter(Boolean).join(", ") || t("room not set", "sala nestabilită")}`);
+    return `${session}${t(`I found ${r.count} exam(s):`, `Am găsit ${r.count} examen(e):`)}\n${list.join("\n")}`;
   }
 
   if (/\b(how do i get|how to get|directions|route|cum ajung|drumul|where is|unde e|unde este|unde se afla)\b/.test(q)) {
