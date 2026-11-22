@@ -1,4 +1,4 @@
-import { hasKindMarker, parseCellText } from "./cellText";
+import { hasKindMarker, isFacultative, parseCellText } from "./cellText";
 import { activityTime, norm, parseDayWord, parseTimeRange, squash, type TimeRange } from "./text";
 import type { NormalizedGroup, NormalizedTimetable } from "./types";
 
@@ -15,9 +15,24 @@ const roomOnly = /^(?:sal[aă]\s+[\p{L}\d .-]{1,14}|(?:[A-Z]{1,3}\s?-?\d{2,4}[a-
 const staffTitle = /(?:\b(?:asist|prof|conf|lect)\s*\.|[sșş](?:ef\s+lucr|\s*\.\s*l)\.)/i;
 const continuation = /^(?:(?:\([CSLP]\)\s*)?(?:s[aă]pt\w*\.?\s*(?:\d+\s*[-–]\s*\d+|imp\w*|par\w*)|\([CSLP]\))\s*$|(?:asist|prof|conf|lect)\.|[sșş]ef\s+lucr)/i;
 
+/**
+ * IEE years 2 to 4 shorten "săptămâni pare / impare" to SP and SI: "TCE, lab, SP, C304",
+ * "CS2, lab, D010 S.I.", "SP: IA, lab". Two subgroups share each room and slot, one marked SP
+ * and the other SI, which is what tells the letters apart from a lecturer's initials.
+ */
+function electricalWeeks(text: string) {
+  return text.replace(/(?<![\p{L}\d])S\.?\s?([PI])(?![\p{L}\d])\.?(?=\s*(?:[,;:/]|$|[A-Z]\s?\d))/gu,
+    (_, parity: string) => (parity === "P" ? "săpt. pare" : "săpt. impare"));
+}
+
+/** A class held in another faculty's building names it first: "Facultatea de Chimie, sala A2, …". */
+const elsewhere = /^(?:Facultatea\s+de\s+)?(Chimie|Mecanic[aă]|Hidrotehnic[aă])\s*,\s*sal[aă]\s+([A-Z]{0,3}\s?\d{1,4}[a-z]?)\s*[,;]\s*(?=\S)/iu;
+
 /** IEE prints the room first and the kind after the lecturer's name. */
 export function electricalCell(input: string) {
-  const raw = squash(input).replace(/^sg\.\s*\d+\s*\/\s*\d+\s*[,;]\s*/i, "");
+  let raw = electricalWeeks(squash(input)).replace(/^sg\.\s*\d+\s*\/\s*\d+\s*[,;]\s*/i, "");
+  const away = elsewhere.exec(raw);
+  if (away) raw = raw.slice(away[0].length);
   const room = /^(?:sal[aă]\s*((?:[A-Z]+\s*)?\d{2,4}[a-z]?)|([A-Z]\s?\d{2,4}[a-z]?|SPM\s*\d+))[\s,;]+(?=\S)/iu.exec(raw);
   const rest = room ? raw.slice(room[0].length) : raw;
   const title = staffTitle.exec(rest);
@@ -26,6 +41,7 @@ export function electricalCell(input: string) {
   const course = rest.slice(0, end).replace(/[,;\s]+$/, "");
   const parsed = parseCellText(type && course ? `${course} ${type[0]} ${rest.slice(end).replace(type[0], "")}` : rest);
   if (room) parsed.room = room[1] ?? room[2];
+  if (away) parsed.room = `${away[2]} ${away[1]}`;
   if (title) parsed.teacher = rest.slice(title.index).split(/\s*\([CSLP]\)|\bs[aă]pt\.?|[,;]\s*(?:sala|[A-F]\d)/i)[0].replace(/[,;\s]+$/, "") || null;
   return parsed;
 }
@@ -34,7 +50,7 @@ export function electricalActivities(text: string): string[] {
   const parts: string[] = [];
   for (const line of text.split(/\n/)) {
     const last = parts.at(-1);
-    if (last && !(hasKindMarker(last) && hasKindMarker(line) && /(?:\bs\.|s[aă]pt\.?)\s*(?:imp|par)/i.test(last))) {
+    if (last && !(hasKindMarker(last) && hasKindMarker(line) && /(?:\bs\.|s[aă]pt\.?)\s*(?:imp|par)/i.test(electricalWeeks(last)))) {
       parts[parts.length - 1] += "\n" + line;
     } else parts.push(line);
   }
@@ -198,7 +214,8 @@ export function readPrintedTable(
         result.entries.push({ sheet, day: start.day, ...time, groups, weeks,
           courseName: parsed.name, courseAbbr: parsed.abbr, kind: parsed.kind,
           room: parsed.room ?? (roomCell ? squash(roomCell[4]).replace(/^sal[aă]\s+/i, "") : null),
-          teacher: parsed.teacher, rawText: squash(activity), isSlotOption: false });
+          teacher: parsed.teacher, rawText: squash(activity), isSlotOption: false,
+          publishedOptional: isFacultative(activity) });
       }
     }
   }

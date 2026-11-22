@@ -50,6 +50,14 @@ describe.skipIf(!reader)("timetable PDFs, read from the published documents", ()
     // followed by a class called "săpt. imp.".
     expect(day(tables, "2/1", 3).find((e) => e.courseName === "EIM" && e.kind === "lab")).toMatchObject({ startMin: hm(14), endMin: hm(16), weeks: "odd" });
     expect(all.filter((e) => /^s[aă]pt/i.test(e.courseName))).toEqual([]);
+    // "s:1-9" limits the lab to nine weeks, and the room keeps the building the cell names.
+    expect(thursday.find((e) => e.courseName === "GAC")).toMatchObject({ weeks: "1-9", room: "218 SPM", teacher: null });
+    // The Friday class held at the Faculty of Chemistry keeps its name and its place.
+    expect(day(tables, "1/1", 5).find((e) => /pregătire la Fizică/.test(e.courseName))).toMatchObject({ room: "A2 Chimie", startMin: hm(15), endMin: hm(16) });
+    // "(curs facultativ)" and "(seminar facultativ)" are published as optional.
+    const optional = all.filter((e) => e.publishedOptional).map((e) => e.courseName);
+    expect(optional.length).toBeGreaterThanOrEqual(2);
+    expect(optional.every((name) => /Psiholog/.test(name))).toBe(true);
     // No class of this page lasts a single hour except the two preparation courses printed that way.
     expect(all.filter((e) => e.endMin - e.startMin === 60).map((e) => e.courseName).sort()).toEqual(
       expect.arrayContaining(["Curs de pregătire la Matematică"]),

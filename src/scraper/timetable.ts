@@ -1,5 +1,5 @@
 import type { EntryKind } from "@/db/schema";
-import { hasKindMarker, parseCellText } from "./cellText";
+import { hasKindMarker, parseCellText, isFacultative } from "./cellText";
 import type { Grid, GridCell } from "./grid";
 import {
   DAY_IN_TEXT,
@@ -63,7 +63,6 @@ const CONTINUATION_RE =
   /^\s*(?:sal[aă]|ala|amf|amfiteatru|room|s[aă]pt|weeks?|online|\d+\s*h\s*\/)/i;
 /** A cell holding nothing but a room code ("B418a", "SPM 205"). */
 const BARE_ROOM_RE = /^(?:[A-Z]{1,4}\s?\d{1,4}[A-Za-z]?|\d{2,4}\s?[A-Z]{1,4})$/;
-const FACULTATIVE = /\(\s*c\.\s*f\.?\s*\)|\(\s*fac\.?\s*\)|\bcurs(?:ul)?\s+facultativ\b/i;
 // AC explicitly moves the first occurrence of some lectures to another day and room.
 const WEEK_MOVE = /\(\s*[îi]n\s+s[aă]pt\.?\s+(\d{1,2})\s+se\s+[tțţ]ine\s+(\p{L}+)\s+([\d.:]+\s*[-–]\s*[\d.:]+)\s+[îi]n\s+sal[aă]\s+([^()]+)\)/iu;
 
@@ -357,7 +356,7 @@ export function parseTimetable(grid: Grid, opts: {
         day: start.day, ...activityTime(regular, slot), kind: parsed.kind, courseName: parsed.name,
         courseAbbr: parsed.abbr, room: parsed.room, teacher: parsed.teacher, weeks: parsed.weeks,
         rawText: squash(activity), groups: [...groupIdx].sort((a, b) => a - b), isSlotOption: false,
-        publishedOptional: FACULTATIVE.test(activity),
+        publishedOptional: isFacultative(activity),
       };
       if (relocated) {
         out.entries.push({ ...entry, day: otherDay, ...otherTime, room: squash(move[4]), weeks: move[1] });
@@ -436,7 +435,7 @@ export function parseTimetable(grid: Grid, opts: {
           rawText: squash(note),
           groups: groupIdx,
           isSlotOption: slots.slots.length > 1,
-          publishedOptional: optional || FACULTATIVE.test(note),
+          publishedOptional: optional || isFacultative(note),
         });
       }
     }
@@ -444,7 +443,7 @@ export function parseTimetable(grid: Grid, opts: {
 
   resolveCourseNames(out);
   const optionalGroups = new Map<string, Set<number>>();
-  for (const e of out.entries.filter((e) => e.kind === "course" && FACULTATIVE.test(e.rawText))) {
+  for (const e of out.entries.filter((e) => e.kind === "course" && isFacultative(e.rawText))) {
     const audience = optionalGroups.get(norm(e.courseName)) ?? new Set<number>();
     for (const group of e.groups) audience.add(group);
     optionalGroups.set(norm(e.courseName), audience);

@@ -185,6 +185,72 @@ describe("parseCellText", () => {
     expect(parseCellText("Gr. F Gândire critică (s) Băiaș C303")).toMatchObject({ name: "Gândire critică", kind: "seminar", room: "C303" });
   });
 
+  it("keeps the building written beside a room with the room, never as the teacher", () => {
+    // Cells from the 2026-27 ETcTI, MEC and RIA timetables.
+    expect(parseCellText("Unif. fiz. (c), A2 Chimie")).toMatchObject({ name: "Unif. fiz.", kind: "course", room: "A2 Chimie", teacher: null });
+    expect(parseCellText("LP1(c) P. Serafin, A2 Chimie, s1-10")).toMatchObject({ teacher: "P. Serafin", room: "A2 Chimie", weeks: "1-10" });
+    expect(parseCellText("SwEA(c) S.Mischie A2 Chimie")).toMatchObject({ teacher: "S. Mischie", room: "A2 Chimie" });
+    expect(parseCellText("Pedagogie (c) H0 Hidrotehnica")).toMatchObject({ room: "H0 Hidrotehnica", teacher: null });
+    expect(parseCellText("NM II (C), Orologerie building, Room 206")).toMatchObject({ kind: "course", room: "206 Orologerie", teacher: null });
+    expect(parseCellText("TM (L) SPM parter P01 Marius Pop‐Călimanu")).toMatchObject({ kind: "lab", room: "P01 SPM", teacher: "Marius Pop‐Călimanu" });
+    expect(parseCellText("GDDT (L) Salcianu L. Sala 225 A (SPM)")).toMatchObject({ room: "225 A SPM", teacher: "Salcianu L." });
+    expect(parseCellText("RM (L) Orologerie parter Murariu")).toMatchObject({ kind: "lab", room: "Orologerie", teacher: "Murariu" });
+    expect(parseCellText("M (L) Orologerie, etaj I Dorin Simoiu")).toMatchObject({ room: "Orologerie", teacher: "Dorin Simoiu" });
+    expect(parseCellText("MCS (L) Orologerie 405 Stoia Andreea")).toMatchObject({ room: "Orologerie 405", teacher: "Stoia Andreea" });
+    expect(parseCellText("M (S) 112 Orologerie")).toMatchObject({ kind: "seminar", room: "112 Orologerie" });
+    expect(parseCellText("MEF (L) Clădirea Orologerie Sala 206 Orologerie")).toMatchObject({ room: "206 Orologerie", teacher: null });
+    // "Chimie Centru" is another building than the faculty's: it is not shortened to "Chimie".
+    expect(parseCellText("Etică (c) Amf. C3 Sală (Chimie Centru)").room).not.toMatch(/Chimie$/);
+    // A room that already names its building stays as written.
+    expect(parseCellText("Management și marketing (c)  I. Tăucean\namf. A0 MPT")).toMatchObject({ room: "A0 MPT", teacher: "I. Tăucean" });
+    expect(parseCellText("MM (s) sapt 1-7\nsala SPM205")).toMatchObject({ room: "SPM205" });
+  });
+
+  it("separates the lecturer written after the room", () => {
+    expect(parseCellText("Materiale si nanomateriale (C)-MN sala M204 Conf. univ. dr. ing. Carmen OPRIȘ")).toMatchObject({
+      name: "Materiale si nanomateriale", kind: "course", room: "M204", teacher: "Conf. univ. dr. ing. Carmen OPRIȘ",
+    });
+    expect(parseCellText("Chimie (C) sala M306 Prof.dr Ing. Narcis DUȚEANU")).toMatchObject({ room: "M306", teacher: "Prof.dr Ing. Narcis DUȚEANU" });
+    expect(parseCellText("Physics (C) room C 301B Prof. univ. dr. ing. Adrian PALCU")).toMatchObject({ room: "C 301B", teacher: "Prof. univ. dr. ing. Adrian PALCU" });
+    expect(parseCellText("Economie generală (C) sala M 204 Conf.dr.ec. M. Vartolomei (săpt. 1-10)")).toMatchObject({ room: "M 204", teacher: "M. Vartolomei", weeks: "1-10" });
+    expect(parseCellText("AM (s) - sala A110 A. Gaina")).toMatchObject({ kind: "seminar", room: "A110", teacher: "A. Gaina" });
+    expect(parseCellText("Germana (s) - sala 304 CP A. Dascalu-Romitan")).toMatchObject({ room: "304 CP", teacher: "A. Dascalu-Romitan" });
+    expect(parseCellText("BMS (c) sala MEC-N303 C. Zimbru")).toMatchObject({ room: "MEC-N303", teacher: "C. Zimbru" });
+    // "impar" and "par" after the room say which weeks, not where.
+    expect(parseCellText("IA (L) sala 311 impar")).toMatchObject({ kind: "lab", room: "311", weeks: "odd" });
+    expect(parseCellText("IA (L) sala 311 par")).toMatchObject({ room: "311", weeks: "even" });
+    // FSC writes the surname first: "Dejica D." teaches in Ca3.
+    expect(parseCellText("Mediere lingvistică și culturală E (c) Dejica D. Ca3")).toMatchObject({ teacher: "Dejica D.", room: "Ca3" });
+    expect(parseCellText("Fundamente ale ştiinţelor comunicării (c) Suciu L. Ca3")).toMatchObject({ teacher: "Suciu L.", room: "Ca3" });
+  });
+
+  it("reads how many weeks a course runs, however the faculty writes it", () => {
+    // MEC: "primele 10 săptămâni" in year 2, shortened to "10 săpt" in years 3 and 4.
+    expect(parseCellText("Metode numerice II (MEF) (curs) 10 săpt")).toMatchObject({ kind: "course", weeks: "1-10" });
+    expect(parseCellText("Economie Generală (curs – M 204) 10 săpt.").weeks).toBe("1-10");
+    expect(parseCellText("Bazele sistemelor automate (curs – M 204) 7 săpt.").weeks).toBe("1-7");
+    expect(parseCellText("Simulări numerice (C), Sala M107 sapt. (1-11)")).toMatchObject({ weeks: "1-11", room: "M107" });
+    expect(parseCellText("GAC (L) s:1- 9 sala 218").weeks).toBe("1-9");
+    expect(parseCellText("Comunicare(c) S8-S14 A316")).toMatchObject({ weeks: "8-14", room: "A316" });
+    // A slot list keeps its room: "- A315" is not an acronym.
+    expect(parseCellText("AAP (l) - A315 Luni 16-18 (Sgr 1), 18-20 (Sgr. 2)")).toMatchObject({ room: "A315", abbr: "AAP" });
+    expect(parseCellText("TAS (l) - ASPC 1 Marti 8-10 (Sgr 1), 10-12 (Sgr 2)").room).toBe("ASPC 1");
+    expect(parseCellText("PS 3 (S) 401 A,B,C ultimele 7 sapt.")).toMatchObject({ weeks: "8-14", teacher: null });
+    expect(parseCellText("Proiectare asist de calc. 2 (C) Keller 401 A,B,C (primele 7 sapt.)")).toMatchObject({ weeks: "1-7", room: "401 A,B,C", teacher: "Keller" });
+    expect(parseCellText("Măsurări și traductoare (c) C. Dughir s1-s10 ,sala ASPC")).toMatchObject({ weeks: "1-10", room: "ASPC", teacher: "C. Dughir" });
+    expect(parseCellText("Construcţii Civile (CC), curs, [S1-S12]*, M014, L. Fechete")).toMatchObject({ weeks: "1-12", room: "M014", teacher: "L. Fechete" });
+    expect(parseCellText("Ingineria suprafeţelor (IS), Curs, SPM104, Prof. Uţu, [S1-S10]")).toMatchObject({ weeks: "1-10", room: "SPM104", teacher: "Prof. Uţu" });
+    expect(parseCellText("- APA (C) S1-S10 -").weeks).toBe("1-10");
+    expect(parseCellText("Etica si integritate academica - Saptamana 1 - 7 - sala LV Stanici M.").weeks).toBe("1-7");
+    // Seven weeks of lab and seven of project fill the semester.
+    expect(parseCellText("DEA (laborator 7 săpt + proiect 7 săpt) M206 L Mihon").weeks).toBe("all");
+    // A range cut off by the end of the cell says nothing.
+    expect(parseCellText("GAC (L) s:1-").weeks).toBe("all");
+    // An hour load is not a week limit.
+    expect(parseCellText("Sisteme mobile si aplicatii (c)  M. Marcu\nsala 303CP 2h/12sapt").weeks).toBe("all");
+    expect(parseCellText("Proiect (p) 14 săpt x 2h").weeks).toBe("all");
+  });
+
   it("keeps untyped cells as-is", () => {
     expect(parseCellText("TUTORIERE Ca3")).toMatchObject({ name: "TUTORIERE", kind: "other", room: "Ca3" });
   });
@@ -386,6 +452,15 @@ describe("printed and interactive timetables", () => {
       name: "Circuite", kind: "course", room: "A 101", teacher: "Conf.dr. I. Pop", weeks: "2-13",
     });
     expect(parseCellText("Materiale (curs) ‐ primele 10 săptămâni").weeks).toBe("1-10");
+    // IEE years 2-4: SP and SI are even and odd weeks, never a lecturer.
+    expect(electricalCell("TCE, lab, SP, C304")).toMatchObject({ name: "TCE", kind: "lab", room: "C304", weeks: "even", teacher: null });
+    expect(electricalCell("CS2, lab, D010 S.I.")).toMatchObject({ kind: "lab", room: "D010", weeks: "odd", teacher: null });
+    expect(electricalCell("CS2, pr, SP, s8-14 D010")).toMatchObject({ kind: "project", weeks: "8-14&even", room: "D010" });
+    expect(electricalCell("SIAA, lab, S.I C423")).toMatchObject({ kind: "lab", weeks: "odd", room: "C423" });
+    expect(electricalCell("GAC (L) s:1- 9 SPM Et. II sala 218")).toMatchObject({ name: "GAC", kind: "lab", weeks: "1-9", room: "218 SPM", teacher: null });
+    expect(electricalCell("Facultatea de Chimie, sala A2, Curs de pregătire la Fizică, Prof.dr.fiz. Nicolina POP")).toMatchObject({
+      name: "Curs de pregătire la Fizică", room: "A2 Chimie", teacher: "Prof.dr.fiz. Nicolina POP",
+    });
   });
 
   it("inherits the day and half-hour range for FIH rows while keeping subgroup and week restrictions", () => {
