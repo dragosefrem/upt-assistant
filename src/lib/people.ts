@@ -29,6 +29,8 @@ export interface BusyTime {
   endMin: number;
   /** A class or exam title; null when the time is private. */
   what: string | null;
+  /** Where it is held, when the person shares that too. */
+  room?: string | null;
 }
 
 const fold = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
@@ -76,9 +78,11 @@ export function personBusy(person: Person, from: string, to: string): BusyTime[]
   if (person.kind === "saved") {
     return person.groupId ? groupBusy(person.groupId, from, to).map((b) => ({ date: b.date, startMin: b.startMin, endMin: b.endMin, what: b.title })) : [];
   }
+  // contactEvents has already left out what this person does not share.
   return contactEvents(person, from, to).map((event) => ({
     date: event.date, startMin: event.startMin, endMin: event.endMin,
     what: event.kind === "busy" ? null : event.title,
+    room: event.kind === "busy" ? null : event.room,
   }));
 }
 

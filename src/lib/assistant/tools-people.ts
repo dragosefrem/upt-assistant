@@ -65,13 +65,16 @@ function failure(error: unknown) {
 export const PEOPLE_TOOLS: AssistantTool[] = [
   {
     name: "lookup_contact",
-    description: "Look up an exact account e-mail supplied by the student. Returns that person's name and the existing request or connection status.",
+    description: "Check an exact e-mail address supplied by the student before sending a contact request: whether a request can be sent to it and the existing request or connection status. The name behind an address is returned only for someone the student is already connected with or has a request with; never guess or state whose address it is otherwise.",
     input_schema: { type: "object", properties: { email: { type: "string" } }, required: ["email"] },
     run(input, { user }) {
       const { person, error } = lookupContact(str(input.email) ?? "");
       if (!person) return { error };
       const link = contactList(user.id).find(c => c.id === person.id);
-      return { name: person.name, email: person.email, own_account: person.id === user.id,
+      const own = person.id === user.id;
+      // No page of the app turns an address into a name. A stranger's name stays private until
+      // they accept: the request itself tells them who is asking.
+      return { ...(link || own ? { name: person.name } : {}), email: person.email, own_account: own, can_send_request: !link && !own,
         connection: !link ? "none" : link.accepted ? "linked" : link.requestedBy === user.id ? "sent" : "received" };
     },
   },
@@ -191,7 +194,9 @@ export const PEOPLE_TOOLS: AssistantTool[] = [
         ...describePerson(person),
         from: input.from,
         to,
-        busy: busy.map((b) => ({ date: b.date, weekday: DAY_NAMES[weekday(b.date)], time: span(b.startMin, b.endMin), what: b.what ?? "busy" })),
+        // The same details as the contact's schedule page: a room only where they share it.
+        busy: busy.map((b) => ({ date: b.date, weekday: DAY_NAMES[weekday(b.date)], time: span(b.startMin, b.endMin), what: b.what ?? "busy",
+          ...(b.room ? { room: b.room } : {}) })),
         note: busy.length ? undefined : "Nothing in that period.",
       };
     },

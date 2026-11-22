@@ -257,6 +257,10 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     expect(status(719)).toEqual(lab);
     expect(status(720)).toEqual({ state: "free" });
 
+    // Poli sees what the contact's schedule page shows, the room included.
+    expect(call("contact_schedule", { from: date, person: "Mihai" }).busy).toContainEqual(
+      expect.objectContaining({ what: "Programarea calculatoarelor", room: "B418", time: "10:00–12:00" }));
+
     const share = (enabled: boolean) =>
       getDb().update(users).set({ shareActivityDetails: enabled }).where(eq(users.id, mihai.id)).run();
     share(false);
@@ -271,10 +275,27 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
       expect(call("who_is_free", { date, start: "10:00", people: ["Mihai"] }).busy[0].busy_with).toEqual(["busy 10:00–12:00"]);
       const schedule = call("contact_schedule", { from: date, person: "Mihai" });
       expect(schedule.busy.map((e: Any) => e.what)).toEqual(["busy", "busy"]);
+      expect(schedule.busy.some((e: Any) => "room" in e)).toBe(false);
     } finally {
       share(true);
     }
     expect(status(600)).toEqual(lab);
+  });
+
+  it("does not tell whose e-mail address it is unless the two students are already in touch", () => {
+    const db = getDb();
+    const stranger = db.insert(users).values({ id: "s-stranger", email: "stranger@example.com", name: "Sabina Străinu", passwordHash: "x", feedToken: "s-stranger" }).returning().get();
+    try {
+      // Someone with no tie to Ana: Poli can offer to send a request, and learns no name to repeat.
+      const unknown = call("lookup_contact", { email: "stranger@example.com" });
+      expect(unknown).toMatchObject({ connection: "none", can_send_request: true });
+      expect(JSON.stringify(unknown)).not.toContain("Sabina");
+      // A linked contact is someone Ana already knows by name.
+      expect(call("lookup_contact", { email: "s-mihai@example.com" })).toMatchObject({ name: "Mihai Ionescu", connection: "linked", can_send_request: false });
+      expect(call("lookup_contact", { email: "nobody@example.com" })).toEqual({ error: "noAccount" });
+    } finally {
+      db.delete(users).where(eq(users.id, stranger.id)).run();
+    }
   });
 
   it("answers \"who is free?\" through the assistant, for everyone or for the people named", () => {
