@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { useT } from "@/i18n/client";
-import { askAssistant } from "./Mascot";
-
 import { readChecklist, updateChecklist, watchChecklist } from "@/lib/guide-checklist";
+import { AskPoli } from "./AskPoli";
 
 const snapshot = () => JSON.stringify(readChecklist());
 const empty = () => "[]";
@@ -45,13 +44,11 @@ export function GuideChecklist() {
                 <p className={`text-sm font-semibold ${checked ? "text-slate-500 line-through decoration-slate-300" : "text-slate-900"}`}>{step.title}</p>
                 <p className="mt-0.5 text-sm leading-relaxed text-slate-600">{step.body}</p>
                 <p className="mt-2 flex flex-wrap gap-2">
-                  {step.href && step.action && (
+                  {step.href && (
                     <Link href={step.href} className="btn-secondary px-3 py-1.5 text-xs">{step.action} →</Link>
                   )}
                   {step.ask && (
-                    <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => askAssistant(step.ask!)}>
-                      💬 {t.firstWeek.askPoli(step.ask)}
-                    </button>
+                    <AskPoli question={step.ask} className="btn-secondary px-3 py-1.5 text-xs">{step.action}</AskPoli>
                   )}
                 </p>
               </div>
