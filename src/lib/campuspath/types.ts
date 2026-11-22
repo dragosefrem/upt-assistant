@@ -46,6 +46,8 @@ export interface Classroom {
   name: string;
   label: string;
   area: string;
+  /** What timetables call the building, such as "MPT" for Str. Remus 14. */
+  areaAliases?: string[];
   faculties: string[];
   level: string | null;
   coverage: Coverage;

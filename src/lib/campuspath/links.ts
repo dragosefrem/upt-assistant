@@ -230,7 +230,7 @@ export function pickByHint(options: CampusPlace[], hint: string | undefined): Cl
   for (const option of options) {
     if (typeof option.index !== "string") continue;
     const room = option as Classroom;
-    const have = wordsOf([room.area, ...room.faculties].join(" "));
+    const have = wordsOf([room.area, ...(room.areaAliases ?? []), ...room.faculties].join(" "));
     let score = 0;
     for (const word of wanted) if (have.has(word)) score++;
     if (score > bestScore) {
@@ -242,4 +242,15 @@ export function pickByHint(options: CampusPlace[], hint: string | undefined): Cl
     }
   }
   return bestScore > 0 && !tied ? best : null;
+}
+
+/**
+ * Settles a code that exists in several buildings for a class from a timetable. The building
+ * the timetable names decides alone: when none of the rooms is in it, nobody is sent to another
+ * building because their faculty teaches there. The student's faculty only helps when the
+ * timetable names no building.
+ */
+export function pickForTimetable(options: CampusPlace[], known: { building?: string; faculty?: string }): Classroom | null {
+  if (known.building?.trim()) return pickByHint(options, known.building);
+  return pickByHint(options, known.faculty);
 }

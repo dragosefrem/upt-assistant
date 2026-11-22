@@ -29,7 +29,10 @@ interface Start {
 interface PlanInput {
   prompt: string;
   destination?: number | string;
+  /** The building the timetable names for the room. */
   hint?: string;
+  /** The student's faculty: settles a timetable room whose building is not named. */
+  faculty?: string;
   /** Start at the building entrance nearest the room, whatever is chosen in the planner. */
   auto?: boolean;
   /** A starting place a link named in words. */
@@ -69,12 +72,15 @@ function recalledStart(): Start | null {
 export function CampusPage({
   initial,
   rooms,
+  faculty,
   hasSemester,
   admin,
   mapsKey,
 }: {
   initial: CampusLink;
   rooms: TimetableRoom[];
+  /** The student's faculty, by name. A room's building is a guess when it is this one. */
+  faculty: string | null;
   hasSemester: boolean;
   admin: boolean;
   /** A Google Maps Embed API key, if configured; otherwise the keyless embed is used. */
@@ -164,7 +170,7 @@ export function CampusPage({
       focusNextResult.current = !quiet;
       setBusy("route");
       if (!quiet) reveal(resultBox.current);
-      const body: PlanBody = { prompt: input.prompt, destination: input.destination, hint: input.hint };
+      const body: PlanBody = { prompt: input.prompt, destination: input.destination, hint: input.hint, faculty: input.faculty };
       const fromText = input.auto ? null : (input.from ?? startText);
       if (from) body.start = from.index;
       else if (fromText) body.from = fromText;
@@ -252,13 +258,16 @@ export function CampusPage({
       const input: PlanInput = {
         prompt: initial.to,
         destination: initial.dest,
-        hint: initial.building,
+        // A class whose building the timetable does not name is placed in the student's faculty
+        // as a guess. That guess must not outvote a building the room really is in.
+        hint: initial.building && initial.building !== faculty ? initial.building : undefined,
+        faculty: faculty ?? undefined,
         auto: !initial.from,
         from: first ? undefined : initial.from,
       };
       void plan(input, first, true);
     }
-  }, [initial, plan]);
+  }, [initial, plan, faculty]);
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -275,7 +284,7 @@ export function CampusPage({
     setBrowsing(false);
     setPrompt(room.room);
     applyContext({ building: room.building ?? undefined });
-    void plan({ prompt: room.room, hint: room.hint });
+    void plan({ prompt: room.room, hint: room.guessed ? undefined : (room.building ?? undefined), faculty: faculty ?? undefined });
   };
 
   const takeRoom = (room: Classroom) => {

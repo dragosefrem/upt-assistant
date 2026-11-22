@@ -9,6 +9,7 @@ import {
   parseCampusLink,
   parseMediaName,
   pickByHint,
+  pickForTimetable,
   rankPins,
   routeEntrance,
   routeLink,
@@ -181,6 +182,24 @@ describe("Locate me and rooms that share a code", () => {
     expect(pickByHint([electro, { ...aspc, area: "Electro · annex" }], "Electro")).toBeNull();
   });
 
+  it("lets the timetable's building decide alone, and the faculty only when no building is named", () => {
+    // Options as the service lists them for "A1" and "A206" (2026-27 catalogue).
+    const mpt = room({ index: "room:remus-a1", code: "A1", area: "Str. Remus 14", areaAliases: ["MPT"], faculties: ["Management în Producție și Transporturi"] });
+    const chimie = room({ index: "room:chimie-a1", code: "A1", area: "Chimie · Bd. Vasile Pârvan 6", faculties: ["Inginerie Chimică", "Automatică și Calculatoare"] });
+    const ac = "Facultatea de Automatică și Calculatoare";
+    // An MPT student's own amphitheatre: the app calls the building "Facultatea MPT".
+    expect(pickByHint([mpt, chimie], "Facultatea MPT")?.index).toBe("room:remus-a1");
+    // An AC student whose timetable says "A1 MPT" is not sent to Chimie because AC teaches there.
+    expect(pickForTimetable([mpt, chimie], { building: "Facultatea MPT", faculty: ac })?.index).toBe("room:remus-a1");
+    expect(pickForTimetable([mpt, chimie], { faculty: ac })?.index).toBe("room:chimie-a1");
+    // "A206 SPM": neither A206 is in SPM, so nothing is picked on the faculty's say-so.
+    const aspc = room({ index: "room:aspc-a206", code: "A206", area: "ASPC · Str. Petre Râmneanțu", areaAliases: ["ASPC"], faculties: ["Științe ale Comunicării"] });
+    const electro = room({ index: "room:electro-a206", code: "A206", area: "Electro · Bd. Vasile Pârvan 2", faculties: ["Electronică și Telecomunicații"] });
+    expect(pickForTimetable([aspc, electro], { building: "Clădirea SPM", faculty: "Facultatea de Științe ale Comunicării" })).toBeNull();
+    expect(pickForTimetable([aspc, electro], { faculty: "Facultatea de Științe ale Comunicării" })?.index).toBe("room:aspc-a206");
+    expect(pickForTimetable([aspc, electro], {})).toBeNull();
+  });
+
   it("groups a timetable by room with the kinds held there", () => {
     const rooms = groupRooms(
       [
@@ -190,13 +209,13 @@ describe("Locate me and rooms that share a code", () => {
         { title: "Physics", kind: "course", room: "ONLINE" },
         { title: "Sport", kind: "other", room: null },
       ],
-      (r) => ({ name: r.startsWith("B") ? "Clădirea Electro" : "Corp A", approximate: false }),
+      (r) => (r.startsWith("B") ? { name: "Clădirea Electro", approximate: false } : { name: "Facultatea de Automatică și Calculatoare", approximate: true, guessed: true }),
       "ro",
-      "Facultatea de Automatică și Calculatoare",
     );
     expect(rooms.map((r) => r.room)).toEqual(["A315", "B018"]);
-    expect(rooms[0]).toMatchObject({ classes: 2, building: "Corp A", courses: [{ title: "Programming", kinds: ["Curs", "Laborator"] }] });
-    expect(rooms[1].hint).toBe("Clădirea Electro Facultatea de Automatică și Calculatoare");
+    expect(rooms[0]).toMatchObject({ classes: 2, building: "Facultatea de Automatică și Calculatoare", guessed: true, courses: [{ title: "Programming", kinds: ["Curs", "Laborator"] }] });
+    // The building a rule matched is what settles a duplicate code; a guess is marked as one.
+    expect(rooms[1]).toMatchObject({ building: "Clădirea Electro", guessed: false });
   });
 });
 

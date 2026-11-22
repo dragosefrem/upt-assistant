@@ -34,7 +34,10 @@ export interface PlanBody {
   from?: string;
   start?: number | string;
   destination?: number | string;
+  /** The building a timetable names for the room. */
   hint?: string;
+  /** The student's faculty, for a timetable room whose building is not named. */
+  faculty?: string;
 }
 
 const get = { cache: "no-store" } as const;

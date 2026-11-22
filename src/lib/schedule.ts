@@ -90,7 +90,10 @@ export interface Place {
   address: string | null;
   lat: number;
   lng: number;
+  /** The position on the map is approximate, or the building itself is a guess. */
   approximate: boolean;
+  /** No rule matched the room code: this is the student's own faculty building, as a guess. */
+  guessed?: boolean;
 }
 
 export type Semester = typeof semesters.$inferSelect & { weeks: string[] };
@@ -142,7 +145,7 @@ export function placeResolver(facultyId: number | null) {
     }
     // An unrecognised room is most likely in the student's own faculty building.
     if (faculty?.lat != null && faculty.lng != null) {
-      return { name: faculty.name, address: faculty.address, lat: faculty.lat, lng: faculty.lng, approximate: true };
+      return { name: faculty.name, address: faculty.address, lat: faculty.lat, lng: faculty.lng, approximate: true, guessed: true };
     }
     return null;
   };

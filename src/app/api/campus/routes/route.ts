@@ -28,14 +28,16 @@ export async function POST(request: Request) {
     const prompt = text(body.prompt, 1000);
     const from = text(body.from, 200);
     const hint = text(body.hint, 300);
+    const faculty = text(body.faculty, 300);
     const start = choice(body.start);
     const destination = choice(body.destination);
-    if ([prompt, from, hint, start, destination].includes(null)) return campusError(400, t.campus.api.badRequest);
-    const req: PlanRequest & { hint?: string } = { prompt: prompt ?? "", lang };
+    if ([prompt, from, hint, faculty, start, destination].includes(null)) return campusError(400, t.campus.api.badRequest);
+    const req: PlanRequest & { hint?: string; faculty?: string } = { prompt: prompt ?? "", lang };
     if (from?.trim()) req.from = from.trim();
     if (start !== undefined && start !== null) req.start = start;
     if (destination !== undefined && destination !== null) req.destination = destination;
     if (hint?.trim()) req.hint = hint.trim();
+    if (faculty?.trim()) req.faculty = faculty.trim();
     const outcome = await planRoute(req);
     return Response.json(outcome.kind === "question" ? { question: outcome.question } : { route: outcome.route });
   });

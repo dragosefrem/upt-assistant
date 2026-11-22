@@ -20,13 +20,15 @@ export default async function CampusRoute({ searchParams }: PageProps<"/campus">
   const link = parseCampusLink(await searchParams);
   const semester = currentSemester();
   const place = placeResolver(user.facultyId);
-  const rooms = semester ? groupRooms(studentWeek(user, semester), place, locale, facultyOf(user.facultyId)?.name ?? null) : [];
+  const faculty = facultyOf(user.facultyId)?.name ?? null;
+  const rooms = semester ? groupRooms(studentWeek(user, semester), place, locale) : [];
   return (
     <CampusPage
       // A new address (a link from elsewhere in the app) starts the page over.
       key={[locale, link.from, link.to, link.dest, link.building, link.at, link.date, link.course].join("|")}
       initial={link}
       rooms={rooms}
+      faculty={faculty}
       hasSemester={!!semester}
       admin={user.role === "admin"}
       mapsKey={process.env.GOOGLE_MAPS_EMBED_KEY?.trim() || null}

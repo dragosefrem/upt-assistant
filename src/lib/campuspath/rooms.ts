@@ -7,10 +7,10 @@ export interface TimetableRoom {
   room: string;
   /** The building the timetable places it in, if known. */
   building: string | null;
-  /** The building is a guess (the student's faculty), not a match on the room code. */
+  /** The building's position is approximate, or the building is a guess. */
   approximate: boolean;
-  /** Words that tell apart rooms with the same code in different buildings. */
-  hint: string;
+  /** The building is a guess (the student's faculty), not a match on the room code. */
+  guessed: boolean;
   /** Classes a week held there. */
   classes: number;
   courses: { title: string; kinds: string[] }[];
@@ -25,6 +25,7 @@ interface Entry {
 interface Place {
   name: string;
   approximate: boolean;
+  guessed?: boolean;
 }
 
 /** "c 219" and "C219" are the same room. */
@@ -40,7 +41,6 @@ export function groupRooms(
   entries: Entry[],
   place: (room: string) => Place | null,
   locale: Locale,
-  faculty: string | null = null,
 ): TimetableRoom[] {
   const rooms = new Map<string, { room: string; place: Place | null; classes: number; courses: Map<string, Set<string>> }>();
   for (const entry of entries) {
@@ -63,7 +63,7 @@ export function groupRooms(
       room: item.room,
       building: item.place?.name ?? null,
       approximate: item.place?.approximate ?? false,
-      hint: [item.place?.name, faculty].filter(Boolean).join(" "),
+      guessed: item.place?.guessed ?? false,
       classes: item.classes,
       courses: [...item.courses].map(([title, kinds]) => ({
         title,

@@ -1,7 +1,7 @@
 import "server-only";
 import { request as httpRequest } from "node:http";
 import type { Locale } from "@/i18n/config";
-import { appVideo, isVideoKey, pickByHint, type MediaKind } from "./links";
+import { appVideo, isVideoKey, pickForTimetable, type MediaKind } from "./links";
 import { campuspathBase, campuspathLost, CampuspathUnavailable } from "./service";
 import type { CampusPlace, Checkpoint, ClassroomPage, Coverage, PlanOutcome, PlanRequest, Question, Route, VideoState } from "./types";
 
@@ -87,11 +87,12 @@ export function planOutcome(status: number, body: unknown): PlanOutcome {
 }
 
 /**
- * Plans a route. With `hint` (the building a timetable names), a code that exists in several
- * buildings is settled without asking when exactly one of them matches.
+ * Plans a route. With `hint` (the building a timetable names) or, when it names none, `faculty`
+ * (the student's own), a code that exists in several buildings is settled without asking when
+ * exactly one of them matches.
  */
-export async function planRoute(input: PlanRequest & { hint?: string }): Promise<PlanOutcome> {
-  const { hint, ...request } = input;
+export async function planRoute(input: PlanRequest & { hint?: string; faculty?: string }): Promise<PlanOutcome> {
+  const { hint, faculty, ...request } = input;
   const send = async (body: PlanRequest) => {
     const response = await campuspathFetch("/api/routes", {
       method: "POST",
@@ -102,7 +103,7 @@ export async function planRoute(input: PlanRequest & { hint?: string }): Promise
   };
   const outcome = await send(request);
   if (outcome.kind === "question" && outcome.question.field === "destination" && request.destination === undefined) {
-    const pick = pickByHint(outcome.question.options, hint);
+    const pick = pickForTimetable(outcome.question.options, { building: hint, faculty });
     if (pick) return send({ ...request, destination: pick.index });
   }
   return outcome;
