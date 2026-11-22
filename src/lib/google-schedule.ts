@@ -11,6 +11,7 @@ function sourceUid(e: CalEvent) {
   if (e.entryId) return "entry-" + e.entryId + (e.originalDate ? "-" + e.originalDate : "");
   if (e.examId) return "exam-" + e.examId;
   if (e.personalId) return "personal-" + e.personalId;
+  if (e.sponsoredEventId) return "sponsored-" + e.sponsoredEventId;
   return "group-" + e.groupEventId;
 }
 

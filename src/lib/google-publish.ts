@@ -44,7 +44,7 @@ export async function publishCalendar(user: User, locale: Locale, inventory: Goo
   for (const event of inventory) {
     const uid = event.extendedProperties?.private?.uptOrar;
     if (!uid || event.recurringEventId || event.status === "cancelled" || byId.has(event.id) || links.has(uid)) continue;
-    if (!/^(personal-\d+|exam-\d+|entry-\d+(?:-\d{4}-\d{2}-\d{2})?|group-[\w-]+)$/.test(uid)) continue;
+    if (!/^(personal-\d+|exam-\d+|entry-\d+(?:-\d{4}-\d{2}-\d{2})?|group-[\w-]+|sponsored-[a-f0-9]{64}|upt:\d+:.+)$/.test(uid)) continue;
     const link = db.insert(googleEventLinks).values({ userId: id, uid, googleId: event.id,
       base: local.get(uid) ?? remoteFields(event), origin: "poli" }).returning().get();
     links.set(uid, link);
@@ -109,6 +109,7 @@ export async function publishCalendar(user: User, locale: Locale, inventory: Goo
       const observed = remoteFields(current);
       const prior = link.remote && link.remote.status !== "cancelled" ? remoteFields(link.remote) : null;
       const patch: Partial<CalendarFields> = {};
+      if (desired.transparency && desired.transparency !== current.transparency) patch.transparency = desired.transparency;
       for (const key of fieldNames) {
         if (equalField(key, desired, observed)) continue;
         // Google can normalize a value it accepted, such as a timezone or recurrence line.

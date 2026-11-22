@@ -2,6 +2,23 @@ import { plural } from "../config";
 
 /** Texts for the calendar home page: welcome card, "next up", the calendar, its dialogs, travel tips and Poli. */
 const en = {
+  subscription: {
+    name: "Evenimente UPT",
+    intro: "Automatically show university events when you’re free.",
+    subscribe: "Subscribe",
+    subscribed: "Subscribed",
+    unsubscribe: "Unsubscribe from Evenimente UPT",
+    updating: "Saving…",
+    enabled: "Subscription saved. Your calendar will update automatically.",
+    disabled: "University calendar removed.",
+    empty: "No university events fit this period.",
+    browse: "Browse UPT events",
+    matches: (n: number) => `${n} university ${n === 1 ? "event fits" : "events fit"} your schedule in this view.`,
+    source: "View event on upt.ro",
+    location: "Location",
+    access: "Admission",
+    failed: "Couldn’t save your subscription. Try again.",
+  },
   page: {
     heading: "My timetable",
     title: "Calendar",
@@ -133,6 +150,24 @@ const en = {
 };
 
 const ro: typeof en = {
+  subscription: {
+    name: "Evenimente UPT",
+    intro: "Vezi automat evenimentele universității când ai timp liber.",
+    subscribe: "Abonează-te",
+    subscribed: "Abonat",
+    unsubscribe: "Dezabonează-te de la Evenimente UPT",
+    updating: "Se salvează…",
+    enabled: "Abonamentul a fost salvat. Calendarul se actualizează automat.",
+    disabled: "Calendarul universității a fost eliminat.",
+    empty: "Niciun eveniment UPT nu se potrivește în această perioadă.",
+    browse: "Vezi lista UPT",
+    matches: (n: number) => n === 1 ? "Un eveniment UPT se potrivește cu orarul tău în această perioadă."
+      : `${n} ${plural("ro", n, { one: "eveniment UPT", few: "evenimente UPT", other: "de evenimente UPT" })} se potrivesc cu orarul tău în această perioadă.`,
+    source: "Vezi evenimentul pe upt.ro",
+    location: "Loc",
+    access: "Acces",
+    failed: "Abonamentul nu a putut fi salvat. Încearcă din nou.",
+  },
   page: {
     heading: "Orarul meu",
     title: "Calendar",

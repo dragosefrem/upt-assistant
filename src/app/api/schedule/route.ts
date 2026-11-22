@@ -7,6 +7,8 @@ import { getUser } from "@/lib/auth";
 import { queueGoogleSync } from "@/lib/google-worker";
 import { resetGoogleClass } from "@/lib/google-schedule";
 import { editedInterval, personalTimes } from "@/lib/calendar-timing";
+import { respondToSponsoredEvent } from "@/lib/sponsored-events";
+import { setUptSubscription } from "@/lib/upt-events";
 
 /** A student's personal changes to their own timetable. */
 const personal = {
@@ -36,6 +38,8 @@ const Body = z.discriminatedUnion("action", [
   z.object({ action: z.literal("addPersonal"), ...personal }),
   z.object({ action: z.literal("updatePersonal"), id: z.number().int(), ...personal }),
   z.object({ action: z.literal("deletePersonal"), id: z.number().int() }),
+  z.object({ action: z.literal("sponsored"), id: z.hash("sha256"), choice: z.enum(["save", "hide", "undoHide", "remove"]) }),
+  z.object({ action: z.literal("uptSubscription"), subscribed: z.boolean() }),
 ]);
 
 export async function POST(request: Request) {
@@ -58,6 +62,14 @@ export async function POST(request: Request) {
       .get();
 
   switch (body.action) {
+    case "uptSubscription":
+      setUptSubscription(user.id, body.subscribed);
+      break;
+    case "sponsored":
+      if (!respondToSponsoredEvent(user.id, body.id, body.choice)) {
+        return Response.json({ error: t.sponsored.errors.unavailable }, { status: 409 });
+      }
+      break;
     case "hide":
     case "move": {
       if (!ownsEntry(body.entryId)) return Response.json({ error: t.calendar.api.unknownClass }, { status: 404 });

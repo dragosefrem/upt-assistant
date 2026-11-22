@@ -15,6 +15,9 @@ it.each([
   { version: "contact discovery integration", applied: [6, 7, 8, 9, 10, 11] },
   { version: "contact status", applied: [6, 12] },
   { version: "contact status integration", applied: [6, 7, 8, 9, 10, 11, 12] },
+  { version: "calendar subscription revisions", applied: [6, 7, 8, 9, 10, 11, 12, 15] },
+  { version: "sponsored events", applied: [6, 13] },
+  { version: "UPT event calendar", applied: [6, 13, 14] },
 ])("upgrades a database from $version in place", ({ applied }) => {
   const sqlite = new Database(":memory:");
   try {
@@ -44,13 +47,21 @@ it.each([
     if (applied.includes(10)) sqlite.prepare("UPDATE chat_messages SET card = ?").run(card);
     if (applied.includes(11)) sqlite.exec("UPDATE attendance SET occurrence_key = '2026-11-19'");
     if (applied.includes(12)) sqlite.exec("UPDATE users SET share_activity_details = 0");
+    if (applied.includes(13)) {
+      sqlite.exec("INSERT INTO sponsored_events(id,title,sponsor,location,description,date,start_min,end_min,faculty_ids,years) VALUES ('fair','Career fair','Partner','Hall','','2026-11-23',720,780,'[]','[]')");
+      sqlite.exec("INSERT INTO sponsored_responses(user_id,event_id,response) VALUES ('student','fair','saved')");
+    }
+    if (applied.includes(14)) sqlite.exec("INSERT INTO upt_event_subscriptions(user_id) VALUES ('student')");
+    if (applied.includes(15)) sqlite.exec("INSERT INTO calendar_feed_revisions(user_id,uid,fingerprint,sequence,modified_at) VALUES ('student','entry-1','previous',3,123)");
     migrateDatabase(sqlite, "drizzle");
     migrateDatabase(sqlite, "drizzle");
     const verified = sqlite.prepare("SELECT email_verified_at FROM users").pluck().get();
     expect(verified).toBe(applied.includes(6) ? "2026-11-21" : null);
     expect(sqlite.prepare("SELECT share_activity_details FROM users").pluck().get()).toBe(applied.includes(12) ? 0 : 1);
     expect(sqlite.prepare("SELECT count(*) FROM registration_links").pluck().get()).toBe(0);
-    expect(sqlite.prepare("SELECT count(*) FROM calendar_feed_revisions").pluck().get()).toBe(0);
+    expect(sqlite.prepare("SELECT sequence FROM calendar_feed_revisions").pluck().all()).toEqual(applied.includes(15) ? [3] : []);
+    expect(sqlite.prepare("SELECT response FROM sponsored_responses").pluck().all()).toEqual(applied.includes(13) ? ["saved"] : []);
+    expect(sqlite.prepare("SELECT user_id FROM upt_event_subscriptions").pluck().all()).toEqual(applied.includes(14) ? ["student"] : []);
     sqlite.exec("INSERT OR IGNORE INTO google_sync_state(user_id) VALUES ('student')");
     expect(sqlite.prepare("SELECT mode FROM google_sync_state").pluck().get()).toBe(applied.includes(7) && !applied.includes(8) ? "two_way" : "one_way");
     expect(sqlite.prepare("SELECT cursor FROM google_sync_state").pluck().get())

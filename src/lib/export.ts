@@ -6,6 +6,7 @@ import { calendarFeedRevisions, googleEventLinks, googleExceptions, personalEven
 import { DEFAULT_LOCALE, type Locale } from "@/i18n/config";
 import { common } from "@/i18n/messages/common";
 import { settings } from "@/i18n/messages/settings";
+import { sponsoredNote } from "@/i18n/messages/sponsored";
 import type { User } from "./auth";
 import type { CalendarTime, CalendarTiming } from "./calendar-types";
 import { instant, personalTimes, timingOf } from "./calendar-timing";
@@ -13,8 +14,9 @@ import { sharedEventsFor } from "./group-events";
 import { isPublicHoliday } from "./holidays";
 import { kindLabel } from "./kinds";
 import { EVENT_NOTICE_MINUTES } from "./notification-timing";
-import { currentSemester, examsForUser, occurrenceMoves, placeResolver, studentWeek, type Semester } from "./schedule";
+import { currentSemester, examsForUser, occurrenceMoves, placeResolver, savedSponsoredEvents, studentWeek, type Semester } from "./schedule";
 import { TIME_ZONE, addDays, describeWeeks, formatDate, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
+import { isUptSubscriber, matchingUptEvents } from "./upt-events";
 
 /**
  * Calendar-neutral description of a student's timetable, shared by the .ics feed and
@@ -37,6 +39,7 @@ export interface ExportItem {
   exdates?: string[];
   /** Reminders, in minutes before the start. */
   alarms?: number[];
+  transparent?: boolean;
 }
 
 /** Exams remind a day and two hours before, so phones alert even with the app closed. */
@@ -140,6 +143,17 @@ export function sourceItems(user: User, locale: Locale = user.locale ?? "en"): E
   for (const e of sharedEventsFor(user.id)) {
     items.push({ uid: `group-${e.id}`, title: e.title, location: e.location ?? "", description: common[locale].kinds.shared,
       date: e.date, startMin: e.startMin, endMin: e.endMin });
+  }
+  for (const e of savedSponsoredEvents(user.id)) {
+    items.push({ uid: `sponsored-${e.id}`, title: e.title, location: e.location,
+      date: e.date, startMin: e.startMin, endMin: e.endMin,
+      description: sponsoredNote(e, locale) });
+  }
+  if (isUptSubscriber(user.id)) {
+    for (const e of matchingUptEvents(user)) {
+      items.push({ uid: e.id, title: e.title, description: [e.note, e.sourceUrl].filter(Boolean).join("\n"),
+        location: e.room ?? "", date: e.date, startMin: e.startMin, endMin: e.endMin, transparent: true });
+    }
   }
   return items.map((item) => ({ ...item, alarms: item.alarms ?? [EVENT_NOTICE_MINUTES] }));
 }
@@ -254,6 +268,7 @@ function calendarEventText(item: ExportItem): CalendarEventText {
   ];
   if (item.location) lines.push(`LOCATION:${escapeText(item.location)}`);
   if (item.description) lines.push(`DESCRIPTION:${escapeText(item.description)}`);
+  if (item.transparent) lines.push("TRANSP:TRANSPARENT");
   if (item.until) {
     // UNTIL is in UTC; the end of that day in UTC is safely after the last class.
     lines.push(`RRULE:FREQ=WEEKLY;UNTIL=${item.until.replace(/-/g, "")}T235959Z;BYDAY=${ICAL_WEEKDAYS[weekday(item.date) - 1]}`);
