@@ -124,15 +124,20 @@ class RoutingTests(unittest.TestCase):
             areas = {option["area"] for option in which.exception.options}
             self.assertIn("Inginerie Hunedoara", areas)
             self.assertGreater(len(areas), 1)
+            # The student's own campus comes first: Timișoara, unless they study in Hunedoara.
+            self.assertNotIn("Hunedoara", which.exception.options[0]["area"])
+            with self.assertRaises(RouteQuestion) as theirs:
+                self.tour.plan(request, "auto", lang="ro", home="hunedoara")
+            self.assertEqual(theirs.exception.options[0]["area"], "Inginerie Hunedoara")
         # Named in full, each is found without a question.
         self.assertEqual(self.tour.plan("Biblioteca UPT", "auto")["steps"][-1]["index"], 110)
         # A route that does end in Hunedoara says so first, in the language asked for.
         hunedoara = self.tour.plan("aula magna", "auto", lang="ro")
-        self.assertTrue(hunedoara["notice"].startswith("Locul acesta este în campusul din Hunedoara"))
-        self.assertIn("Hunedoara campus", self.tour.plan("aula magna", "auto")["notice"])
-        self.assertNotIn("Hunedoara", self.tour.plan("B419", "auto").get("notice", ""))
+        self.assertTrue(hunedoara["warning"].startswith("Locul acesta este în campusul din Hunedoara"))
+        self.assertIn("Hunedoara campus", self.tour.plan("aula magna", "auto")["warning"])
+        self.assertNotIn("warning", self.tour.plan("B419", "auto"))
         # A student of the Hunedoara faculty is not told where their own campus is.
-        self.assertNotIn("Hunedoara campus", self.tour.plan("aula magna", "auto", home="hunedoara").get("notice", ""))
+        self.assertNotIn("warning", self.tour.plan("aula magna", "auto", home="hunedoara"))
 
     def test_disconnected_component_and_same_location(self):
         isolated = next(i for i, s in self.tour.scenes.items() if not s["links"])
