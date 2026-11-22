@@ -99,7 +99,9 @@ export function electricalActivities(text: string): string[] {
 }
 
 /** Civil Engineering puts the room and lecturer on a second line below the title. */
-const civilRoom = /^(?:[Ss]al[aă]\s+)?(LG\s*\d+|[A-Z]{1,3}\s?-?\d+[a-z]?|PN|NM|V[Vv]|\d+)\b\s*(.*)$/u;
+// The halls are named by letters there: NM, PN, VV, MP, and the laboratories LN, LS, LI, LV, LE,
+// sometimes with the room in brackets ("LN (Ca2)").
+const civilRoom = /^(?:[Ss]al[aă]\s+)?(LG\s*\d+|[A-Z]{1,3}\s?-?\d+[a-z]?|(?:L[NSIVE]|MP)(?:\s*\(Ca\d\))?|PN|NM|V[Vv]|Rectorat|\d+)(?![\p{L}\d])\s*(.*)$/u;
 export function civilDetail(text: string) { return civilRoom.test(squash(text)); }
 
 /** A lecture is titled in capitals, with its lecturer after it: "GEOMETRIE DESCRIPTIVĂ C.Voicu". */
@@ -117,7 +119,7 @@ export function civilCell(raw: string) {
     // "NM (săpt. 5-11) Conf.dr.ing Ș.V. NICOARĂ": the weeks may be written between the room and the lecturer.
     const after = extractWeeks(detail[2]);
     if (after.weeks !== "all" && parsed.weeks === "all") parsed.weeks = after.weeks;
-    const lecturer = squash(after.rest.replace(/\(\s*\)/g, " "));
+    const lecturer = squash(after.rest.replace(/\(\s*(?:Ca\d)?\s*\)/gi, " "));
     if (lecturer) parsed.teacher = lecturer;
   }
   // The caption of the room box may come first: "Sală GEOLOGIE INGINEREASCĂ", "Sală M.e.f. - elemente avansate".
@@ -294,9 +296,11 @@ export function readPrintedTable(
       if (!row || span < 120) return fallback;
       return row.time.startMin + Math.round(((y - row.box[1]) / (row.box[3] - row.box[1])) * (span / 60)) * 60;
     };
-    // That holds for a class that runs from one row into another. A box that lies inside a
-    // single row is the written half of a cell split by a diagonal: the class lasts the whole row.
-    const inOneRow = clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && b[3] <= box[3] + 0.05);
+    // That holds where rows are drawn to scale. Mecanică's are not: there, a box that lies
+    // inside a single row is the written half of a cell split by a diagonal, and the class
+    // lasts the whole row. (At Construcții the other half of the row can be another class.)
+    const inOneRow = !!options.splitSharedHours &&
+      clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && b[3] <= box[3] + 0.05);
     // Mecanică's rows are not drawn to scale: there, a class put together from two boxes whose
     // first line sat inside one row starts with that row ("GDDT (L) Farkas A." written
     // half-way down 18-20, with its room in 20-21). Construcții does draw to scale: a title in

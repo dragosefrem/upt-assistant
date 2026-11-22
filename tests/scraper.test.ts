@@ -547,9 +547,8 @@ describe("printed and interactive timetables", () => {
       spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 2, series: "", name: labels[0].slice(-1),
     })));
     const times = Object.fromEntries(table.entries.map((e) => [`${e.courseName.slice(0, 5)} ${table.groups[e.groups[0]].name}`, [e.startMin / 60, e.endMin / 60]]));
-    // The half-hour precision is for a class that runs from one row into the next. A box that
-    // lies inside one row keeps the row's two hours.
-    expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 12] });
+    // Construcții draws its rows to scale: a box in the upper half of 10-12 is an hour long.
+    expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 11] });
   });
 
   it("does not make a group of its own out of a heading drawn one column too wide", () => {
@@ -672,22 +671,44 @@ describe("printed and interactive timetables", () => {
     expect(civilCell("Sală M.e.f. - elemente avansate Mărginean\nA311")).toMatchObject({ name: "M.e.f. - elemente avansate Mărginean", room: "A311" });
   });
 
-  it("gives a class written in half of its row the whole row", () => {
+  it("gives a Mecanică class written in half of its row the whole row", () => {
     // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
     // box covers the lower half of the row only (coordinates as read from the published PDF).
     // Read as "the second hour", the student arrived at 15:00 for a lab that starts at 14:00.
-    // Construcții stacks a lecture's title and its lecturer in the two halves of a row.
     const cells: Box[] = [
       [86.52, 84, 178.46, 90, "semigrupa 1"], [178.46, 84, 272.79, 90, "semigrupa 2"],
       [68.4, 185.04, 86.52, 194.64, "12_14"], [68.4, 194.64, 86.52, 207.86, "14_16"], [68.4, 207.86, 86.52, 226.21, "16_18"],
       [178.46, 201.42, 272.79, 207.86, "Chimie (L)"],
-      [86.52, 207.86, 178.46, 217.03, "CĂI FERATE 1"], [86.52, 217.03, 178.46, 226.21, "Algebra (S) N 305"],
+    ];
+    const read = (splitSharedHours: boolean) => readPrintedTable(cells, "Anul I", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Bioinginerie", degree: "bachelor" }, year: 1, series: "", name: labels[0],
+    })), "all", undefined, { splitSharedHours }).entries.map((e) => [e.courseName, e.startMin / 60, e.endMin / 60]);
+    expect(read(true)).toEqual([["Chimie", 14, 16]]);
+    // Only there: rows drawn to scale keep the hour the box shows.
+    expect(read(false)).toEqual([["Chimie", 15, 16]]);
+  });
+
+  it("reads a Construcții lecture with its hall and lecturer on a second line as one class", () => {
+    // English line, year 1: "LINEAR ALGEBRA A.GEOM." with "MP Arieșanu" below it was shown as
+    // two classes side by side, the second called "MP Arieșanu" and given the room of the
+    // year-2 column next to it. Cadastru: "ANALIZĂ" and "LN (Ca2) (CA2) S.l.dr.Hedrea".
+    const cells: Box[] = [
+      [1, 0, 2, 1, "a"], [2, 0, 3, 1, "b"],
+      [0, 1, 1, 3, "12-14"], [0, 3, 1, 5, "14-16"], [0, 5, 1, 7, "16-18"],
+      [1, 1, 2, 2, "LINEAR ALGEBRA A.GEOM."], [1, 2, 2, 3, "MP Arieșanu"],
+      [2, 1, 3, 2, "COMP. AIDED GRAPHICS"], [2, 2, 3, 3, "A109"],
+      [1, 3, 2, 4, "ANALIZĂ"], [1, 4, 2, 5, "LN (Ca2) (CA2) S.l.dr.Hedrea"],
+      [2, 3, 3, 4, "TUTORIERE A111"],
     ];
     const table = readPrintedTable(cells, "Anul I", (headers) => headerColumns(headers, (labels) => ({
-      spec: { name: "Bioinginerie", degree: "bachelor" }, year: 1, series: "", name: labels[0],
-    })));
-    expect(table.entries.map((e) => [e.courseName, e.startMin / 60, e.endMin / 60])).toEqual([
-      ["Chimie", 14, 16], ["CĂI FERATE 1", 16, 18], ["Algebra", 16, 18],
+      spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 1, series: "", name: labels[0],
+    })), "all", civilCell, { isDetail: civilDetail });
+    expect(table.entries.map((e) => `${table.groups[e.groups[0]].name} ${e.startMin / 60}-${e.endMin / 60} ${e.courseName} @${e.room} ${e.teacher ?? "-"}`).sort()).toEqual([
+      "a 12-14 LINEAR ALGEBRA A.GEOM. @MP Arieșanu",
+      "a 14-16 ANALIZĂ @LN (Ca2) S.l.dr.Hedrea",
+      "b 12-14 COMP. AIDED GRAPHICS @A109 -",
+      // Alone in the upper half of its row: one hour, as printed.
+      "b 14-15 TUTORIERE @A111 -",
     ]);
   });
 
