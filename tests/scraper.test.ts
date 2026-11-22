@@ -222,6 +222,14 @@ describe("parseCellText", () => {
     expect(parseCellText("Fizica (Fiz) (c) A. Palcu A0")).toMatchObject({ name: "Fizica", abbr: "Fiz" });
   });
 
+  it("reads \"odd weeks\" and \"even weeks\" as the English sheets write them", () => {
+    // Calculatoare in English, year 2: "Computer Architecture" showed every Thursday, in room
+    // "ASPC - odd". Year 3: "Artificial Intelligence Fundamentals", every week instead of even weeks.
+    expect(parseCellText("Computer Architecture (c) F. Opritoiu room ASPC - odd weeks")).toMatchObject({ weeks: "odd", room: "ASPC", teacher: "F. Opritoiu" });
+    expect(parseCellText("Artificial Intelligence Fundamentals (c) C. Cernazanu, even weeks - room ASPC")).toMatchObject({ weeks: "even", room: "ASPC", teacher: "C. Cernazanu" });
+    expect(parseCellText("Even and odd functions (c) A. Pop room A204")).toMatchObject({ name: "Even and odd functions", weeks: "all" });
+  });
+
   it("keeps a building named before the room out of the lecturer's name", () => {
     // ETcTI, year 3: "IV(c) M.Lascu Mecanica M304". The lecturer was shown as "M. Lascu Mecanica".
     expect(parseCellText("IV(c) M.Lascu Mecanica M304")).toMatchObject({ name: "IV", kind: "course", teacher: "M. Lascu", room: "M304 Mecanica" });

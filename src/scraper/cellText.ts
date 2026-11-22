@@ -132,6 +132,11 @@ export function extractWeeks(input: string) {
     parities.add(/^i/i.test(flag) ? "odd" : "even");
     return " ";
   });
+  // The English sheets write it the other way round: "room ASPC - odd weeks", "even weeks - room ASPC".
+  rest = rest.replace(/(?:\s*[-–,]\s*)?(?<![\p{L}\d])(odd|even)\s+weeks?(?![\p{L}\d])(?:\s*[-–,](?=\s))?/giu, (_, flag: string) => {
+    parities.add(flag.toLowerCase());
+    return " ";
+  });
   const weeks = [numbers.size ? [...numbers].join(",") : "", parities.size === 1 ? [...parities][0] : ""]
     .filter(Boolean).join("&") || "all";
   // What is left of "[S1-S12]*" or "(s:1-8 2h, s:9-12 3h)" once the weeks are read.
