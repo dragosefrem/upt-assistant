@@ -24,7 +24,8 @@ export default async function CampusRoute({ searchParams }: PageProps<"/campus">
   // The building a link names is the one this student's timetable gives the room, with what
   // is known about it: whether a rule placed the room there or it is only a guess.
   const own = link.to ? place(link.to) : null;
-  const timetablePlace = !link.building ? null : own && own.name === link.building ? own : placeByName(link.building, user.facultyId);
+  let timetablePlace = own?.guessed ? null : own;
+  if (link.building && link.building !== timetablePlace?.name) timetablePlace = placeByName(link.building, user.facultyId);
   const rooms = semester ? groupRooms(studentWeek(user, semester), place, locale) : [];
   return (
     <CampusPage

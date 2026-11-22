@@ -1,7 +1,8 @@
 import { planRoute } from "@/lib/campuspath/client";
 import { campusError, withCampus } from "@/lib/campuspath/http";
-import { isClassroomId } from "@/lib/campuspath/links";
+import { hasIndoorRoute, isClassroomId } from "@/lib/campuspath/links";
 import type { PlanRequest } from "@/lib/campuspath/types";
+import { placeByName, placeResolver } from "@/lib/schedule";
 import { studiesInHunedoara } from "@/lib/catalog";
 
 /** A choice from a list (a checkpoint number or a classroom id), or "auto" for the nearest entrance. */
@@ -41,6 +42,16 @@ export async function POST(request: Request) {
     if (faculty?.trim()) req.faculty = faculty.trim();
     if (studiesInHunedoara(user)) req.home = "hunedoara";
     const outcome = await planRoute(req);
-    return Response.json(outcome.kind === "question" ? { question: outcome.question } : { route: outcome.route });
+    if (outcome.kind === "route" && hasIndoorRoute(outcome.route)) return Response.json({ route: outcome.route });
+    if (outcome.kind === "question" && (outcome.question.needsChoice || outcome.question.options.length)) {
+      return Response.json({ question: outcome.question });
+    }
+
+    // A timetable code such as 303CP can identify the building even when the tour has no room.
+    const room = outcome.kind === "route" ? outcome.route.destination : undefined;
+    const namedBuilding = req.hint ?? room?.area;
+    const place = (namedBuilding && placeByName(namedBuilding, user.facultyId)) || placeResolver(user.facultyId)(room?.code || req.prompt);
+    const building = place && !place.guessed ? place : null;
+    return Response.json(outcome.kind === "route" ? { route: outcome.route, building } : { question: outcome.question, building });
   });
 }

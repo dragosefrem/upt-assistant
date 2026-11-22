@@ -6,7 +6,7 @@ import entrancePhoto from "../../../services/campuspath/examples/b419.jpg";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "@/i18n/client";
 import { campusHref, routeGoal, routeLink, routeTitle, sharedHref, type CampusLink } from "@/lib/campuspath/links";
-import type { TimetableRoom } from "@/lib/campuspath/rooms";
+import { roomKey, type TimetableRoom } from "@/lib/campuspath/rooms";
 import type { Place } from "@/lib/schedule";
 import { isClassroom, type CampusPlace, type Classroom, type Question, type Route } from "@/lib/campuspath/types";
 import { Mascot } from "../Mascot";
@@ -14,7 +14,6 @@ import { campusApi, CampusApiError, type PlanBody } from "./api";
 import { ClassroomBrowser } from "./ClassroomBrowser";
 import { reveal, roomFacts } from "./format";
 import { Journey, type JourneyContext } from "./Journey";
-import { RoomNotInTour } from "./RoomNotInTour";
 import { RouteView, type RouteKind } from "./RouteView";
 import { ShareDialog } from "./ShareDialog";
 import { StartPicker } from "./StartPicker";
@@ -103,11 +102,10 @@ export function CampusPage({
   const [result, setResult] = useState<{ route: Route; kind: RouteKind; id: number } | null>(null);
   const [context, setContext] = useState<JourneyContext>({
     building: initial.building, at: initial.at, date: initial.date, course: initial.course,
-    requestedRoom: initial.course ? initial.to : undefined, timetablePlace,
+    requestedRoom: initial.course || initial.building || timetablePlace ? initial.to : undefined, timetablePlace,
   });
   const [question, setQuestion] = useState<Question | null>(null);
-  /** A timetable room the tour does not know, with the building the timetable places it in. */
-  const [lost, setLost] = useState<{ room: string; place: Place | null } | null>(null);
+  const [buildingOnly, setBuildingOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"route" | "example" | null>(initial.to ? "route" : null);
@@ -129,15 +127,15 @@ export function CampusPage({
   const focusNextResult = useRef(false);
 
   useEffect(() => {
-    if (!focusNextResult.current || busy || picker || (!result && !question && !lost && !unavailable && !error)) return;
-    const selector = question ? "#campus-question" : lost ? "#campus-lost-title" : unavailable ? "#campus-down-title" : error ? "[role=alert]" : "h2";
+    if (!focusNextResult.current || busy || picker || (!result && !question && !buildingOnly && !unavailable && !error)) return;
+    const selector = question ? "#campus-question" : buildingOnly ? "#campus-journey-title" : unavailable ? "#campus-down-title" : error ? "[role=alert]" : "h2";
     const heading = resultBox.current?.querySelector<HTMLElement>(selector);
     if (heading) {
       focusNextResult.current = false;
       heading.tabIndex = -1;
       heading.focus({ preventScroll: true });
     }
-  }, [busy, result, question, lost, unavailable, error, picker]);
+  }, [busy, result, question, buildingOnly, unavailable, error, picker]);
 
   const chooseStart = useCallback((next: Start | null) => {
     setStart(next);
@@ -165,10 +163,10 @@ export function CampusPage({
     if (window.location.pathname + window.location.search !== href) window.history.replaceState(null, "", href);
   }, []);
 
-  const applyContext = (next: JourneyContext) => {
+  const applyContext = useCallback((next: JourneyContext) => {
     contextRef.current = next;
     setContext(next);
-  };
+  }, []);
 
   const plan = useCallback(
     async (input: PlanInput, override?: Start | null, quiet = false) => {
@@ -179,7 +177,7 @@ export function CampusPage({
       setResult(null);
       setUnavailable(false);
       setQuestion(null);
-      setLost(null);
+      setBuildingOnly(false);
       setError(null);
       setFormError(null);
       focusNextResult.current = !quiet;
@@ -191,39 +189,47 @@ export function CampusPage({
       else if (fromText) body.from = fromText;
       // No starting point: the journey starts at the entrance nearest the room.
       else body.start = "auto";
+      const finishAtBuilding = (place: Place | null) => {
+        const next = {
+          ...contextRef.current, requestedRoom: input.prompt, timetablePlace: place,
+          building: place?.name ?? contextRef.current.building,
+        };
+        applyContext(next);
+        setBuildingOnly(true);
+        const href = campusHref({ to: input.prompt, from: from ? String(from.index) : fromText ?? undefined, ...next });
+        window.history.replaceState(null, "", href);
+      };
       try {
-        const route = await campusApi.plan(body);
+        const answer = await campusApi.plan(body);
         if (mine !== generation.current) return;
+        if ("question" in answer) {
+          const q = answer.question;
+          if (q.field === "start" && q.needsChoice && !q.options.length) {
+            resume.current = true;
+            setPicker({ locate: false });
+          } else if (q.options.length) {
+            setQuestion(q);
+          } else {
+            finishAtBuilding(answer.building ?? input.timetable ?? null);
+          }
+          return;
+        }
+        if (answer.building && (!contextRef.current.timetablePlace || contextRef.current.timetablePlace.guessed)) {
+          applyContext({ ...contextRef.current, requestedRoom: input.prompt, building: answer.building.name, timetablePlace: answer.building });
+        }
+        const route = answer.route;
         showRoute(route, "yours");
-        // The planner names the starting point it used, in the current language. An entrance it
-        // chose itself is not the student's choice, so it is not remembered.
         const used = route.origin ?? route.steps[0];
         if (used && !route.automatic) chooseStart(toStart(used));
       } catch (e) {
         if (mine !== generation.current) return;
-        const q = e instanceof CampusApiError ? e.question : null;
-        if (q) {
-          if (q.field === "start" && q.needsChoice && !q.options.length) {
-            // "Where are you starting?": pick one, then the request goes on by itself.
-            resume.current = true;
-            setPicker({ locate: false });
-            setError(q.message);
-          } else if (q.options.length) {
-            setQuestion(q);
-          } else if (q.key === "ask.unknown" && q.field === "destination" && input.timetable !== undefined) {
-            setLost({ room: input.prompt, place: input.timetable });
-          } else {
-            setError(q.message);
-            setFormError(q.message);
-          }
-        } else {
-          failWith(e);
-        }
+        if (input.timetable !== undefined) finishAtBuilding(input.timetable);
+        else failWith(e);
       } finally {
         if (mine === generation.current) setBusy(null);
       }
     },
-    [start, startText, showRoute, chooseStart, failWith],
+    [start, startText, showRoute, chooseStart, failWith, applyContext],
   );
 
   const loadExample = useCallback(async () => {
@@ -232,7 +238,7 @@ export function CampusPage({
     pending.current = null;
     setUnavailable(false);
     setQuestion(null);
-    setLost(null);
+    setBuildingOnly(false);
     setError(null);
     setFormError(null);
     setResult(null);
@@ -280,8 +286,7 @@ export function CampusPage({
         // as a guess. That guess must not outvote a building the room really is in.
         hint: initial.building && initial.building !== faculty ? initial.building : undefined,
         faculty: faculty ?? undefined,
-        // A link that names the class or its building comes from the student's own timetable.
-        timetable: initial.building || initial.course ? timetablePlace : undefined,
+        timetable: timetablePlace,
         auto: !initial.from,
         from: first ? undefined : initial.from,
       };
@@ -296,15 +301,25 @@ export function CampusPage({
       promptBox.current?.focus();
       return;
     }
+    const destination = prompt.trim();
+    if (context.requestedRoom && roomKey(destination) === roomKey(context.requestedRoom)) {
+      void plan({ prompt: destination, timetable: context.timetablePlace, hint: context.timetablePlace?.guessed ? undefined : context.building, faculty: faculty ?? undefined });
+      return;
+    }
+    const room = rooms.find((r) => roomKey(r.room) === roomKey(destination));
+    if (room) {
+      goToRoom(room);
+      return;
+    }
     applyContext({});
-    void plan({ prompt: prompt.trim() });
+    void plan({ prompt: destination });
   };
 
   const goToRoom = (room: TimetableRoom) => {
     setBrowsing(false);
     setPrompt(room.room);
-    applyContext({ building: room.building ?? undefined });
     const place = room.building && room.where ? { name: room.building, ...room.where, approximate: room.approximate, guessed: room.guessed } : null;
+    applyContext({ requestedRoom: room.room, building: room.building ?? undefined, timetablePlace: place });
     void plan({ prompt: room.room, hint: room.guessed ? undefined : (room.building ?? undefined), faculty: faculty ?? undefined, timetable: place });
   };
 
@@ -478,6 +493,7 @@ export function CampusPage({
             route={result?.kind === "yours" ? result.route : null}
             context={context}
             mapsKey={mapsKey}
+            buildingOnly={buildingOnly}
             onStartElsewhere={startElsewhere}
           >
             {busy && (
@@ -554,8 +570,6 @@ export function CampusPage({
                     </button>
                   </section>
                 )}
-                {/* A class's journey already shows its building on the map above: no second map. */}
-                {lost && <RoomNotInTour room={lost.room} place={lost.place} at={context.at ?? null} mapsKey={mapsKey} map={!(eventRoom && context.timetablePlace)} />}
                 {result ? (
                   <RouteView
                     key={result.id}
@@ -568,7 +582,7 @@ export function CampusPage({
                     copied={copied}
                   />
                 ) : (
-                  !busy && !question && !lost && !error && !eventRoom && (
+                  !busy && !question && !buildingOnly && !error && !eventRoom && (
                     <section className="campus-example">
                       <Image src={entrancePhoto} alt="" fill sizes="(min-width: 1024px) 640px, 100vw" className="object-cover" />
                       <div className="campus-example-copy">

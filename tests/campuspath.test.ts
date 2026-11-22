@@ -136,23 +136,30 @@ describe("campus addresses", () => {
     expect(routeEntrance({ ...route, steps: route.steps.slice(1) })).toBeNull();
   });
 
-  it("keeps building directions available while the indoor route is loading or unmapped, and uses the verified entrance once found", () => {
+  it("shows only the available legs of a classroom journey", () => {
     const place = { name: "Timetable building", address: "Bd. Vasile Pârvan 2", lat: 45.747, lng: 21.226, approximate: true };
-    const unmapped: Route = { steps: [], duration: 0, lang: "en", coverage: "unmapped", destination: room(), video: null };
-    const render = (walk: Route | null) => load(renderToStaticMarkup(jsx(LocaleProvider, { locale: "en", children: jsx(Journey, {
+    const unmapped: Route = { steps: [], duration: 0, lang: "en", coverage: "unmapped", destination: room({ reach: "none" }), video: null };
+    const entranceOnly: Route = {
+      ...route, automatic: true, steps: [route.steps[0]], destination: room({ reach: "entrance" }),
+    };
+    const render = (walk: Route | null, buildingOnly = false) => load(renderToStaticMarkup(jsx(LocaleProvider, { locale: "en", children: jsx(Journey, {
       route: walk, context: { requestedRoom: "B527", timetablePlace: place, building: place.name, course: "Physics", at: "10:00" },
-      mapsKey: null, onStartElsewhere: vi.fn(), children: "Indoor route status",
+      mapsKey: null, buildingOnly, onStartElsewhere: vi.fn(), children: "Walkthrough content",
     }) })));
-    for (const walk of [null, unmapped, route]) {
+    for (const walk of [null, unmapped, entranceOnly, route]) {
       const page = render(walk);
       const maps = page("a[href*='google.com/maps/dir/']");
       expect(maps).toHaveLength(1);
       const params = new URL(maps.attr("href")!).searchParams;
-      expect(params.get("destination")).toBe(walk === route ? "45.747438,21.226181" : "45.747000,21.226000");
+      expect(params.get("destination")).toBe(walk === route || walk === entranceOnly ? "45.747438,21.226181" : "45.747000,21.226000");
       expect(params.has("origin")).toBe(false);
-      expect(page("section[aria-labelledby='campus-leg2']").text()).toContain("Indoor route status");
-      if (walk === unmapped) expect(page("#campus-leg2").text()).toContain("Room details");
+      expect(page("a[href='#campus-leg1']")).toHaveLength(1);
+      expect(page("#campus-leg2, a[href='#campus-leg2']")).toHaveLength(walk === route ? 2 : 0);
+      expect(page("section[aria-labelledby='campus-leg2']").text().includes("Walkthrough content")).toBe(walk === route);
     }
+    expect(render(null, true)("#campus-leg2")).toHaveLength(0);
+    const fromElsewhere = { ...entranceOnly, automatic: false, steps: [route.steps[0], step(20, "Destination entrance", 4, { pin: { ...AC_PIN, lat: 46 } })] };
+    expect(render(fromElsewhere)("a[href*='google.com/maps/dir/']").attr("href")).toContain("46.000000");
     expect(render({ ...route, steps: route.steps.slice(1) })("iframe")).toHaveLength(0);
   });
 });

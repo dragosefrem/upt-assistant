@@ -144,6 +144,11 @@ export function routeLink(route: Route): CampusLink {
   return link;
 }
 
+/** An entrance-only destination has an outdoor map, with no indoor walk to follow. */
+export function hasIndoorRoute(route: Route) {
+  return route.steps.length > 0 && route.coverage !== "unmapped" && route.destination?.reach !== "entrance" && route.destination?.reach !== "none";
+}
+
 /** The entrance a journey starts at, with its map pin; null when the walk does not start outdoors at a pin. */
 export function routeEntrance(route: Route): (Checkpoint & { pin: NonNullable<Checkpoint["pin"]> }) | null {
   const first = route.steps[0];

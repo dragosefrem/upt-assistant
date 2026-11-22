@@ -1,5 +1,6 @@
 "use client";
 
+import type { Place } from "@/lib/schedule";
 import type { CampusPlace, Checkpoint, ClassroomPage, Coverage, Question, Route, VideoState } from "@/lib/campuspath/types";
 
 /** Calls to /api/campus/… from the campus page. Errors carry the server's translated message. */
@@ -9,8 +10,6 @@ export class CampusApiError extends Error {
     readonly status: number,
     /** The walkthrough service is down (503). */
     readonly unavailable = false,
-    /** The planner's question: it needs a choice before it can plan. */
-    readonly question: Question | null = null,
   ) {
     super(message);
   }
@@ -43,16 +42,11 @@ export interface PlanBody {
 const get = { cache: "no-store" } as const;
 
 export const campusApi = {
-  /** A route, or throws with the planner's question in `question`. */
-  plan: async (body: PlanBody): Promise<Route> => {
-    const answer = await call<{ route: Route } | { question: Question }>("/api/campus/routes", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if ("question" in answer) throw new CampusApiError(answer.question.message, 422, false, answer.question);
-    return answer.route;
-  },
+  plan: (body: PlanBody) => call<({ route: Route } | { question: Question }) & { building?: Place | null }>("/api/campus/routes", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  }),
   example: () => call<Route>("/api/campus/example", get),
   video: (key: string) => call<VideoState>(`/api/campus/videos/${encodeURIComponent(key)}`, get),
   checkpoints: (q: string) => call<CampusPlace[]>(`/api/campus/checkpoints?${new URLSearchParams({ q, rooms: "1" })}`, get),
