@@ -218,6 +218,17 @@ export interface CourseChoice {
   slots: Array<{ entryId: number; kind: EntryKind; day: number; startMin: number; endMin: number; room: string | null }>;
   chosenSlotId: number | null;
   fixedCount: number;
+  /**
+   * The student's group already has this kind of class at a fixed time, and the slots are
+   * sessions held besides it ("PC (l) - grupe suplimentare"): nothing is missing from the
+   * timetable while none is picked.
+   */
+  slotsAreExtra: boolean;
+}
+
+/** A course with alternative slots and none picked, whose class is therefore not in the timetable. */
+export function needsSlot(c: CourseChoice): boolean {
+  return c.enrolled && c.slots.length > 0 && !c.chosenSlotId && !c.slotsAreExtra;
 }
 
 interface GroupData {
@@ -268,6 +279,7 @@ export function courseChoices(user: Pick<User, "id" | "groupId" | "year">, semes
         slots: [],
         chosenSlotId: pick?.slotEntryId ?? null,
         fixedCount: 0,
+        slotsAreExtra: false,
       };
       byCourse.set(course.id, c);
     }
@@ -275,7 +287,12 @@ export function courseChoices(user: Pick<User, "id" | "groupId" | "year">, semes
       c.slots.push({ entryId: entry.id, kind: entry.kind, day: entry.day, startMin: entry.startMin, endMin: entry.endMin, room: entry.room });
     } else c.fixedCount++;
   }
+  const fixedKinds = new Map<number, Set<EntryKind>>();
+  for (const { entry, course } of rows) {
+    if (!entry.isSlotOption) fixedKinds.set(course.id, (fixedKinds.get(course.id) ?? new Set()).add(entry.kind));
+  }
   for (const c of byCourse.values()) {
+    c.slotsAreExtra = c.slots.length > 0 && c.slots.every((s) => fixedKinds.get(c.courseId)?.has(s.kind));
     c.slots.sort((a, b) => a.day - b.day || a.startMin - b.startMin);
     if (c.chosenSlotId && !c.slots.some((s) => s.entryId === c.chosenSlotId)) c.chosenSlotId = null;
   }

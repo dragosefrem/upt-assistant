@@ -16,8 +16,7 @@ import {
   teachingWeek,
   type CalEvent,
   type Semester,
-  type WeekEntry,
-} from "./schedule";
+  type WeekEntry, needsSlot } from "./schedule";
 import { addDays, isDatedMeeting, mondayOf, nowLocal, occursInWeek, weekday } from "./time";
 
 /**
@@ -148,7 +147,7 @@ export function practicalsInWeek(
       next: nextOccurrence(e, semester, after, moves.filter((move) => move.entryId === e.entryId)),
     }));
   const unchosen = courseChoices(user, semester)
-    .filter((c) => c.enrolled && c.slots.length > 0 && !c.chosenSlotId && c.slots.some((s) => wanted.has(s.kind)))
+    .filter((c) => needsSlot(c) && c.slots.some((s) => wanted.has(s.kind)))
     .map((c) => ({ courseId: c.courseId, name: c.name, abbr: c.abbr }));
   return { ...info, holidays, running, skipped, unchosen };
 }

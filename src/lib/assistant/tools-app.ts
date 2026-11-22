@@ -16,7 +16,7 @@ import { rotateCalendarFeed } from "../auth";
 import { disconnectGoogle, googleConfigured, googleSyncMode, syncToGoogle } from "../google";
 import { publicBaseUrl } from "../export-email";
 import { matchGroups } from "../saved-contacts";
-import { courseChoices, currentSemester, describeGroup, eventsBetween, hiddenClasses, unhideClass } from "../schedule";
+import { courseChoices, currentSemester, describeGroup, eventsBetween, hiddenClasses, unhideClass, needsSlot } from "../schedule";
 import { DAY_NAMES, addDays, formatMinutes, nowLocal } from "../time";
 import { addLink, brief, fold, num, parseClock, span, str, type AssistantTool } from "./toolkit";
 
@@ -135,7 +135,9 @@ export const APP_TOOLS: AssistantTool[] = [
           lab_slots: c.slots.length
             ? c.slots.map((s, i) => ({ slot: i + 1, kind: s.kind, when: `${DAY_NAMES[s.day]} ${span(s.startMin, s.endMin)}`, room: s.room, chosen: s.entryId === c.chosenSlotId }))
             : undefined,
-          needs_a_slot: c.enrolled && c.slots.length > 0 && !c.chosenSlotId ? true : undefined,
+          needs_a_slot: needsSlot(c) ? true : undefined,
+          // The class is already in the timetable at a fixed time; these slots are extra sessions.
+          slots_are_supplementary: c.slotsAreExtra ? true : undefined,
         })),
         note: choices.length ? undefined : "This student's timetable has no optional courses and no labs with several slots.",
       };
@@ -202,7 +204,7 @@ export const APP_TOOLS: AssistantTool[] = [
         course: c.name,
         following: enrolled,
         lab_slot: slot ? `${DAY_NAMES[slot.day]} ${span(slot.startMin, slot.endMin)}${slot.room ? `, ${slot.room}` : ""}` : undefined,
-        still_needs_a_slot: enrolled && c.slots.length > 0 && !slotEntryId ? true : undefined,
+        still_needs_a_slot: enrolled && c.slots.length > 0 && !slotEntryId && !c.slotsAreExtra ? true : undefined,
       };
     },
   },

@@ -7,7 +7,7 @@ import { getLocale, getT } from "@/i18n/server";
 import { requireOnboardedUser } from "@/lib/auth";
 import { programmeTimetable } from "@/lib/catalog";
 import { holidaysBetween } from "@/lib/holidays";
-import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
+import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek, needsSlot } from "@/lib/schedule";
 import { addDays, mondayOf, nowLocal } from "@/lib/time";
 
 export async function generateMetadata() {
@@ -28,7 +28,7 @@ export default async function HomePage({ searchParams }: PageProps<"/">) {
   const semester = currentSemester();
   const group = describeGroup(user.groupId, locale);
   const pending = semester
-    ? courseChoices(user, semester).filter((c) => c.enrolled && c.slots.length > 0 && !c.chosenSlotId)
+    ? courseChoices(user, semester).filter(needsSlot)
     : [];
 
   return (

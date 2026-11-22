@@ -20,7 +20,7 @@ export function CourseChoicesForm({ choices, returnTo, submitLabel }: { choices:
   const slotSelect = (c: CourseChoice) =>
     c.slots.length > 0 && (
       <select name={`slot-${c.courseId}`} aria-label={m.slotFor(c.name)} defaultValue={c.chosenSlotId ?? ""} className="field mt-2 sm:mt-0 sm:w-72">
-        <option value="">{m.slotNotChosen}</option>
+        <option value="">{c.slotsAreExtra ? m.slotNone : m.slotNotChosen}</option>
         {c.slots.map((s) => (
           <option key={s.entryId} value={s.entryId}>
             {dayName(s.day, locale)} {formatMinutes(s.startMin)}–{formatMinutes(s.endMin)}
@@ -65,6 +65,7 @@ export function CourseChoicesForm({ choices, returnTo, submitLabel }: { choices:
                 <span className="text-sm">
                   <span className="font-medium text-slate-900">{c.name}</span>
                   {c.abbr && <span className="ml-2 text-xs text-slate-500">{c.abbr}</span>}
+                  {c.slotsAreExtra && <span className="mt-0.5 block text-xs leading-relaxed text-slate-600">{m.slotsExtra}</span>}
                 </span>
                 {slotSelect(c)}
               </li>

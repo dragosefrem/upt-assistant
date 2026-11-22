@@ -14,7 +14,7 @@ import { searchGlossary } from "@/lib/glossary";
 import { exportItems, toICS } from "@/lib/export";
 import { makeupSessions, nextOccurrence, practicalsInWeek, practicalsToShow, weekInfo } from "@/lib/labs";
 import { availabilityAt, listPeople, matchPeople } from "@/lib/people";
-import { currentSemester, eventsBetween, groupBusy } from "@/lib/schedule";
+import { courseChoices, currentSemester, eventsBetween, groupBusy, needsSlot } from "@/lib/schedule";
 import { semesterOverview } from "@/lib/semester-overview";
 import { buildStudyPlan, clearStudyPlan, proposeStudyPlan, saveStudyPlan, studyBlocks, type PlanExam } from "@/lib/study-plan";
 
@@ -305,6 +305,36 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
       expect(practicalsToShow(ana, { date: "2026-11-21", minutes: 12 * 60 }, "ro").upcoming).toBe(true);
     } finally {
       db.delete(courses).where(eq(courses.id, course.id)).run();
+    }
+  });
+
+  it("does not report a lab as missing when the slots on offer are supplementary groups", () => {
+    // AC year 1: "PC (l) | B418a" is fixed for the group, and the shared column adds
+    // "PC (l) - grupe suplimentare / Luni 16-18 B528b / Joi 14-16 B528a" for both series.
+    const db = getDb();
+    const semester = currentSemester()!;
+    const pc = db.select().from(courses).where(eq(courses.key, "t-pc")).get()!;
+    const extra = [1, 4].map((day, i) => db.insert(entries).values({ key: `t-pc-extra-${i}`, semesterId: semester.id, courseId: pc.id, kind: "lab", day,
+      startMin: 16 * 60, endMin: 18 * 60, weeks: "all", room: "B528b", rawText: "PC (l) - grupe suplimentare", isSlotOption: true }).returning().get());
+    for (const e of extra) db.insert(entryGroups).values({ entryId: e.id, groupId: ana.groupId! }).run();
+    try {
+      const choice = courseChoices(ana, semester).find((c) => c.courseId === pc.id)!;
+      expect(choice).toMatchObject({ slotsAreExtra: true, chosenSlotId: null });
+      expect(choice.slots).toHaveLength(2);
+      expect(needsSlot(choice)).toBe(false);
+      // The lab she has with her group is in her week; nothing is said to be missing.
+      expect(practicalsInWeek(ana, "2026-11-23").unchosen).toEqual([]);
+      expect(practicalsInWeek(ana, "2026-11-23").running.filter((e) => e.title === "Programarea calculatoarelor")).toHaveLength(1);
+      // A course whose only lab is one of several slots still needs the choice.
+      const fiz = db.select().from(courses).where(eq(courses.key, "t-am")).get()!;
+      const only = db.insert(entries).values({ key: "t-am-slot", semesterId: semester.id, courseId: fiz.id, kind: "lab", day: 5, startMin: 8 * 60, endMin: 10 * 60, weeks: "all", rawText: "", isSlotOption: true }).returning().get();
+      db.insert(entryGroups).values({ entryId: only.id, groupId: ana.groupId! }).run();
+      const open = courseChoices(ana, semester).find((c) => c.courseId === fiz.id)!;
+      expect(open.slotsAreExtra).toBe(false);
+      expect(needsSlot(open)).toBe(true);
+      db.delete(entries).where(eq(entries.id, only.id)).run();
+    } finally {
+      for (const e of extra) db.delete(entries).where(eq(entries.id, e.id)).run();
     }
   });
 

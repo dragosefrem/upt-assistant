@@ -76,6 +76,8 @@ const en = {
   /** CourseChoicesForm. */
   choices: {
     slotNotChosen: "Choose later",
+    slotNone: "None: I go with my group",
+    slotsExtra: "This class is already in your timetable with your group. These are supplementary groups: pick one only if you also attend it.",
     slotFor: (course: string) => `Lab or seminar slot for ${course}`,
     yourCourses: "Course choices",
     yourCoursesHint:
@@ -258,6 +260,8 @@ const ro: typeof en = {
 
   choices: {
     slotNotChosen: "Aleg mai târziu",
+    slotNone: "Niciunul: merg cu grupa mea",
+    slotsExtra: "Ora aceasta e deja în orarul tău, cu grupa ta. Acestea sunt grupe suplimentare: alege una doar dacă mergi și acolo.",
     slotFor: (course: string) => `Interval de laborator sau seminar pentru ${course}`,
     yourCourses: "Discipline la alegere",
     yourCoursesHint:
