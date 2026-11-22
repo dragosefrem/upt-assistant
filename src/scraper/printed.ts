@@ -223,7 +223,12 @@ export function readPrintedTable(
       if (!row || span < 120) return fallback;
       return row.time.startMin + Math.round(((y - row.box[1]) / (row.box[3] - row.box[1])) * (span / 60)) * 60;
     };
-    const slot = { startMin: hourAt(b[1], start.time.startMin), endMin: hourAt(b[3], end.time.endMin) };
+    // That holds for a class that runs from one row into another. A box that lies inside a
+    // single row is the written half of a cell split by a diagonal: the class lasts the whole row.
+    const inOneRow = clock.some(({ box, day }) => day === start.day && box[1] <= b[1] + 0.05 && b[3] <= box[3] + 0.05);
+    const slot = inOneRow
+      ? { startMin: start.time.startMin, endMin: end.time.endMin }
+      : { startMin: hourAt(b[1], start.time.startMin), endMin: hourAt(b[3], end.time.endMin) };
     if (slot.endMin <= slot.startMin) { slot.startMin = start.time.startMin; slot.endMin = end.time.endMin; }
     const roomCell = adjoiningRoom ?? cells.find((other) => roomOnly.test(squash(other[4])) &&
       Math.abs(other[1] - b[3]) < 0.05 && Math.abs(other[0] - b[0]) < 0.05 &&

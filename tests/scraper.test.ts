@@ -509,7 +509,28 @@ describe("printed and interactive timetables", () => {
       spec: { name: "Inginerie civilă", degree: "bachelor" }, year: 2, series: "", name: labels[0].slice(-1),
     })));
     const times = Object.fromEntries(table.entries.map((e) => [`${e.courseName.slice(0, 5)} ${table.groups[e.groups[0]].name}`, [e.startMin / 60, e.endMin / 60]]));
-    expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 11] });
+    // The half-hour precision is for a class that runs from one row into the next. A box that
+    // lies inside one row keeps the row's two hours.
+    expect(times).toEqual({ "Rezis 1": [8, 11], "Rezis 2": [11, 14], "Topog 3": [8, 10], "TUTOR 3": [10, 12] });
+  });
+
+  it("gives a class written in half of its row the whole row", () => {
+    // Mecanică, year 1, Tuesday 14-16: "Chimie (L)" is a cell split by a diagonal, and its text
+    // box covers the lower half of the row only (coordinates as read from the published PDF).
+    // Read as "the second hour", the student arrived at 15:00 for a lab that starts at 14:00.
+    // Construcții stacks a lecture's title and its lecturer in the two halves of a row.
+    const cells: Box[] = [
+      [86.52, 84, 178.46, 90, "semigrupa 1"], [178.46, 84, 272.79, 90, "semigrupa 2"],
+      [68.4, 185.04, 86.52, 194.64, "12_14"], [68.4, 194.64, 86.52, 207.86, "14_16"], [68.4, 207.86, 86.52, 226.21, "16_18"],
+      [178.46, 201.42, 272.79, 207.86, "Chimie (L)"],
+      [86.52, 207.86, 178.46, 217.03, "CĂI FERATE 1"], [86.52, 217.03, 178.46, 226.21, "Algebra (S) N 305"],
+    ];
+    const table = readPrintedTable(cells, "Anul I", (headers) => headerColumns(headers, (labels) => ({
+      spec: { name: "Bioinginerie", degree: "bachelor" }, year: 1, series: "", name: labels[0],
+    })));
+    expect(table.entries.map((e) => [e.courseName, e.startMin / 60, e.endMin / 60])).toEqual([
+      ["Chimie", 14, 16], ["CĂI FERATE 1", 16, 18], ["Algebra", 16, 18],
+    ]);
   });
 
   it("gives a series lecture to every group, with the room boxed at the end of its row", () => {
