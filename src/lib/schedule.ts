@@ -34,8 +34,8 @@ import { addDays, dayName, daysBetween, describeWeeks, formatMinutes, mondayOf, 
 /** Everything the calendar, the assistant and the exports need to know about one event. */
 export interface CalEvent {
   id: string;
-  type: "class" | "exam" | "personal" | "shared" | "sponsored";
-  kind: EntryKind | "exam" | "personal" | "shared" | "sponsored";
+  type: "class" | "exam" | "personal" | "shared" | "sponsored" | "upt";
+  kind: EntryKind | "exam" | "personal" | "shared" | "sponsored" | "upt";
   title: string;
   abbr: string | null;
   date: string;
@@ -51,6 +51,7 @@ export interface CalEvent {
   personalId?: number;
   groupEventId?: string;
   sponsoredEventId?: string;
+  sourceUrl?: string;
   campusRoom?: string;
   moved?: boolean;
   /** For a class moved for one week only: the date it would normally be on. */

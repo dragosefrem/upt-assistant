@@ -5,6 +5,7 @@ import { entries, entryGroups, occurrenceOverrides, personalEvents, userOverride
 import { getT } from "@/i18n/server";
 import { getUser } from "@/lib/auth";
 import { respondToSponsoredEvent } from "@/lib/sponsored-events";
+import { setUptSubscription } from "@/lib/upt-events";
 
 /** A student's personal changes to their own timetable. */
 const Body = z.discriminatedUnion("action", [
@@ -34,6 +35,7 @@ const Body = z.discriminatedUnion("action", [
   }),
   z.object({ action: z.literal("deletePersonal"), id: z.number().int() }),
   z.object({ action: z.literal("sponsored"), id: z.hash("sha256"), choice: z.enum(["save", "hide", "undoHide", "remove"]) }),
+  z.object({ action: z.literal("uptSubscription"), subscribed: z.boolean() }),
 ]);
 
 export async function POST(request: Request) {
@@ -56,6 +58,9 @@ export async function POST(request: Request) {
       .get();
 
   switch (body.action) {
+    case "uptSubscription":
+      setUptSubscription(user.id, body.subscribed);
+      break;
     case "sponsored":
       if (!respondToSponsoredEvent(user.id, body.id, body.choice)) {
         return Response.json({ error: t.sponsored.errors.unavailable }, { status: 409 });

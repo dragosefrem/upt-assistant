@@ -12,6 +12,7 @@ const KIND_STYLE: Record<string, { block: string; dot: string; label: string }> 
   personal: { block: "border-violet-500 bg-violet-50 text-violet-900", dot: "bg-violet-500", label: "Personal" },
   shared: { block: "border-teal-500 bg-teal-50 text-teal-900", dot: "bg-teal-500", label: "Shared event" },
   sponsored: { block: "border-cyan-600 bg-cyan-50 text-cyan-950", dot: "bg-cyan-600", label: "Sponsored event" },
+  upt: { block: "border-indigo-600 bg-indigo-50 text-indigo-950", dot: "bg-indigo-600", label: "Evenimente UPT" },
 };
 
 export function kindStyle(kind: string) {

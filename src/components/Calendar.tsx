@@ -14,6 +14,7 @@ import { kindLabel, kindStyle } from "@/lib/kinds";
 import { EventDialog } from "./EventDialog";
 import { PersonalEventDialog } from "./PersonalEventDialog";
 import { SponsoredSuggestions } from "./SponsoredSuggestions";
+import { UptCalendarSubscription } from "./UptCalendarSubscription";
 
 export { kindStyle };
 
@@ -83,6 +84,7 @@ function layoutDay(events: CalEvent[]) {
 export function Calendar({
   initialEvents,
   initialOffers = [],
+  initialUptSubscribed = false,
   initialHolidays,
   initialFrom,
   initialTo,
@@ -94,6 +96,7 @@ export function Calendar({
 }: {
   initialEvents: CalEvent[];
   initialOffers?: SponsoredOffer[];
+  initialUptSubscribed?: boolean;
   initialHolidays: PublicHoliday[];
   initialFrom: string;
   initialTo: string;
@@ -110,10 +113,11 @@ export function Calendar({
   const [anchor, setAnchor] = useState(today);
   const [events, setEvents] = useState<CalEvent[]>(initialEvents);
   const [offers, setOffers] = useState(initialOffers);
+  const [uptSubscribed, setUptSubscribed] = useState(initialUptSubscribed);
   const [holidays, setHolidays] = useState(initialHolidays);
   const holidayNames = new Map(holidays.map((holiday) => [holiday.date, holiday.name]));
   // Event notes come in the interface language, so a language switch also reloads.
-  const [loaded, setLoaded] = useState({ from: initialFrom, to: initialTo, locale });
+  const [loaded, setLoaded] = useState({ from: initialFrom, to: initialTo, locale, uptSubscribed: initialUptSubscribed });
   const [teachingWeek, setTeachingWeek] = useState<number | null>(initialWeek);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,13 +138,14 @@ export function Calendar({
     try {
       const res = await fetch(`/api/events?from=${from}&to=${to}&offers=1`, { cache: "no-store" });
       if (!res.ok) throw new Error(res.status === 401 ? t.grid.sessionExpired : t.grid.loadFailed);
-      const data = (await res.json()) as { events: CalEvent[]; offers: SponsoredOffer[]; holidays: PublicHoliday[]; teachingWeek: number | null };
+      const data = (await res.json()) as { events: CalEvent[]; offers: SponsoredOffer[]; uptSubscribed: boolean; holidays: PublicHoliday[]; teachingWeek: number | null };
       if (id !== requestId.current) return;
       setEvents(data.events);
       setOffers(data.offers);
+      setUptSubscribed(data.uptSubscribed);
       setHolidays(data.holidays);
       setTeachingWeek(data.teachingWeek);
-      setLoaded({ from, to, locale });
+      setLoaded({ from, to, locale, uptSubscribed: data.uptSubscribed });
     } catch (err) {
       if (id === requestId.current) setError((err as Error).message);
     } finally {
@@ -207,6 +212,8 @@ export function Calendar({
   );
 
   const visible = events.filter((e) => e.date >= range.from && e.date <= range.to);
+  const matches = !error && loaded.from === range.from && loaded.to === range.to && loaded.uptSubscribed === uptSubscribed
+    ? visible.filter((e) => e.type === "upt").length : null;
 
   // Grid days: the whole week, so students can plan weekends too.
   const days = useMemo(() => (view === "day" ? [anchor] : Array.from({ length: 7 }, (_, i) => addDays(range.from, i))), [view, anchor, range.from]);
@@ -278,6 +285,12 @@ export function Calendar({
           <Plus size={16} aria-hidden />{t.grid.addEvent}
         </button>
       </header>
+      <UptCalendarSubscription subscribed={uptSubscribed} matches={matches}
+        onChange={(subscribed) => {
+          setUptSubscribed(subscribed);
+          if (!subscribed) setEvents((current) => current.filter((e) => e.type !== "upt"));
+          window.dispatchEvent(new Event(SCHEDULE_CHANGED));
+        }} />
       {loading && <p role="status" className="px-4 pt-2 text-xs text-slate-600">{messages.common.status.loading}</p>}
 
       {error && <p role="alert" className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}

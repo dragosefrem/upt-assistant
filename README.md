@@ -20,6 +20,13 @@ works in Romanian and English.
   meetings). Romania's public holidays, including the movable Orthodox ones, are shown
   and classes do not take place on them (`src/lib/holidays.ts`). Click or drag to add personal events; hide a class, move it every week or
   for one week only. Changes affect only the student.
+- **Evenimente UPT.** The switch above the timetable subscribes the signed-in student
+  to the university calendar. Sessions with a published start and finish appear when
+  the whole slot is free. Booked classes, exams, personal plans, accepted group plans
+  and saved sponsor events take priority. The same filtered sessions appear as
+  available time in calendar exports. Each session links to its official event page.
+  The running Next.js server refreshes UPT's published events on startup when due and
+  every 30 minutes. Failed imports retain the previous calendar and retry after five minutes.
 - **Sponsored events.** In **Admin → Sponsored events**, choose faculties and years,
   preview the student card, and check how many matching students are free. Students
   can add a suggestion to their calendar or hide it. Cancelling an event removes it

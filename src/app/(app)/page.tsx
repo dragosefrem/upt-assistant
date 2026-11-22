@@ -10,6 +10,7 @@ import { holidaysBetween } from "@/lib/holidays";
 import { courseChoices, currentSemester, describeGroup, eventsBetween, teachingWeek } from "@/lib/schedule";
 import { sponsoredOffers } from "@/lib/sponsored-events";
 import { addDays, mondayOf, nowLocal } from "@/lib/time";
+import { withUptCalendar } from "@/lib/upt-events";
 
 export async function generateMetadata() {
   const t = await getT();
@@ -24,7 +25,8 @@ export default async function HomePage() {
   const from = mondayOf(today);
   const to = addDays(from, 6);
   const horizon = addDays(today, 14);
-  const upcoming = eventsBetween(user, from, horizon, locale);
+  const scheduled = eventsBetween(user, from, horizon, locale);
+  const { events: upcoming, uptSubscribed } = withUptCalendar(user, from, horizon, scheduled);
   const semester = currentSemester();
   const group = describeGroup(user.groupId, locale);
   const pending = semester
@@ -55,7 +57,8 @@ export default async function HomePage() {
         <NextUp initial={upcoming.filter((e) => e.date >= today)} />
         <Calendar
           initialEvents={upcoming.filter((e) => e.date <= to)}
-          initialOffers={sponsoredOffers(user, today, horizon, upcoming)}
+          initialOffers={sponsoredOffers(user, today, horizon, scheduled)}
+          initialUptSubscribed={uptSubscribed}
           initialHolidays={holidaysBetween(from, to, locale)}
           initialFrom={from}
           initialTo={to}

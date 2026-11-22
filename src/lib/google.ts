@@ -110,6 +110,7 @@ function toGoogleEvent(item: ExportItem) {
     summary: item.title,
     description: item.description || undefined,
     location: item.location || undefined,
+    ...(item.transparent ? { transparency: "transparent" } : {}),
     start: at(item.startMin),
     end: at(item.endMin),
     ...(item.startMin === item.endMin ? { endTimeUnspecified: true } : {}),

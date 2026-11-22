@@ -450,6 +450,22 @@ export const sponsoredResponses = sqliteTable("sponsored_responses", {
   response: text("response").$type<"saved" | "hidden">().notNull(),
 }, (t) => [primaryKey({ columns: [t.userId, t.eventId] })]);
 
+/** Public university sessions are shared by subscribers. Their personal calendars are resolved at read time. */
+export const uptEventOccurrences = sqliteTable("upt_event_occurrences", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  date: text("date").notNull(),
+  startMin: integer("start_min").notNull(),
+  endMin: integer("end_min").notNull(),
+  location: text("location"),
+  access: text("access"),
+  sourceUrl: text("source_url").notNull(),
+}, (t) => [index("upt_event_date").on(t.date, t.startMin)]);
+
+export const uptEventSubscriptions = sqliteTable("upt_event_subscriptions", {
+  userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
+});
+
 export type AttendanceStatus = "attended" | "missed";
 
 /**

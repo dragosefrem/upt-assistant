@@ -12,6 +12,7 @@ import { isPublicHoliday } from "./holidays";
 import { kindLabel } from "./kinds";
 import { currentSemester, examsForUser, occurrenceMoves, placeResolver, savedSponsoredEvents, studentWeek, type Semester } from "./schedule";
 import { TIME_ZONE, addDays, describeWeeks, formatDate, isDatedMeeting, mondayOf, weekMatches, weekday } from "./time";
+import { isUptSubscriber, matchingUptEvents } from "./upt-events";
 
 /**
  * Calendar-neutral description of a student's timetable, shared by the .ics feed and
@@ -32,6 +33,7 @@ export interface ExportItem {
   exdates?: string[];
   /** Reminders, in minutes before the start. */
   alarms?: number[];
+  transparent?: boolean;
 }
 
 /** Exams remind a day and two hours before, so phones alert even with the app closed. */
@@ -141,6 +143,12 @@ export function exportItems(user: User, locale: Locale = user.locale ?? "en"): E
       date: e.date, startMin: e.startMin, endMin: e.endMin,
       description: sponsoredNote(e, locale) });
   }
+  if (isUptSubscriber(user.id)) {
+    for (const e of matchingUptEvents(user)) {
+      items.push({ uid: e.id, title: e.title, description: [e.note, e.sourceUrl].filter(Boolean).join("\n"),
+        location: e.room ?? "", date: e.date, startMin: e.startMin, endMin: e.endMin, transparent: true });
+    }
+  }
   return items;
 }
 
@@ -228,6 +236,7 @@ export function toICS(items: ExportItem[], calendarName = "Poli"): string {
     );
     if (item.location) lines.push(`LOCATION:${escapeText(item.location)}`);
     if (item.description) lines.push(`DESCRIPTION:${escapeText(item.description)}`);
+    if (item.transparent) lines.push("TRANSP:TRANSPARENT");
     if (item.until) {
       // UNTIL is in UTC; the end of that day in UTC is safely after the last class.
       lines.push(`RRULE:FREQ=WEEKLY;UNTIL=${item.until.replace(/-/g, "")}T235959Z`);

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { useState } from "react";
 import type { AttendanceStatus } from "@/db/schema";
 import { useLocale, useT } from "@/i18n/client";
@@ -66,13 +67,17 @@ export function EventDialog({ event, onHidden, onClose }: { event: CalEvent; onH
         </span>
       </p>
       <dl className="mb-4 grid grid-cols-[minmax(5.5rem,auto)_1fr] gap-x-3 gap-y-1.5 text-sm">
-        {(event.room || academic) && (<><dt className="text-slate-500">{t.room}</dt><dd className="font-medium text-slate-900">{event.room ?? messages.exams.card.roomUnknown}</dd></>)}
+        {(event.room || academic) && (<><dt className="text-slate-500">{event.type === "upt" ? messages.calendar.subscription.location : t.room}</dt><dd className="font-medium text-slate-900">{event.room ?? messages.exams.card.roomUnknown}</dd></>)}
         {event.place && (<><dt className="text-slate-500">{t.building}</dt><dd className="text-slate-800">{event.place.approximate ? messages.campus.rooms.approximate(event.place.name) : event.place.name}{event.place.address ? `, ${event.place.address}` : ""}</dd></>)}
         {event.teacher && (<><dt className="text-slate-500">{t.teacher}</dt><dd className="text-slate-800">{event.teacher}</dd></>)}
-        {event.note && (<><dt className="text-slate-500">{t.note}</dt><dd className="text-slate-800">{event.note}</dd></>)}
+        {event.note && (<><dt className="text-slate-500">{event.type === "upt" ? messages.calendar.subscription.access : t.note}</dt><dd className="text-slate-800">{event.note}</dd></>)}
       </dl>
 
-      <AttendanceControl event={event} />
+      {event.type === "upt"
+        ? <a className="btn-secondary" href={event.sourceUrl} target="_blank" rel="noreferrer">
+            {messages.calendar.subscription.source}<ExternalLink size={15} aria-hidden />
+          </a>
+        : <AttendanceControl event={event} />}
 
       {event.place && <TripSuggestions room={event.room} startMin={event.startMin} />}
 

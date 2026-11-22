@@ -9,6 +9,7 @@ import type { User } from "./auth";
 import { tentativeTimesFor } from "./group-events";
 import { eventsBetween, overlaps, type FreeSlot } from "./schedule";
 import { addDays, formatMinutes, localInstant, mondayOf, nowLocal } from "./time";
+import { withUptCalendar } from "./upt-events";
 
 type SponsoredEvent = typeof sponsoredEvents.$inferSelect;
 type Audience = Pick<SponsoredEvent, "facultyIds" | "years">;
@@ -87,7 +88,7 @@ export function calendarWithOffers(user: User, from: string, to: string, locale:
   const through = homeWeek ? addDays(today, 14) : to;
   const scheduled = eventsBetween(user, from, through, locale);
   return {
-    events: homeWeek ? scheduled.filter((e) => e.date <= to) : scheduled,
+    ...withUptCalendar(user, from, to, homeWeek ? scheduled.filter((e) => e.date <= to) : scheduled),
     offers: sponsoredOffers(user, from, through, scheduled),
   };
 }

@@ -5,6 +5,7 @@ import { holidaysBetween } from "@/lib/holidays";
 import { currentSemester, eventsBetween, teachingWeek } from "@/lib/schedule";
 import { calendarWithOffers } from "@/lib/sponsored-events";
 import { addDays, daysBetween } from "@/lib/time";
+import { withUptCalendar } from "@/lib/upt-events";
 
 const isoDate = z.iso.date();
 
@@ -26,6 +27,7 @@ export async function GET(request: Request) {
     teachingWeek: semester ? teachingWeek(semester, from) : null,
     semester: semester ? { academicYear: semester.academicYear, number: semester.number } : null,
     holidays: holidaysBetween(from, to, locale),
-    ...(url.searchParams.get("offers") === "1" ? calendarWithOffers(user, from, to, locale) : { events: eventsBetween(user, from, to, locale) }),
+    ...(url.searchParams.get("offers") === "1" ? calendarWithOffers(user, from, to, locale)
+      : withUptCalendar(user, from, to, eventsBetween(user, from, to, locale))),
   }, { headers: { "Cache-Control": "private, no-store" } });
 }
