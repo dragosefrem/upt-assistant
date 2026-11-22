@@ -580,6 +580,22 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
       expect(building(ria("M214/N214"))).toBe("Facultatea de Mecanică");
       expect(building(ria("N 214 sau M214 Mec"))).toBe("Facultatea de Mecanică");
       expect(building(ria("M201 Mecanica"))).toBe("Facultatea de Mecanică");
+      // A code several buildings have goes to the one where the catalogue lists the student's
+      // faculty for it, as the Campus page picks it: the calendar said "probabil Facultatea de
+      // Construcții" for A109 while the walkthrough led to ASPC.
+      const ct = db.insert(faculties).values({ slug: "ct-test", name: "Facultatea de Construcții", shortName: "CT", lat: 45.75, lng: 21.22, address: "Str. Traian Lalescu 2" }).returning().get();
+      const mec = db.insert(faculties).values({ slug: "mec-test", name: "Facultatea de Mecanică", shortName: "MEC", lat: 45.746, lng: 21.2257, address: "Bd. Mihai Viteazu 1" }).returning().get();
+      const fih = db.insert(faculties).values({ slug: "fih-test", name: "Facultatea de Inginerie din Hunedoara", shortName: "FIH", lat: 45.76, lng: 22.9, address: "Str. Revoluției 5, Hunedoara" }).returning().get();
+      try {
+        expect(building(placeResolver(ct.id)("A109"))).toBe("ASPC – Atelier Școlar pentru Proiectare și Cercetare");
+        expect(building(placeResolver(mec.id)("M 104"))).toBe("Facultatea de Mecanică");
+        expect(building(placeResolver(mec.id)("A109"))).toBe("? Facultatea de Mecanică");
+        // Hunedoara is its faculty's own campus: a room the catalogue has there is not a guess.
+        expect(building(placeResolver(fih.id)("B1-4"))).toBe("Facultatea de Inginerie din Hunedoara");
+        expect(building(placeResolver(fih.id)("Sala fără cod"))).toBe("? Facultatea de Inginerie din Hunedoara");
+      } finally {
+        for (const f of [ct, mec, fih]) db.delete(faculties).where(eq(faculties.id, f.id)).run();
+      }
       // The word and the code must agree, two rooms must share a building, and other text is not read as a code.
       expect(building(ria("C301B Ch"))).toBe("? Facultatea de Robotică");
       expect(building(ria("M214/B019"))).toBe("? Facultatea de Robotică");

@@ -212,7 +212,7 @@ const COMMON = new Set(
   "a al ale and bd building cladirea corp corpul de din facultatea faculty for in inclusiv la of pentru si str the unconfirmed".split(" "),
 );
 
-function wordsOf(value: string): Set<string> {
+export function wordsOf(value: string): Set<string> {
   return new Set(fold(value).split(/[^a-z0-9]+/).filter((w) => w && !COMMON.has(w) && !/^\d+$/.test(w)));
 }
 
