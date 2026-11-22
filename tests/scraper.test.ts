@@ -187,6 +187,17 @@ describe("parseCellText", () => {
     expect(parseCellText("Gr. F Gândire critică (s) Băiaș C303")).toMatchObject({ name: "Gândire critică", kind: "seminar", room: "C303" });
   });
 
+  it("keeps a building named before the room out of the lecturer's name", () => {
+    // ETcTI, year 3: "IV(c) M.Lascu Mecanica M304". The lecturer was shown as "M. Lascu Mecanica".
+    expect(parseCellText("IV(c) M.Lascu Mecanica M304")).toMatchObject({ name: "IV", kind: "course", teacher: "M. Lascu", room: "M304 Mecanica" });
+    expect(parseCellText("Microec(c) A. Artene Mecanica M304")).toMatchObject({ teacher: "A. Artene", room: "M304 Mecanica" });
+    // A subject of that name is still a subject, and a room without a building stays as it is.
+    expect(parseCellText("Mecanica (c) I. Popescu M304")).toMatchObject({ name: "Mecanica", teacher: "I. Popescu", room: "M304" });
+    expect(parseCellText("Mecanica fluidelor (c) A. Ionescu N210")).toMatchObject({ name: "Mecanica fluidelor", teacher: "A. Ionescu", room: "N210" });
+    // FSC: the room repeated in brackets with its building hid the lecturer.
+    expect(parseCellText("Noțiuni de management și marketing (c) Tămășilă M106 (MPT - M106)")).toMatchObject({ teacher: "Tămășilă", room: "M106" });
+  });
+
   it("keeps the building written beside a room with the room, never as the teacher", () => {
     // Cells from the 2026-27 ETcTI, MEC and RIA timetables.
     expect(parseCellText("Unif. fiz. (c), A2 Chimie")).toMatchObject({ name: "Unif. fiz.", kind: "course", room: "A2 Chimie", teacher: null });

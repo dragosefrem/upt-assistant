@@ -204,6 +204,17 @@ export function parseCellText(input: string): ParsedText {
     rest = rest.replace(keyword[0], ` ${lecturer.join(" ")} `);
   }
 
+  // "M.Lascu Mecanica M304": a building named before the room code is where the room is, not
+  // the end of the lecturer's name. Set it aside before the lecturer is read.
+  let ahead: string | null = null;
+  if (!room) {
+    const named = /(?<![\p{L}\d])(Chimie(?!\s+Centru)|Mecanic[aă]|Hidrotehnic[aă])\s+(?=[A-Z]{1,2}\s?\d{2,4}[a-z]?(?![\p{L}\d]))/u.exec(rest);
+    if (named) {
+      ahead = named[1];
+      rest = rest.slice(0, named.index) + rest.slice(named.index + named[0].length);
+    }
+  }
+
   let teacher: string | null = null;
   const t = TEACHER.exec(rest);
   if (t) {
@@ -220,6 +231,9 @@ export function parseCellText(input: string): ParsedText {
       rest = rest.slice(0, code.index) + " " + rest.slice(code.index + code[0].length + (more ? more[0].length : 0));
     }
   }
+  if (ahead) room = room ? `${room} ${ahead}` : room;
+  // "Tămășilă M106 (MPT - M106)": the room repeated in brackets with its building says nothing new.
+  if (room) rest = rest.replace(new RegExp(`\\([^()]*${room.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[^()]*\\)`, "u"), " ");
   if (!room && /\bonline\b/i.test(rest)) room = "online";
   // "A2CH" is how one ETcTI sheet shortens "A2 Chimie", the amphitheatre the others spell out.
   if (room && /^[A-Z]\d{1,3}\s?CH$/.test(room)) room = room.replace(/\s?CH$/, " Chimie");
