@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 import { getDb } from "@/db";
 import { seed } from "@/db/seed";
 import { applyCatalog } from "@/scraper/apply";
-import { contacts, courses, entries, entryGroups, exams, examSpecializations, faculties, groups, occurrenceOverrides, personalEvents, savedContacts, semesters, specializations, users } from "@/db/schema";
+import { buildings, contacts, courses, entries, entryGroups, exams, examSpecializations, faculties, groups, occurrenceOverrides, personalEvents, savedContacts, semesters, specializations, users } from "@/db/schema";
 import { guide } from "@/i18n/messages/guide";
 import { askLocal } from "@/lib/assistant/local";
 import { runTool, type ToolContext } from "@/lib/assistant/tools";
@@ -480,6 +480,51 @@ describe("labs, make-up sessions, people and the study plan for a student", () =
     seed(db);
     expect(db.select().from(faculties).where(eq(faculties.slug, "mec-served")).get()!.name).toBe(typed);
     db.delete(faculties).where(eq(faculties.slug, "mec-served")).run();
+  });
+
+  it("places a room in the building the campus catalogue has it in, and guesses only when it must", () => {
+    const db = getDb();
+    db.update(faculties).set({ lat: 45.7474, lng: 21.2262, address: "Bd. Vasile Pârvan 2" }).where(eq(faculties.id, ana.facultyId!)).run();
+    const other = db.insert(faculties).values({ slug: "ria-test", name: "Facultatea de Robotică", shortName: "RIA", lat: 45.746, lng: 21.2257, address: "Bd. Mihai Viteazu 1" }).returning().get();
+    try {
+      const ac = placeResolver(ana.facultyId);
+      const ria = placeResolver(other.id);
+      const building = (p: ReturnType<typeof ac>) => (p ? `${p.guessed ? "? " : ""}${p.name}` : null);
+      // Electro rooms are a wing, a floor and two digits: A2 is the Chemistry amphitheatre.
+      expect(building(ac("B419"))).toBe("Clădirea Electro (AC, ETcTI, IEE)");
+      expect(building(ac("A2"))).toBe("Facultatea de Chimie (inclusiv Chimie Parc)");
+      expect(building(ac("P08"))).toBe("Facultatea de Chimie (inclusiv Chimie Parc)");
+      // A faculty with no rule of its own for Electro: the catalogue knows these rooms.
+      expect(building(ria("B019"))).toBe("Clădirea Electro (AC, ETcTI, IEE)");
+      expect(building(ria("C301B"))).toBe("Clădirea Electro (AC, ETcTI, IEE)");
+      expect(building(ria("M304"))).toBe("Facultatea de Mecanică");
+      expect(building(ria("M013"))).toBe("Facultatea MPT");
+      expect(building(ria("H0"))).toBe("Departamentul de Hidrotehnică");
+      expect(ria("SPM205")).toMatchObject({ name: "Clădirea SPM", approximate: true });
+      expect(ria("SPM205")?.guessed).toBeFalsy();
+      // A109 is in Electro and in ASPC: for a faculty of the Electro building its rule decides,
+      // for any other the code does not say, and the faculty building is a guess marked as one.
+      expect(building(ac("A109"))).toBe("Clădirea Electro (AC, ETcTI, IEE)");
+      expect(building(ria("A109"))).toBe("? Facultatea de Robotică");
+      expect(building(ria("Sala fără cod"))).toBe("? Facultatea de Robotică");
+    } finally {
+      db.delete(faculties).where(eq(faculties.id, other.id)).run();
+      db.update(faculties).set({ lat: null, lng: null, address: null }).where(eq(faculties.id, ana.facultyId!)).run();
+    }
+  });
+
+  it("repairs the first Electro room rule in a database seeded before it was narrowed", () => {
+    const db = getDb();
+    const rule = () => db.select().from(buildings).where(eq(buildings.code, "ELECTRO")).get()!.roomPattern;
+    const current = rule();
+    db.update(buildings).set({ roomPattern: "^[ABCD]\\s?\\d{1,3}[a-z]?$|^D1$" }).where(eq(buildings.code, "ELECTRO")).run();
+    seed(db);
+    expect(rule()).toBe(current);
+    // A rule an administrator has written is left alone.
+    db.update(buildings).set({ roomPattern: "^E\\d+$" }).where(eq(buildings.code, "ELECTRO")).run();
+    seed(db);
+    expect(rule()).toBe("^E\\d+$");
+    db.update(buildings).set({ roomPattern: current }).where(eq(buildings.code, "ELECTRO")).run();
   });
 
   it("explains terms and opens pages", () => {

@@ -1,4 +1,5 @@
 import "server-only";
+import { campusRoomSite } from "./campuspath/known-room";
 import { examAudience } from "./exam-audience";
 import { and, asc, desc, eq, gte, inArray, lte } from "drizzle-orm";
 import { getDb } from "@/db";
@@ -116,9 +117,16 @@ export function teachingWeek(semester: Semester, date: string): number | null {
 
 /* ───────────────────────────── Places ───────────────────────────── */
 
+/** The buildings table's entry for each building of the campus tour's room catalogue. */
+const SITE_BUILDING: Record<string, string> = {
+  electro: "ELECTRO", chimie: "CHIM", mecanica: "MEC", orologerie: "MEC", spm: "SPM", imf: "SPM",
+  aspc: "ASPC", remus: "MPT", hidro: "HIDRO", constructii: "CT",
+};
+
 export function placeResolver(facultyId: number | null) {
   const db = getDb();
   const rules = db.select().from(buildings).orderBy(asc(buildings.priority)).all();
+  const byCode = new Map(rules.map((b) => [b.code, b]));
   const faculty = facultyId ? db.select().from(faculties).where(eq(faculties.id, facultyId)).get() : undefined;
   const acronym = faculty?.shortName?.toLowerCase() ?? "";
   const compiled = rules.flatMap((b) => {
@@ -143,6 +151,14 @@ export function placeResolver(facultyId: number | null) {
         lng: hit.building.lng,
         approximate: /approx/i.test(hit.building.notes ?? ""),
       };
+    }
+    // The room catalogue behind the campus walkthroughs knows where many rooms are. A code it
+    // has in one building only is placed there, so the calendar and the walkthrough agree
+    // (a Mecanică class in C301B is in Electro, not "probably Mecanică").
+    const site = campusRoomSite(room);
+    const known = site ? byCode.get(SITE_BUILDING[site] ?? "") : undefined;
+    if (known) {
+      return { name: known.name, address: known.address, lat: known.lat, lng: known.lng, approximate: /approx/i.test(known.notes ?? "") };
     }
     // An unrecognised room is most likely in the student's own faculty building.
     if (faculty?.lat != null && faculty.lng != null) {

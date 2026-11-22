@@ -1,4 +1,4 @@
-import { count, eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import type { DB } from "./index";
 import { buildings, semesters, faculties } from "./schema";
 
@@ -45,6 +45,14 @@ const SEMESTERS = [
  * Coordinates of faculty buildings come from upt.ro; the others (marked in `notes`)
  * were placed from the street addresses in the AC room legend and are approximate.
  */
+/**
+ * Rooms of the Electro building are a wing letter, the floor and two digits (A101, B419a).
+ * The earlier pattern also took one- and two-digit codes: "A2", an amphitheatre of the
+ * Faculty of Chemistry, was shown as a room of Electro.
+ */
+const ELECTRO_ROOMS = "^[ABCD]\\s?\\d{3}[a-z]?$|^D1$";
+const ELECTRO_ROOMS_BEFORE = "^[ABCD]\\s?\\d{1,3}[a-z]?$|^D1$";
+
 const BUILDINGS = [
   { code: "MPT", name: "Facultatea MPT", address: "Str. Remus 14, Timișoara", lat: 45.745735, lng: 21.22275, roomPattern: "MPT", scope: "", priority: 10 },
   { code: "MEC", name: "Facultatea de Mecanică", address: "Bd. Mihai Viteazu 1, Timișoara", lat: 45.746042, lng: 21.225743, roomPattern: "\\bMEC\\b|Orol|^N\\s?\\d{3}", scope: "", priority: 10 },
@@ -53,7 +61,7 @@ const BUILDINGS = [
   { code: "SPM", name: "Clădirea SPM", address: "Bd. Mihai Viteazu (vizavi de căminul 2MV), Timișoara", lat: 45.7452, lng: 21.2262, roomPattern: "SPM|CIDUCOS", scope: "", priority: 20, notes: "Approximate position" },
   { code: "HIDRO", name: "Departamentul de Hidrotehnică", address: "Str. George Enescu 1/A, Timișoara", lat: 45.7493, lng: 21.2247, roomPattern: "^PN$|hidro", scope: "", priority: 20, notes: "Approximate position" },
   { code: "CT", name: "Facultatea de Construcții", address: "Str. Traian Lalescu 2, Timișoara", lat: 45.745594, lng: 21.229903, roomPattern: "Nicolae Maior|constru|cadastru", scope: "", priority: 30 },
-  { code: "ELECTRO", name: "Clădirea Electro (AC, ETcTI, IEE)", address: "Bd. Vasile Pârvan 2, Timișoara", lat: 45.747476, lng: 21.226228, roomPattern: "^[ABCD]\\s?\\d{1,3}[a-z]?$|^D1$", scope: "AC,ETcTI,IEE", priority: 50 },
+  { code: "ELECTRO", name: "Clădirea Electro (AC, ETcTI, IEE)", address: "Bd. Vasile Pârvan 2, Timișoara", lat: 45.747476, lng: 21.226228, roomPattern: ELECTRO_ROOMS, scope: "AC,ETcTI,IEE", priority: 50 },
   { code: "MPT-ROOMS", name: "Facultatea MPT", address: "Str. Remus 14, Timișoara", lat: 45.745735, lng: 21.22275, roomPattern: "^[AM]\\s?\\d{1,3}$", scope: "MPT", priority: 50 },
   { code: "ONLINE", name: "Online", address: null, lat: 0, lng: 0, roomPattern: "on\\s?line", scope: "", priority: 1 },
 ];
@@ -71,6 +79,9 @@ export function seed(db: DB) {
   if (buildingCount === 0) {
     for (const b of BUILDINGS) db.insert(buildings).values(b).run();
   }
+  // The Electro rule as first seeded, unless an administrator has edited it since.
+  db.update(buildings).set({ roomPattern: ELECTRO_ROOMS })
+    .where(and(eq(buildings.code, "ELECTRO"), eq(buildings.roomPattern, ELECTRO_ROOMS_BEFORE))).run();
   // Names read from upt.ro before they were stored in one Unicode form.
   for (const f of db.select({ id: faculties.id, name: faculties.name }).from(faculties).all()) {
     const name = f.name.normalize("NFC");
