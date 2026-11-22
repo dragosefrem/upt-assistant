@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { and, asc, count, eq, gte, lte, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, gte, lte, ne, sql, type SQL } from "drizzle-orm";
 import { getDb } from "@/db";
 import { eventParticipants, groupEvents, users, type EventStatus, type Rsvp } from "@/db/schema";
 import { InvitationError } from "./contacts";
@@ -30,11 +30,13 @@ export function myGroupEvents(userId: string) {
     .where(eq(eventParticipants.userId, userId)).orderBy(asc(groupEvents.date), asc(groupEvents.startMin)).all();
 }
 
-export function groupInviteCount(userId: string) {
-  return getDb().select({ n: count() }).from(eventParticipants)
+/** Invitations still waiting for an answer. A meeting that has ended can no longer be answered. */
+export function groupInviteCount(userId: string, now = nowLocal()) {
+  return getDb().select({ date: groupEvents.date, endMin: groupEvents.endMin }).from(eventParticipants)
     .innerJoin(groupEvents, eq(groupEvents.id, eventParticipants.eventId))
     .where(and(eq(eventParticipants.userId, userId), eq(eventParticipants.response, "pending"),
-      gte(groupEvents.date, nowLocal().date), ne(effectiveStatus(Date.now()), "expired"))).get()!.n;
+      gte(groupEvents.date, now.date), ne(effectiveStatus(Date.now()), "expired"))).all()
+    .filter((event) => !eventIsOver(event, now)).length;
 }
 
 function eventSummary(where: SQL) {

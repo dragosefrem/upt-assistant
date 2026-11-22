@@ -251,6 +251,19 @@ describe("group RSVPs and calendars", () => {
     expect(memberEvent("cam", id)).toMatchObject({ response: "accepted", status: "confirmed" });
   });
 
+  it("stops counting an invitation nobody answered once the meeting has ended", () => {
+    const id = plan();
+    reply(id, "cam", "accepted");
+    const meeting = memberEvent("bea", id)!;
+    const local = (minutes: number) => new Date(`${friday}T${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}:00+02:00`);
+    // Cam comes, Bea never answers. During the meeting the badge still asks her to.
+    vi.setSystemTime(local(meeting.endMin - 1));
+    expect(groupInviteCount("bea")).toBe(1);
+    // Afterwards there is nothing left to answer: the red "1" stayed on Contacts until midnight.
+    vi.setSystemTime(local(meeting.endMin));
+    expect(groupInviteCount("bea")).toBe(0);
+  });
+
   it("publishes only timely acceptances at the exact cutoff, even without another write", () => {
     const id = plan();
     reply(id, "bea", "accepted");
