@@ -89,10 +89,11 @@ export function toCampusAnswer(outcome: PlanOutcome): CampusRouteAnswer {
 }
 
 /** The request for the service: a classroom id or a checkpoint number goes in as a choice. */
-export function campusRequest(input: { to: string; from?: string; locale: Locale }): PlanRequest {
+export function campusRequest(input: { to: string; from?: string; locale: Locale; home?: "hunedoara" }): PlanRequest {
   const to = input.to.trim();
   const from = input.from?.trim();
   const request: PlanRequest = { prompt: to, lang: input.locale };
+  if (input.home) request.home = input.home;
   if (isClassroomId(to)) {
     request.prompt = "";
     request.destination = to;
@@ -117,6 +118,8 @@ export async function planCampusRoute(input: {
   from?: string;
   locale: Locale;
   building?: string;
+  /** "hunedoara" for a student of that campus. */
+  home?: "hunedoara";
 }): Promise<CampusRouteAnswer> {
   const texts = campus[input.locale].api;
   try {

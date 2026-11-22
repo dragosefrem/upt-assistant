@@ -196,8 +196,20 @@ class Tour:
             ranked.append((score, record))
         ranked.sort(key=lambda item: (-item[0], not item[1]["named"], item[1]["name"], item[1]["index"]))
         if strict and ranked:
-            ranked = [item for item in ranked if item[0] == ranked[0][0]]
+            best = [item for item in ranked if item[0] == ranked[0][0]]
+            # "biblioteca" is the exact name of the library in Hunedoara and only part of
+            # "Biblioteca UPT" in Timișoara, 160 km away. Between two cities the closer wording
+            # does not decide: both are offered.
+            near = [item for item in ranked if item[0] >= 5]
+            if len({self.away(item[1]) for item in near}) > 1:
+                best = near
+            ranked = best
         return [record for _, record in ranked]
+
+    @staticmethod
+    def away(record):
+        """Whether a checkpoint or classroom is on the Hunedoara campus."""
+        return "Hunedoara" in (record.get("area") or "")
 
     def places(self, query):
         matches = self.search(query, strict=True)
@@ -237,7 +249,7 @@ class Tour:
             raise RouteQuestion("ask.several", field, matches)
         raise RouteQuestion("ask.unknown", field, query=query)
 
-    def plan(self, prompt, start=None, destination=None, lang="en", origin=None):
+    def plan(self, prompt, start=None, destination=None, lang="en", origin=None, home=None):
         """Plan a route. A link or form can name the starting place apart from the request, as origin.
 
         start="auto" starts at the mapped building entrance nearest the destination, unless the
@@ -308,6 +320,10 @@ class Tour:
                 last["caption"] = room["name"]
         elif waiting:
             notices.append(say(lang, "notice.already", place=self.mention(last["index"], lang)))
+        if self.away(room or last) and home != "hunedoara":
+            # Most students are in Timișoara: nobody should set off before reading this.
+            # home="hunedoara" is a student of that campus, who needs no telling.
+            notices.insert(0, say(lang, "notice.hunedoara"))
         if automatic:
             # The entrance chosen for the student, with its map pin for the walk outdoors.
             route["origin"] = self.localized(self.records[origin], lang)

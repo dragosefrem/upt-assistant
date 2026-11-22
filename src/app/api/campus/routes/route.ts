@@ -2,6 +2,7 @@ import { planRoute } from "@/lib/campuspath/client";
 import { campusError, withCampus } from "@/lib/campuspath/http";
 import { isClassroomId } from "@/lib/campuspath/links";
 import type { PlanRequest } from "@/lib/campuspath/types";
+import { studiesInHunedoara } from "@/lib/catalog";
 
 /** A choice from a list (a checkpoint number or a classroom id), or "auto" for the nearest entrance. */
 function choice(value: unknown): number | string | undefined | null {
@@ -23,7 +24,7 @@ function text(value: unknown, longest: number): string | undefined | null {
  */
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
-  return withCampus(typeof body?.lang === "string" ? body.lang : null, async ({ t, lang }) => {
+  return withCampus(typeof body?.lang === "string" ? body.lang : null, async ({ t, lang, user }) => {
     if (!body || typeof body !== "object") return campusError(400, t.campus.api.badRequest);
     const prompt = text(body.prompt, 1000);
     const from = text(body.from, 200);
@@ -38,6 +39,7 @@ export async function POST(request: Request) {
     if (destination !== undefined && destination !== null) req.destination = destination;
     if (hint?.trim()) req.hint = hint.trim();
     if (faculty?.trim()) req.faculty = faculty.trim();
+    if (studiesInHunedoara(user)) req.home = "hunedoara";
     const outcome = await planRoute(req);
     return Response.json(outcome.kind === "question" ? { question: outcome.question } : { route: outcome.route });
   });

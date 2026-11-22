@@ -116,6 +116,24 @@ class RoutingTests(unittest.TestCase):
         # Searching for a starting point by number keeps working as you type.
         self.assertIn(106, [r["index"] for r in self.tour.search("106")])
 
+    def test_a_place_in_hunedoara_is_never_chosen_silently_over_one_in_timisoara(self):
+        # "Bibliotecă" is the exact name of the Hunedoara library; Timișoara's is "Biblioteca UPT".
+        for request in ("biblioteca", "library"):
+            with self.subTest(request=request), self.assertRaises(RouteQuestion) as which:
+                self.tour.plan(request, "auto", lang="ro")
+            areas = {option["area"] for option in which.exception.options}
+            self.assertIn("Inginerie Hunedoara", areas)
+            self.assertGreater(len(areas), 1)
+        # Named in full, each is found without a question.
+        self.assertEqual(self.tour.plan("Biblioteca UPT", "auto")["steps"][-1]["index"], 110)
+        # A route that does end in Hunedoara says so first, in the language asked for.
+        hunedoara = self.tour.plan("aula magna", "auto", lang="ro")
+        self.assertTrue(hunedoara["notice"].startswith("Locul acesta este în campusul din Hunedoara"))
+        self.assertIn("Hunedoara campus", self.tour.plan("aula magna", "auto")["notice"])
+        self.assertNotIn("Hunedoara", self.tour.plan("B419", "auto").get("notice", ""))
+        # A student of the Hunedoara faculty is not told where their own campus is.
+        self.assertNotIn("Hunedoara campus", self.tour.plan("aula magna", "auto", home="hunedoara").get("notice", ""))
+
     def test_disconnected_component_and_same_location(self):
         isolated = next(i for i, s in self.tour.scenes.items() if not s["links"])
         with self.assertRaisesRegex(RouteQuestion, "no connected ground route"):

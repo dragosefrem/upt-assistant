@@ -66,3 +66,8 @@ export function programmeTimetable(specializationId: number | null) {
 export function facultyOf(id: number | null) {
   return id ? getDb().select().from(faculties).where(eq(faculties.id, id)).get() ?? null : null;
 }
+
+/** FIH is the university's faculty in Hunedoara, 160 km from the Timișoara campus. */
+export function studiesInHunedoara(user: { facultyId: number | null }): boolean {
+  return facultyOf(user.facultyId)?.shortName === "FIH";
+}

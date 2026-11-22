@@ -50,6 +50,8 @@ TEXT = {
     "notice.start": ("The video starts at {place}, the closest the tour gets to your starting room.",
                      "Videoclipul începe la {place}, cel mai apropiat punct din tur de sala ta de plecare."),
     "notice.already": ("You are already at {place}.", "Ești deja la {place}."),
+    "notice.hunedoara": ("This place is on the Hunedoara campus (Facultatea de Inginerie Hunedoara), not in Timișoara.",
+                         "Locul acesta este în campusul din Hunedoara (Facultatea de Inginerie Hunedoara), nu în Timișoara."),
     "caption.start": ("Starting checkpoint for {room}", "Punct de plecare pentru {room}"),
     "your classroom": ("your classroom", "sala ta"),
     "the classroom": ("the classroom", "sala"),

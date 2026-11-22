@@ -305,6 +305,9 @@ describe("planner answers", () => {
   });
 
   it("starts at the nearest entrance unless a start is given, and passes choices back as choices", () => {
+    // A student of the Hunedoara campus is not warned that a route ends there.
+    expect(campusRequest({ to: "aula magna", locale: "ro", home: "hunedoara" })).toMatchObject({ home: "hunedoara", start: "auto" });
+    expect(campusRequest({ to: "aula magna", locale: "ro" })).not.toHaveProperty("home");
     expect(campusRequest({ to: "B419", locale: "ro" })).toEqual({ prompt: "B419", lang: "ro", start: "auto" });
     expect(campusRequest({ to: " room:aspc-a109 ", from: "355", locale: "en" })).toEqual({ prompt: "", destination: "room:aspc-a109", from: "355", lang: "en" });
     expect(campusRequest({ to: "B419", from: "room:electro-b018", locale: "en" })).toEqual({ prompt: "B419", start: "room:electro-b018", lang: "en" });

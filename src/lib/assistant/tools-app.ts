@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { specializations, userCourses, users } from "@/db/schema";
 import { LOCALE_NAMES, isLocale } from "@/i18n/config";
 import { facultyDocuments } from "../faculty-documents";
-import { pickerData, facultyOf } from "../catalog";
+import { pickerData, facultyOf, studiesInHunedoara } from "../catalog";
 import { programmeOptions } from "../profile-options";
 import { applyStudyProfile, profileError, type StudyProfile } from "../study-profile";
 import { studentBuildings } from "../campus-buildings";
@@ -272,7 +272,8 @@ export const APP_TOOLS: AssistantTool[] = [
         building = next.place?.name;
         event = brief(next);
       }
-      const answer = await planCampusRoute({ to, from: str(input.from), locale: ctx.locale ?? ctx.user.locale ?? "ro", building });
+      const answer = await planCampusRoute({ to, from: str(input.from), locale: ctx.locale ?? ctx.user.locale ?? "ro", building,
+        home: studiesInHunedoara(ctx.user) ? "hunedoara" : undefined });
       if (answer.kind === "unavailable") return { error: answer.message, hint: "Walkthroughs are unavailable right now; offer get_directions to the building instead." };
       if (answer.kind === "question") {
         return {

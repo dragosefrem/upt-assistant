@@ -131,6 +131,8 @@ export interface PlanRequest {
   start?: number | string;
   /** A destination chosen from a list: a checkpoint number or a classroom id. */
   destination?: number | string;
+  /** "hunedoara" for a student of that campus: a route there then needs no warning. */
+  home?: "hunedoara";
   lang: Locale;
 }
 

@@ -60,7 +60,8 @@ def create_app(tour=None):
             return jsonify(message="Send a JSON object with a route request."), 400
         lang = language(data.get("lang"))
         try:
-            route = tour.plan(data.get("prompt", ""), data.get("start"), data.get("destination"), lang, data.get("from"))
+            route = tour.plan(data.get("prompt", ""), data.get("start"), data.get("destination"), lang, data.get("from"),
+                              data.get("home") if isinstance(data.get("home"), str) else None)
         except RouteQuestion as question:
             # "key" says which question it is ("ask.unknown", "ask.several"), whatever the language.
             return jsonify(message=question.text(lang), field=question.field, key=question.key,
