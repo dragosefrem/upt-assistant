@@ -573,6 +573,8 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
 
   const clear = async () => {
     if (busy) return;
+    // One tap used to delete the whole conversation, with no way back.
+    if (messages.length && !window.confirm(tr.clearConfirm)) return;
     stopSpeaking();
     setBusy(true);
     setNotice(null);
@@ -644,6 +646,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
           className={`btn px-2 text-xs ${position ? "bg-emerald-50 text-emerald-700" : "text-slate-500 hover:bg-slate-100"}`}
           onClick={position ? disableLocation : enableLocation}
           title={position ? tr.location.titleOn : tr.location.titleOff}
+          aria-label={position ? tr.location.titleOn : tr.location.titleOff}
           aria-pressed={!!position}
         >
           {position ? tr.location.on : locationStatus === "asking" ? tr.location.asking : tr.location.off}
@@ -655,6 +658,7 @@ export function Assistant({ onClose }: { onClose?: () => void } = {}) {
             setSpeak(!speak);
           }}
           title={tr.speech.title}
+          aria-label={tr.speech.title}
           aria-pressed={speak}
         >
           {speak ? tr.speech.on : tr.speech.off}

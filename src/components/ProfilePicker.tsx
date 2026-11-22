@@ -78,7 +78,8 @@ export function ProfilePicker({
       onClick={() => { if (s.id !== specId) choose({ specializationId: s.id, groupId: null }); }}>
       <span className="font-medium">{s.name}</span>
       <span className="ml-2 text-xs text-slate-500">
-        {[s.code, (s.language && p.teachingLanguage[s.language]) ?? s.language].filter(Boolean).join(" · ")}
+        {/* "RO, IFR" and "RO/EN" as published: each part in words. */}
+        {[s.code, s.language?.split(/\s*[,/]\s*/).map((part) => p.teachingLanguage[part] ?? part).join(", ")].filter(Boolean).join(" · ")}
       </span>
       {faculty?.shortName === "AC" && s.code === "CTI" && year === 1 && (
         <span className="block text-xs text-slate-500">{p.sharedFirstYear}</span>

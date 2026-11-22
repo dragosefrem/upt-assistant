@@ -26,7 +26,7 @@ const ro: typeof en = {
   title: "Notificări",
   unread: (n: number) => `Notificări, ${plural("ro", n, { one: "una nouă", few: `${n} noi`, other: `${n} de noi` })}`,
   requests: "Așteaptă răspunsul tău",
-  upcoming: "În curând",
+  upcoming: "Urmează",
   horizon: "Ce ai în program azi și mâine, plus examenele din următoarele 30 de zile.",
   empty: "Ești la zi.",
   contact: "Cerere de contact",

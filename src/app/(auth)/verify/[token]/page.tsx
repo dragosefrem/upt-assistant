@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/AuthForm";
 import { getT } from "@/i18n/server";
 import { registrationTarget } from "@/lib/account-verification";
+import { getUser } from "@/lib/auth";
 import { completeRegistrationAction } from "../../actions";
 
 export async function generateMetadata() {
@@ -14,6 +16,10 @@ export default async function VerifyAccountPage({ params }: PageProps<"/verify/[
   if (target) {
     return <AuthForm action={completeRegistrationAction.bind(null, token)} verifiedEmail={target.email} invite={target.invite ?? undefined} />;
   }
+  // The link has done its job: a student who opens it again while signed in is not told that it
+  // "expired" and to ask for a new one.
+  const user = await getUser();
+  if (user) redirect(user.onboardedAt ? "/" : "/onboarding");
   const t = await getT();
   return (
     <div className="space-y-4 text-center">
